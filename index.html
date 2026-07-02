@@ -8026,5 +8026,771 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
 /* ================= END V66 ================= */
 
 
+/* ================= V67 FINAL PHONE FIXTURE: CAMERA-ONLY TIME CLOCK + 3 NEWS POSTS + UPLOAD PREVIEWS =================
+   Requested fixes:
+   1) Time In / Time Out must require real camera photo only. No gallery option.
+   2) Staff News Feed share scope: National/All or Branch only.
+   3) News Feed limit changed from 1 to 3 posts/day for non-owner users.
+   4) News Feed posts/images expire after 24 hours.
+   5) All upload fields show tiny preview thumbnails and small upload/processing percentage.
+   6) Extra phone-safe layout guard for all tabs/forms/tables.
+*/
+(function(){
+  const $67=(s,r=document)=>r.querySelector(s);
+  const $$67=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E67=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const owner67=()=>{try{return (typeof isOwner==='function')?isOwner():false}catch(_){return false}};
+  const manager67=()=>{try{return (typeof isManager==='function')?isManager():owner67()}catch(_){return false}};
+  const todayKey67=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const DAILY_POST_LIMIT67=3;
+
+  function addStyle67(){
+    if(document.getElementById('v67-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v67-style">
+      html,body,#root,.app,.main,#page{max-width:100%!important;overflow-x:hidden!important}.main{min-width:0!important}.card,.notice,.modal-card,.feed-card,.comment-row,.v62-case,.v65-viocard,.v66-mobile-card,.v67-safe-card{max-width:100%!important;overflow-wrap:anywhere!important;word-break:break-word!important}.card *,.notice *,.modal-card *,.feed-card *{min-width:0}.btn,.pill,.tab{white-space:normal!important}.input,select,textarea,input[type=file]{max-width:100%!important;min-width:0!important}.split{max-width:100%;min-width:0}.split>*{min-width:0}.v60-mini-actions button[onclick*="v60ManualGallery"],button[onclick*="v60ManualGallery"]{display:none!important}.v67-upload-wrap{margin-top:7px;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;padding:8px}.v67-upload-head{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11px;color:#64748b;font-weight:900}.v67-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.v67-thumb{width:46px;height:46px;border-radius:9px;border:1px solid #e5e7eb;object-fit:cover;background:#fff}.v67-file-chip{font-size:11px;padding:5px 7px;border-radius:999px;background:#fff;border:1px solid #e5e7eb;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v67-progress{height:6px;border-radius:999px;background:#e5e7eb;overflow:hidden;margin-top:7px;display:none}.v67-progress span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#22c55e);transition:width .2s ease}.v67-progress-text{font-size:11px;color:#64748b;margin-top:5px;display:none}.v67-camera video{width:100%;max-height:62dvh;background:#111;border-radius:16px;object-fit:contain}.v67-camera-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.v67-camera-tools .btn{flex:1 1 130px}.v67-camera-note{font-size:12px;color:#64748b;margin-top:8px}.v67-scope-note{font-size:12px;color:#64748b;margin-top:4px}.v67-phone-note{background:#eff6ff;border-left:5px solid #2563eb;color:#1e3a8a;border-radius:14px;padding:10px;margin:8px 0;font-size:13px}
+      @media(max-width:820px){
+        body{width:100vw!important}.main{padding:9px!important}.topbar{padding:10px!important;border-radius:16px!important}.topbar h2{font-size:15px!important;line-height:1.15!important}.card{padding:11px!important;border-radius:15px!important}.notice{padding:10px!important;border-radius:14px!important}.grid,.grid.two,.grid.three,.grid.four{grid-template-columns:1fr!important;gap:10px!important}.field{margin:8px 0!important}.field label{font-size:11px!important}.input,select,textarea{font-size:15px!important;padding:10px 11px!important;border-radius:12px!important}.btn{min-height:39px}.split{gap:6px!important}.split>.btn{flex:1 1 auto!important}.modal{padding:7px!important}.modal-card{width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important;max-height:calc(100dvh - 14px)!important;overflow:auto!important;padding:13px!important;border-radius:15px!important}.feed-toolbar{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}.feed-head{display:grid!important;grid-template-columns:1fr auto!important;gap:7px!important}.feed-author{min-width:0!important}.feed-meta{font-size:11px!important;line-height:1.2!important}.social-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}.social-actions .btn{width:100%!important}.feed-photos{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}.feed-photos img{width:100%!important;height:105px!important;object-fit:cover!important}.v67-upload-wrap{padding:7px}.v67-thumb{width:42px;height:42px}.v67-file-chip{max-width:135px}.v60-note{font-size:11px!important}.v60-mini-actions{justify-content:center!important}.v60-mini-actions .btn{flex:0 0 auto!important}
+        #page table:not(.v67-keep-table){display:block!important;width:100%!important;overflow:visible!important;white-space:normal!important;border-spacing:0!important}#page table:not(.v67-keep-table) thead{display:none!important}#page table:not(.v67-keep-table) tbody{display:block!important;width:100%!important}#page table:not(.v67-keep-table) tr{display:block!important;width:100%!important;background:#fff!important;border:1px solid #e5e7eb!important;border-radius:15px!important;margin:0 0 9px!important;padding:10px!important;box-shadow:0 6px 16px rgba(15,23,42,.05)!important;overflow:hidden!important}#page table:not(.v67-keep-table) td{display:block!important;width:100%!important;border:0!important;background:transparent!important;border-radius:0!important;padding:6px 0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}#page table:not(.v67-keep-table) td::before{content:attr(data-label);display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:1000;margin-bottom:2px}#page table:not(.v67-keep-table) td[colspan]::before{content:''}
+      }
+    </style>`);
+  }
+
+  function decorateTables67(root=document){
+    try{root.querySelectorAll('table').forEach(tbl=>{const heads=Array.from(tbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());tbl.querySelectorAll('tbody tr').forEach(tr=>Array.from(tr.children).forEach((td,i)=>{if(!td.getAttribute('data-label')&&heads[i])td.setAttribute('data-label',heads[i]);}));});}catch(e){console.warn('v67 table labels skipped',e)}
+  }
+
+  function previewFiles67(input){
+    if(!input || input.id==='attProof59' || input.id==='attProof55')return;
+    let wrap=input.__v67Wrap || input.parentElement?.querySelector(`.v67-upload-wrap[data-for="${CSS.escape(input.id||'noid')}"]`);
+    if(!wrap){
+      wrap=document.createElement('div');wrap.className='v67-upload-wrap';wrap.dataset.for=input.id||('file_'+Math.random().toString(36).slice(2));
+      wrap.innerHTML='<div class="v67-upload-head"><span class="v67-upload-title">No file selected</span><span class="v67-upload-count"></span></div><div class="v67-thumbs"></div><div class="v67-progress"><span></span></div><div class="v67-progress-text">Ready</div>';
+      input.insertAdjacentElement('afterend',wrap);input.__v67Wrap=wrap;
+    }
+    const files=Array.from(input.files||[]);
+    const title=wrap.querySelector('.v67-upload-title'), count=wrap.querySelector('.v67-upload-count'), thumbs=wrap.querySelector('.v67-thumbs'), prog=wrap.querySelector('.v67-progress'), txt=wrap.querySelector('.v67-progress-text');
+    if(!files.length){title.textContent='No file selected';count.textContent='';thumbs.innerHTML='';prog.style.display='none';txt.style.display='none';return;}
+    title.textContent='Selected preview';count.textContent=files.length+' file'+(files.length>1?'s':'');thumbs.innerHTML='';
+    files.slice(0,8).forEach(f=>{
+      if(/^image\//.test(f.type)){const img=document.createElement('img');img.className='v67-thumb';img.alt=f.name;thumbs.appendChild(img);const rd=new FileReader();rd.onload=e=>img.src=e.target.result;rd.readAsDataURL(f);} 
+      else {const chip=document.createElement('span');chip.className='v67-file-chip';chip.textContent=f.name;thumbs.appendChild(chip);} 
+    });
+    if(files.length>8){const chip=document.createElement('span');chip.className='v67-file-chip';chip.textContent='+'+(files.length-8)+' more';thumbs.appendChild(chip);}
+    prog.style.display='block';prog.querySelector('span').style.width='12%';txt.style.display='block';txt.textContent='Preview ready — not yet submitted';
+  }
+  function startProgress67(form){
+    const inputs=Array.from(form?.querySelectorAll('input[type="file"]')||[]).filter(i=>i.files&&i.files.length&&i.id!=='attProof59'&&i.id!=='attProof55');
+    if(!inputs.length)return;
+    inputs.forEach(input=>{
+      previewFiles67(input);const wrap=input.__v67Wrap;if(!wrap)return;const bar=wrap.querySelector('.v67-progress span'), txt=wrap.querySelector('.v67-progress-text'), prog=wrap.querySelector('.v67-progress');prog.style.display='block';txt.style.display='block';let p=15;bar.style.width=p+'%';txt.textContent='Uploading / processing 15%';clearInterval(input.__v67Timer);input.__v67Timer=setInterval(()=>{p=Math.min(94,p+Math.floor(Math.random()*9)+3);bar.style.width=p+'%';txt.textContent='Uploading / processing '+p+'%';if(p>=94)clearInterval(input.__v67Timer);},450);
+      setTimeout(()=>{if(bar){bar.style.width='100%';txt.textContent='Upload request sent — saving...';}},4500);
+    });
+  }
+  function decorateFiles67(root=document){
+    try{root.querySelectorAll('input[type="file"]').forEach(input=>{if(input.__v67Decorated)return;input.__v67Decorated=true;input.addEventListener('change',()=>previewFiles67(input));if(input.files&&input.files.length)previewFiles67(input);});}catch(e){console.warn('v67 file preview skipped',e)}
+  }
+
+  async function strictCamera67(input,opts={}){
+    addStyle67();
+    if(!input)return;
+    if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) || !window.isSecureContext){
+      try{toast('Real camera is required for Time In/Out. Please open the app using HTTPS on your phone and allow camera permission.','error')}catch(_){ }
+      return;
+    }
+    let stream=null,facing=opts.facing||'user';
+    const stop=()=>{try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(_){} stream=null;};
+    const start=async()=>{stop();stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}},audio:false});const v=$67('#v67Video');if(v)v.srcObject=stream;const lbl=$67('#v67FacingLabel');if(lbl)lbl.textContent=facing==='user'?'Front Camera':'Back Camera'};
+    try{
+      if(typeof modal==='function')modal(`<div class="v67-camera"><div class="split" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Take Real Camera Photo</h2><span class="pill blue" id="v67FacingLabel">Front Camera</span></div><button class="btn sm dark" id="v67CloseCam">Close</button></div><br><video id="v67Video" autoplay playsinline muted></video><canvas id="v67Canvas" style="display:none"></canvas><div class="v67-camera-tools"><button class="btn ghost" id="v67FlipCam">🔄 Flip Camera</button><button class="btn green" id="v67CaptureCam">📷 Capture & Save</button></div><div class="v67-camera-note"><b>No gallery allowed for Time In/Out.</b> This requires a real live camera photo.</div></div>`);
+      else document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="modal-card v67-camera"><h2>Take Real Camera Photo</h2><video id="v67Video" autoplay playsinline muted></video><canvas id="v67Canvas" style="display:none"></canvas><div class="v67-camera-tools"><button class="btn ghost" id="v67FlipCam">Flip</button><button class="btn green" id="v67CaptureCam">Capture</button><button class="btn dark" id="v67CloseCam">Close</button></div></div></div>`);
+      await start();
+      const close=()=>{stop();try{if(typeof closeModal==='function')closeModal();else document.querySelector('.modal')?.remove()}catch(_){}};
+      $67('#v67CloseCam').onclick=close;
+      $67('#v67FlipCam').onclick=async()=>{facing=facing==='user'?'environment':'user';try{await start()}catch(e){try{toast('This phone did not allow camera switching.','error')}catch(_){}}};
+      $67('#v67CaptureCam').onclick=()=>{const v=$67('#v67Video'),c=$67('#v67Canvas');if(!v||!c)return; c.width=v.videoWidth||960;c.height=v.videoHeight||720;c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(async blob=>{if(!blob)return;const file=new File([blob],(opts.prefix||'camera')+'_'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()});try{const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;}catch(e){console.warn('DataTransfer attach failed',e)}close();try{await opts.onFile?.(file)}catch(e){console.error(e);try{toast(e.message||String(e),'error')}catch(_){}}},'image/jpeg',0.84)};
+    }catch(e){stop();try{if(typeof closeModal==='function')closeModal();}catch(_){} try{toast('Camera permission is required. Gallery is disabled for Time In/Out.','error')}catch(_){} }
+  }
+  window.v67StrictAttendanceCamera=strictCamera67;
+
+  // Remove the gallery backup from UTAK-style Time In / Time Out and require the live camera.
+  window.v60ManualGallery=function(){try{toast('Gallery is disabled. Time In/Out requires a real camera photo.','error')}catch(_){}};
+  const oldAttPage60=window.attendancePage60;
+  if(typeof oldAttPage60==='function'){
+    window.attendancePage60=function(){let html=oldAttPage60.apply(this,arguments);html=html.replace(/<button[^>]*v60ManualGallery\(\)[\s\S]*?<\/button>/g,'');html=html.replace(/Use Gallery only if camera is blocked\./g,'Gallery is disabled. Real camera photo only.');html=html.replace(/Choose from Gallery/g,'');return html;};
+  }
+  window.v60OneTapAttendance=async function(type,btn){
+    try{
+      const logs=(S.attendanceLogs||[]).filter(r=>String(r.employee_id)===String(S.profile?.id)&&String(r.work_date||'').slice(0,10)===todayKey67()).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+      const tin=logs.find(r=>String(r.event_type)==='time_in'), tout=logs.find(r=>String(r.event_type)==='time_out');
+      if(type==='time_in'&&tin)return toast('Time In already recorded today.','error');
+      if(type==='time_out'&&!tin)return toast('Time In required first.','error');
+      if(type==='time_out'&&tout)return toast('Time Out already recorded today.','error');
+      const input=$67('#attProof59')||$67('#attProof55');if(!input)return toast('Attendance camera field is loading. Refresh once.','error');
+      await strictCamera67(input,{prefix:'attendance_'+type,facing:'user',onFile:async(file)=>{
+        try{const cb=$67('#attConfirm59')||$67('#attConfirm55');if(cb)cb.checked=true;}catch(_){ }
+        try{if(typeof setPreview59==='function')setPreview59(file,'Saving '+(type==='time_in'?'Time In':'Time Out')+'...');}catch(_){ }
+        if(typeof attendanceLog59==='function')await attendanceLog59(type,btn||input); else if(typeof attendanceLog55==='function')await attendanceLog55(type,btn||input); else throw new Error('Attendance save function not loaded.');
+      }});
+    }catch(e){console.error(e);try{toast(e.message||String(e),'error')}catch(_){}}
+  };
+
+  function dailyPostCount67(){
+    const key=todayKey67();
+    return (S.newsPosts||[]).filter(p=>String(p.created_by)===String(S.profile?.id)&&['news','memory'].includes(String(p.post_type||'news'))&&new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(p.created_at))===key).length;
+  }
+  window.alreadyPostedToday=alreadyPostedToday=function(){return dailyPostCount67()>=DAILY_POST_LIMIT67;};
+  const oldCreateSocialPost67=window.createSocialPost||createSocialPost;
+  window.createSocialPost=createSocialPost=async function(e,type='news'){
+    e.preventDefault();const b=e.submitter;
+    await act(b,{busy:'Posting...',success:'Posted ✓',reset:'Post Again',toast:'Posted to VARDA News Feed.'},async()=>{
+      if(!owner67()&&dailyPostCount67()>=DAILY_POST_LIMIT67)throw new Error('Daily limit reached: maximum 3 VARDA News Feed posts per day.');
+      const input=$67('#newsPhotos');const files=Array.from(input?.files||[]).slice(0,10);const photos=[];for(let i=0;i<files.length;i++){v67BumpInputProgress(input,Math.min(90,20+(i/files.length)*65),'Compressing image '+(i+1)+'/'+files.length);photos.push({url:await imageData(files[i],900),name:files[i].name});}
+      const caption=($67('#newsCaption')?.value||'').trim();if(!caption&&!photos.length)throw new Error('Add a caption or at least one photo.');
+      let scope=$67('#newsScope')?.value||'branch';
+      if(!['all','branch'].includes(scope))scope='branch';
+      let branch=S.profile?.branch||'';
+      if(scope==='branch' && (owner67()||manager67()))branch=$67('#newsBranch')?.value||S.profile?.branch||'';
+      const comments=(owner67()||manager67())?($67('#newsCommentsOn')?.value!=='false'):true;
+      const row={post_type:'news',caption,photos_json:JSON.stringify(photos),created_by:S.profile.id,branch,share_scope:scope,comments_enabled:comments,expires_at:new Date(Date.now()+86400000).toISOString(),is_active:true};
+      const r=await sb.from('vscore_social_posts').insert(row);if(r.error)throw r.error;
+      try{v67BumpInputProgress(input,100,'Posted — auto-deletes after 24 hours');}catch(_){ }
+      await auditEvent('VARDA News Feed post created','vscore_social_posts',caption.slice(0,80)||'photo post');
+    },async()=>{await loadData();renderPage()});
+  };
+  function v67BumpInputProgress(input,p,msg){try{if(!input)return;previewFiles67(input);const wrap=input.__v67Wrap;if(!wrap)return;wrap.querySelector('.v67-progress').style.display='block';wrap.querySelector('.v67-progress span').style.width=Math.round(p)+'%';const t=wrap.querySelector('.v67-progress-text');t.style.display='block';t.textContent=msg||('Uploading '+Math.round(p)+'%');}catch(_){}}
+  window.v67BumpInputProgress=v67BumpInputProgress;
+
+  const oldNewsPage67=window.newsPage||newsPage;
+  window.newsPage=newsPage=function(){
+    try{
+      const posts=(typeof visibleFeedPosts==='function'?visibleFeedPosts():(S.newsPosts||[]));
+      const count=dailyPostCount67();
+      const used=count>=DAILY_POST_LIMIT67&&!owner67();
+      const canAdminScope=owner67()||manager67();
+      const scopeHtml=canAdminScope?`<div class="field"><label>Share Scope</label><select id="newsScope"><option value="all">National / All Branches</option><option value="branch">Selected Branch Only</option></select></div><div class="field"><label>Branch if Branch Only</label>${branchSelect('newsBranch',S.profile.branch)}</div>`:`<div class="field"><label>Share Scope</label><select id="newsScope"><option value="branch">My Branch Only</option><option value="all">National / All Branches</option></select><div class="v67-scope-note">Staff can post to own branch or national feed. Limit: 3 posts/day.</div></div><div class="field"><label>My Branch</label><input id="newsBranch" class="input" value="${E67(S.profile?.branch||'')}" disabled></div>`;
+      return `<div class="card"><div class="feed-toolbar"><div><h3 style="margin:0">VARDA News Feed</h3><p class="muted" style="margin:4px 0 0">Share happy work memories, photos, announcements, or a simple caption. Posts and images auto-clean after 24 hours.</p><div class="v67-phone-note">Today: ${count}/${DAILY_POST_LIMIT67} posts used${owner67()?' · owner unlimited':''}</div></div><button id="toggleNewsPost" class="btn green">Add Post</button></div><div id="newsPostBox" class="feed-form-wrap"><hr>${used?`<div class="notice">You already posted 3 Varda News Feed updates today. You can post again tomorrow.</div>`:`<form id="newsForm"><div class="grid two">${scopeHtml}</div><div class="field"><label>Caption / Memory / Announcement</label><textarea id="newsCaption" placeholder="Share a happy work memory, reminder, or caption..."></textarea></div><div class="field"><label>Photos (optional, max 10)</label><input id="newsPhotos" type="file" multiple accept="image/*" capture="environment" class="input"><p class="small muted">You will see tiny thumbnails before posting. Posts/images auto-delete after 24 hours.</p></div>${canAdminScope?`<div class="field"><label>Comments</label><select id="newsCommentsOn"><option value="true">Comments ON</option><option value="false">Comments OFF for staff level</option></select></div>`:`<input id="newsCommentsOn" type="hidden" value="true">`}<button class="btn green full">Post to VARDA News Feed</button></form>`}</div></div><br>${posts.map(p=>postCard(p,'news')).join('')||'<div class="empty">No posts yet. Be the first to share a positive Varda update.</div>'}`;
+    }catch(e){console.warn('v67 news override fallback',e);return oldNewsPage67.apply(this,arguments)}
+  };
+
+  // Stronger expired-post cleanup: hide the whole post and remove photo JSON reference after 24 hours.
+  const oldLoadData67=window.loadData||loadData;
+  window.loadData=loadData=async function(){
+    await oldLoadData67.apply(this,arguments);
+    try{
+      const nowIso=new Date().toISOString();
+      S.newsPosts=(S.newsPosts||[]).filter(p=>p.is_active!==false && (!p.expires_at || new Date(p.expires_at).getTime()>Date.now()));
+      sb.from('vscore_social_posts').update({is_active:false,photos_json:'[]',deleted_at:nowIso}).lt('expires_at',nowIso).eq('is_active',true).then(()=>{});
+    }catch(e){console.warn('v67 expired post cleanup skipped',e.message||e)}
+  };
+
+  function clean67(root=document){addStyle67();decorateTables67(root);decorateFiles67(root);try{$$67('button[onclick*="v60ManualGallery"]').forEach(b=>b.remove());$$67('.v50-install-hint').forEach(x=>x.remove());}catch(_){ }}
+  document.addEventListener('submit',e=>{try{startProgress67(e.target)}catch(_){ }},true);
+  const oldBind67=window.bind||bind;
+  window.bind=bind=function(){try{oldBind67.apply(this,arguments)}catch(e){console.warn(e)}setTimeout(()=>clean67($67('#page')||document),40);};
+  const oldRenderPage67=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){const r=oldRenderPage67.apply(this,arguments);setTimeout(()=>clean67($67('#page')||document),60);setTimeout(()=>clean67($67('#page')||document),450);return r;};
+  const oldRenderApp67=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){const r=oldRenderApp67.apply(this,arguments);setTimeout(()=>clean67(document),120);setTimeout(()=>clean67(document),600);return r;};
+  const mo67=new MutationObserver(()=>{if(!window.__v67Clean){window.__v67Clean=true;setTimeout(()=>{window.__v67Clean=false;clean67($67('#page')||document)},140)}});
+  try{mo67.observe(document.documentElement,{childList:true,subtree:true})}catch(_){ }
+  document.addEventListener('DOMContentLoaded',()=>{addStyle67();setTimeout(()=>clean67(document),350);setTimeout(()=>clean67(document),1200)});
+  console.log('V67 final phone fixture loaded: camera-only attendance, 3 news posts, staff scope, upload previews.');
+})();
+/* ================= END V67 ================= */
+
+
+/* ================= V68 MANAGEMENT WORKFLOW + ATTENDANCE EXCEL FOLDERS =================
+   Requested upgrades:
+   1) Submitting report and submit mission proof show visible upload preview/progress.
+   2) Management does not get blocked by required memo popup; they monitor memo and training acknowledgments instead.
+   3) Reports/violations use a simpler explanation process with a big text box.
+   4) Retail/management can view Time In/Out by branch folder, choose date range, and download Excel-ready summary with hours rendered.
+   5) Keep the existing program, News Feed, barcode, attendance, training, and phone layout intact.
+*/
+(function(){
+  const $68=(s,r=document)=>r.querySelector(s);
+  const $$68=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc68=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const fmt68=v=>{try{return (typeof fmt==='function')?fmt(v):(v?new Date(v).toLocaleString():'-')}catch(_){return v||'-'}};
+  const money68=n=>{try{return (typeof money==='function')?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n??'')}};
+  const owner68=()=>{try{return typeof isOwner==='function'&&isOwner()}catch(_){return false}};
+  const manager68=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return owner68()}};
+  const emp68=id=>{try{return (typeof emp==='function'?emp(id):null)||{full_name:'-',branch:'-'}}catch(_){return {full_name:'-',branch:'-'}}};
+  const toast68=(m,t='ok')=>{try{typeof toast==='function'?toast(m,t):alert(m)}catch(_){alert(m)}};
+  const todayPH68=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  function addDays68(dateStr,days){const d=dateStr?new Date(dateStr+'T00:00:00'):new Date();d.setDate(d.getDate()+days);return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(d)}
+  function defaultFrom68(){return addDays68(todayPH68(),-14)}
+  function defaultTo68(){return todayPH68()}
+  function addStyle68(){
+    if(document.getElementById('v68-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v68-style">
+      .v68-shell{display:grid;gap:12px}.v68-folder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v68-folder{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.06);display:grid;gap:8px}.v68-folder h3{margin:0;color:#7f1d1d}.v68-folder-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.v68-mini-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:8px;text-align:center}.v68-mini-kpi span{display:block;font-size:10px;color:#64748b;text-transform:uppercase;font-weight:1000}.v68-mini-kpi b{font-size:18px;color:#0f172a}.v68-filter{background:#fff7ed;border:1px solid #fed7aa;border-radius:17px;padding:12px}.v68-card{border:1px solid #e5e7eb;border-radius:16px;padding:12px;background:#fff;margin:0 0 10px;overflow-wrap:anywhere;word-break:break-word}.v68-card h4{margin:0 0 6px;color:#0f172a}.v68-status{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:1000;background:#e5e7eb;color:#374151}.v68-status.warn{background:#ffedd5;color:#9a3412}.v68-status.good{background:#dcfce7;color:#166534}.v68-status.bad{background:#fee2e2;color:#991b1b}.v68-explain-box{min-height:220px!important;font-size:16px!important;line-height:1.45!important}.v68-progress-wrap{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:12px;padding:8px;margin:7px 0}.v68-progress{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden}.v68-progress span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#16a34a);transition:width .25s ease}.v68-thumb-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.v68-thumb{width:44px;height:44px;border-radius:9px;border:1px solid #e5e7eb;object-fit:cover;background:#fff}.v68-report-grid{display:grid;gap:10px}.v68-text-preview{white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px;color:#0f172a}.v68-ack-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v68-ack-card{background:#fff;border:1px solid #e5e7eb;border-left:5px solid #facc15;border-radius:16px;padding:12px}.v68-ack-card.good{border-left-color:#22c55e;background:#f0fdf4}.v68-att-row{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center}.v68-att-face{width:72px;height:72px;border-radius:14px;object-fit:cover;border:1px solid #e5e7eb;background:#f8fafc}.v68-note{background:#eff6ff;border-left:5px solid #2563eb;color:#1e3a8a;border-radius:14px;padding:10px;margin:8px 0}.v68-actions{display:flex;gap:7px;flex-wrap:wrap}.v68-actions .btn{flex:1 1 auto}.v68-date-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.v68-sticky-tools{position:sticky;top:0;background:#fff;padding:6px 0;z-index:3}
+      @media(max-width:820px){.v68-folder-grid,.v68-ack-grid{grid-template-columns:1fr}.v68-folder,.v68-card,.v68-ack-card{border-radius:15px;padding:11px}.v68-folder-meta{grid-template-columns:repeat(3,1fr);gap:5px}.v68-mini-kpi{padding:7px}.v68-mini-kpi b{font-size:16px}.v68-date-grid{grid-template-columns:1fr}.v68-actions{display:grid;grid-template-columns:1fr}.v68-att-row{grid-template-columns:58px 1fr}.v68-att-face{width:58px;height:58px;border-radius:12px}.v68-explain-box{min-height:260px!important}.modal-card h2{font-size:20px!important;line-height:1.15}.modal-card h3{font-size:17px!important;line-height:1.18}.v68-sticky-tools{top:0}.v68-status{white-space:normal}.v68-report-grid{gap:8px}}
+    </style>`);
+  }
+  function previewBox68(input){
+    try{
+      if(!input||input.__v68Preview)return;
+      input.__v68Preview=true;
+      input.insertAdjacentHTML('afterend',`<div class="v68-progress-wrap" data-for="${esc68(input.id||'file')}"><div class="small muted"><b>Selected file preview / upload status</b></div><div class="v68-thumb-row"></div><div class="v68-progress"><span></span></div><div class="small muted v68-progress-text">Waiting for file...</div></div>`);
+      input.addEventListener('change',()=>updatePreview68(input,12,'File selected — ready to upload'));
+    }catch(e){console.warn('v68 preview skipped',e)}
+  }
+  function updatePreview68(input,pct=0,msg='Processing...'){
+    try{
+      if(!input)return;
+      const wrap=input.parentElement?.querySelector(`.v68-progress-wrap[data-for="${CSS.escape(input.id||'file')}"]`)||input.nextElementSibling;
+      if(!wrap)return;
+      const thumbs=wrap.querySelector('.v68-thumb-row'); thumbs.innerHTML='';
+      Array.from(input.files||[]).slice(0,6).forEach(file=>{
+        if(file.type&&file.type.startsWith('image/')){const im=document.createElement('img');im.className='v68-thumb';im.src=URL.createObjectURL(file);thumbs.appendChild(im)}
+        else{const chip=document.createElement('span');chip.className='pill';chip.textContent=file.name;thumbs.appendChild(chip)}
+      });
+      wrap.querySelector('.v68-progress span').style.width=Math.max(0,Math.min(100,pct))+'%';
+      wrap.querySelector('.v68-progress-text').textContent=msg;
+    }catch(e){console.warn('v68 progress skipped',e)}
+  }
+  function decorate68(root=document){addStyle68();try{root.querySelectorAll('input[type=file]').forEach(previewBox68)}catch(_){}}
+  window.v68UpdatePreview=updatePreview68;
+
+  // Management does not need a blocking memo popup. They monitor acknowledgments instead.
+  const oldShowMemoLock68=window.showMemoLock;
+  window.showMemoLock=showMemoLock=function(){try{if(manager68())return;return oldShowMemoLock68&&oldShowMemoLock68.apply(this,arguments)}catch(e){console.warn('v68 memo lock skipped',e)}};
+
+  function activeEmployees68(){return (S.employees||[]).filter(e=>e&&e.is_active!==false&&String(e.activation_status||'').toLowerCase()!=='permanent_deleted')}
+  function visibleEmployeesFor68(branch){let arr=activeEmployees68(); if(branch)arr=arr.filter(e=>String(e.branch||'')===String(branch)); return arr}
+  function memoAckSummary68(){
+    const emps=visibleEmployeesFor68(owner68()?null:S.profile?.branch);
+    const total=emps.length||1;
+    const rows=(S.memos||[]).filter(m=>m&&m.is_active!==false).map(m=>{
+      const acks=(S.allAcks||[]).filter(a=>String(a.memo_id)===String(m.id));
+      const unique=new Set(acks.map(a=>String(a.employee_id))).size;
+      const pct=Math.round((unique/total)*100);
+      return `<div class="v68-ack-card ${pct>=100?'good':''}"><h4>${esc68(m.title||'Memo')}</h4><p class="small muted">Published: ${fmt68(m.created_at)}<br>Required until: ${fmt68(m.expires_at)}</p><div class="v68-folder-meta"><div class="v68-mini-kpi"><span>Ack</span><b>${unique}</b></div><div class="v68-mini-kpi"><span>Total</span><b>${total}</b></div><div class="v68-mini-kpi"><span>%</span><b>${pct}%</b></div></div><div class="v68-actions" style="margin-top:9px"><button class="btn sm blue" onclick="v68ShowMemoAck('${esc68(m.id)}')">View Names</button>${typeof showMemoAcks==='function'?`<button class="btn sm ghost memoAcks" data-id="${esc68(m.id)}">Old View</button>`:''}</div></div>`;
+    }).join('')||'<div class="empty">No memo posted yet.</div>';
+    return `<div class="v68-ack-grid">${rows}</div>`;
+  }
+  window.v68ShowMemoAck=function(id){
+    const memo=(S.memos||[]).find(m=>String(m.id)===String(id));
+    const acks=(S.allAcks||[]).filter(a=>String(a.memo_id)===String(id));
+    const ackSet=new Set(acks.map(a=>String(a.employee_id)));
+    const emps=visibleEmployeesFor68(owner68()?null:S.profile?.branch);
+    const rows=emps.map(e=>{const a=acks.find(x=>String(x.employee_id)===String(e.id));return `<tr><td>${esc68(e.full_name)}</td><td>${esc68(e.branch||'-')}</td><td>${ackSet.has(String(e.id))?'<span class="pill green">Acknowledged</span>':'<span class="pill red">Pending</span>'}</td><td>${a?fmt68(a.acknowledged_at):'-'}</td></tr>`}).join('');
+    modal(`<h2>Memo Acknowledgment Monitor</h2><h3>${esc68(memo?.title||'Memo')}</h3><div class="v68-note">Management view only: this is for monitoring. Management will not be forced to acknowledge this memo.</div><table><thead><tr><th>Name</th><th>Branch</th><th>Status</th><th>Date</th></tr></thead><tbody>${rows||'<tr><td colspan="4"><div class="empty">No employees.</div></td></tr>'}</tbody></table><button class="btn dark" onclick="closeModal()">Close</button>`);
+  };
+  function trainingAckSummary68(){
+    const mods=(S.trainingModules||[]).filter(m=>m&&m.is_active!==false);
+    const emps=activeEmployees68();
+    const rows=mods.map(m=>{
+      const eligible=typeof trainingEligibleEmployees==='function'?trainingEligibleEmployees(m):emps;
+      const done=(S.trainingCompletions||[]).filter(c=>String(c.module_id)===String(m.id)&&String(c.status||'completed')==='completed');
+      const unique=new Set(done.map(c=>String(c.employee_id))).size;
+      const total=eligible.length||1; const pct=Math.round((unique/total)*100);
+      return `<div class="v68-ack-card ${pct>=100?'good':''}"><h4>${esc68(m.title||'Training')}</h4><p class="small muted">Audience: ${esc68(m.audience||'all')} ${m.branch?`· ${esc68(m.branch)}`:''}</p><div class="v68-folder-meta"><div class="v68-mini-kpi"><span>Done</span><b>${unique}</b></div><div class="v68-mini-kpi"><span>Need</span><b>${total}</b></div><div class="v68-mini-kpi"><span>%</span><b>${pct}%</b></div></div><div class="v68-actions" style="margin-top:9px"><button class="btn sm blue" onclick="v68ShowTrainingAck('${esc68(m.id)}')">View Completion</button></div></div>`;
+    }).join('')||'<div class="empty">No training modules yet.</div>';
+    return `<div class="v68-ack-grid">${rows}</div>`;
+  }
+  window.v68ShowTrainingAck=function(id){
+    const m=(S.trainingModules||[]).find(x=>String(x.id)===String(id));
+    const eligible=typeof trainingEligibleEmployees==='function'?trainingEligibleEmployees(m):activeEmployees68();
+    const done=(S.trainingCompletions||[]).filter(c=>String(c.module_id)===String(id)&&String(c.status||'completed')==='completed');
+    const doneMap=new Map(done.map(c=>[String(c.employee_id),c]));
+    const rows=eligible.map(e=>{const c=doneMap.get(String(e.id));return `<tr><td>${esc68(e.full_name)}</td><td>${esc68(e.branch||'-')}</td><td>${c?'<span class="pill green">Completed</span>':'<span class="pill red">Pending</span>'}</td><td>${c?fmt68(c.completed_at):'-'}</td></tr>`}).join('');
+    modal(`<h2>Training Acknowledgment / Completion</h2><h3>${esc68(m?.title||'Training')}</h3><table><thead><tr><th>Name</th><th>Branch</th><th>Status</th><th>Date</th></tr></thead><tbody>${rows||'<tr><td colspan="4"><div class="empty">No eligible employee.</div></td></tr>'}</tbody></table><button class="btn dark" onclick="closeModal()">Close</button>`);
+  };
+  const oldMemosPage68=window.memosPage||memosPage;
+  window.memosPage=memosPage=function(){
+    if(!manager68())return oldMemosPage68.apply(this,arguments);
+    return `<div class="grid two"><div class="card"><h3>Publish Memo</h3><p class="muted">Management view: post memo and monitor acknowledgments. You will not be blocked by mandatory memo popups.</p><form id="memoForm"><div class="field"><label>Title</label><input id="memoTitle" class="input" required></div><div class="field"><label>Content</label><textarea id="memoContent" required></textarea></div><div class="field"><label>Picture / Attachment</label><input id="memoFile" type="file" accept="image/*" class="input"></div><div class="field"><label>Validity Days</label><input id="memoDays" type="number" min="1" max="30" value="7" class="input"></div><button class="btn yellow full">Publish Memo</button></form></div><div class="card"><h3>Memo Acknowledgment Monitor</h3>${memoAckSummary68()}</div></div><br><div class="card"><h3>Training Acknowledgment / Completion Monitor</h3><p class="muted">This is where management checks who completed training. Staff still sees their own My Training page.</p>${trainingAckSummary68()}</div>`;
+  };
+
+  async function safeUpdate68(table,id,patches){
+    let last=null;
+    for(const p of patches){
+      try{const r=await sb.from(table).update(p).eq('id',id); if(!r.error)return r; last=r.error;}catch(e){last=e}
+    }
+    if(last)throw last;
+  }
+  function recordExplanation68(r){return r.employee_explanation||r.explanation||r.explanation_text||r.employee_statement||r.reply||r.response||''}
+  window.v68AskReportExplanation=async function(id,btn){
+    const r=(S.reports||[]).find(x=>String(x.id)===String(id)); if(!r)return toast68('Report not found','error');
+    const note=prompt('Instruction to employee for explanation:','Please explain your side regarding this report.'); if(!note)return;
+    await act(btn,{busy:'Requesting...',success:'Explanation Requested',reset:'Ask Explanation',toast:'Employee explanation requested.'},async()=>{
+      await safeUpdate68('investigation_reports',id,[{status:'for_explanation',management_note:note,updated_at:new Date().toISOString()},{status:'for_explanation',resolution:'FOR EXPLANATION: '+note},{status:'under_investigation',resolution:'FOR EXPLANATION: '+note}]);
+      try{await auditEvent('Explanation requested','investigation_reports',id)}catch(_){ }
+    },async()=>{await loadData();renderPage()});
+  };
+  window.v68AskViolationExplanation=async function(id,btn){
+    const v=(S.violations||[]).find(x=>String(x.id)===String(id)); if(!v)return toast68('Violation not found','error');
+    const note=prompt('Instruction to employee for explanation:','Please explain your side regarding this violation report.'); if(!note)return;
+    await act(btn,{busy:'Requesting...',success:'Explanation Requested',reset:'Ask Explanation',toast:'Employee explanation requested.'},async()=>{
+      await safeUpdate68('violations',id,[{status:'for_explanation',management_note:note,updated_at:new Date().toISOString()},{status:'for_explanation',resolution:'FOR EXPLANATION: '+note},{status:'pending_validation',manager_remarks:'FOR EXPLANATION: '+note}]);
+      try{await auditEvent('Violation explanation requested','violations',id)}catch(_){ }
+    },async()=>{await loadData();renderPage()});
+  };
+  function explainModal68(kind,id,title,details){
+    modal(`<h2>Submit Explanation</h2><h3>${esc68(title||'Case')}</h3><div class="v68-note">Write the full explanation here. This is a large box so the employee can review before submitting.</div><div class="v68-text-preview">${esc68(details||'')}</div><div class="field"><label>Your Explanation</label><textarea id="v68ExplainText" class="v68-explain-box" placeholder="Type your full explanation here..."></textarea></div><div class="v68-actions"><button class="btn green" id="v68SubmitExplain">Submit Explanation</button><button class="btn dark" onclick="closeModal()">Cancel</button></div>`);
+    $68('#v68SubmitExplain').onclick=async e=>{
+      const text=($68('#v68ExplainText')?.value||'').trim(); if(!text)return toast68('Please type your explanation first.','error');
+      await act(e.currentTarget,{busy:'Submitting...',success:'Explanation Sent',reset:'Submit Explanation',toast:'Explanation submitted.'},async()=>{
+        if(kind==='report')await safeUpdate68('investigation_reports',id,[{status:'for_action',employee_explanation:text,explanation_submitted_at:new Date().toISOString()},{status:'for_action',resolution:'EMPLOYEE EXPLANATION:\n'+text},{status:'under_investigation',resolution:'EMPLOYEE EXPLANATION:\n'+text}]);
+        else await safeUpdate68('violations',id,[{status:'for_action',employee_explanation:text,explanation_submitted_at:new Date().toISOString()},{status:'for_action',resolution:'EMPLOYEE EXPLANATION:\n'+text},{status:'pending_validation',manager_remarks:'EMPLOYEE EXPLANATION:\n'+text}]);
+      },async()=>{closeModal();await loadData();renderPage()});
+    };
+  }
+  window.v68EmployeeExplainReport=function(id){const r=(S.reports||[]).find(x=>String(x.id)===String(id)); if(!r)return toast68('Report not found','error'); explainModal68('report',id,'Private Report / Investigation',r.story||r.resolution||'')};
+  window.v68EmployeeExplainViolation=function(id){const v=(S.violations||[]).find(x=>String(x.id)===String(id)); if(!v)return toast68('Violation not found','error'); explainModal68('violation',id,v.violation_type||v.type_name||'Violation Report',v.description||v.manager_remarks||'')};
+  window.v68ViewExplanation=function(kind,id){
+    const r=kind==='report'?(S.reports||[]).find(x=>String(x.id)===String(id)):(S.violations||[]).find(x=>String(x.id)===String(id));
+    if(!r)return toast68('Record not found','error');
+    const text=recordExplanation68(r)||r.resolution||r.manager_remarks||'No explanation submitted yet.';
+    modal(`<h2>Explanation Review</h2><h3>${esc68(kind==='report'?'Private Report':'Violation')}</h3><div class="v68-text-preview">${esc68(text)}</div><br><button class="btn dark" onclick="closeModal()">Close</button>`);
+  };
+  // Upgrade V62 case-center employee explanation from prompt to big box.
+  const oldV62EmployeeExplain68=window.v62EmployeeExplain;
+  window.v62EmployeeExplain=function(key,btn){try{const c=window.caseByKey62?caseByKey62(key):null;if(c&&c.type==='report')return v68EmployeeExplainReport(c.source_id);if(c&&c.type==='violation')return v68EmployeeExplainViolation(c.source_id)}catch(_){ }return oldV62EmployeeExplain68?oldV62EmployeeExplain68(key,btn):toast68('Explanation function not ready','error')};
+
+  function reportActions68(r,manage){
+    const st=String(r.status||'new_private').toLowerCase(); const me=String(S.profile?.id||''); let out='';
+    const isReported=String(r.reported_employee_id||'')===me;
+    if(isReported&&['for_explanation','needs_explanation','read','under_investigation'].includes(st))out+=`<button class="btn sm orange" onclick="v68EmployeeExplainReport('${esc68(r.id)}')">Explain Now</button> `;
+    if(manage){
+      if(!['resolved_true','resolved_false','cancelled'].includes(st))out+=`<button class="btn sm yellow" onclick="v68AskReportExplanation('${esc68(r.id)}',this)">Ask Explanation</button> `;
+      out+=`<button class="btn sm blue" onclick="v68ViewExplanation('report','${esc68(r.id)}')">View Explanation</button> `;
+      if(!['resolved_true','resolved_false','cancelled'].includes(st))out+=`<button class="btn sm green trueReport" data-id="${esc68(r.id)}">Close True</button> <button class="btn sm dark falseReport" data-id="${esc68(r.id)}">Close False</button> `;
+    }
+    if((manage||String(r.reporter_employee_id||'')===me)&&!['resolved_true','resolved_false','cancelled'].includes(st))out+=`<button class="btn sm ghost cancelReport" data-id="${esc68(r.id)}">Cancel</button>`;
+    return out||'-';
+  }
+  window.reportsTable=reportsTable=function(arr,manage){
+    const cards=(arr||[]).map(r=>{const reported=r.reported_employee_id?emp68(r.reported_employee_id).full_name:(r.reported_name_manual||'-');return `<div class="v68-card"><h4>Private Report / Investigation</h4><p class="small muted"><b>Reporter:</b> ${esc68(emp68(r.reporter_employee_id).full_name)}<br><b>Reported:</b> ${esc68(reported)}<br><b>Branch:</b> ${esc68(r.branch||emp68(r.reported_employee_id).branch||'-')}<br><b>Status:</b> <span class="v68-status ${String(r.status||'').includes('resolved')?'good':'warn'}">${esc68(r.status||'new_private')}</span></p><div class="v68-text-preview">${esc68(r.story||'')}</div>${(typeof img==='function')?img(r.evidence_url):''}<div class="v68-actions" style="margin-top:9px">${reportActions68(r,manage)}</div></div>`}).join('')||'<div class="empty">No reports.</div>';
+    return `<div class="v68-report-grid">${cards}</div>`;
+  };
+  window.reportsPage=reportsPage=function(){return `<div class="card"><h3>Private Reports / Investigations</h3><p class="muted">Simplified workflow: ask explanation, review explanation, then close the report.</p>${reportsTable(S.reports||[],true)}</div>`};
+  function violationActions68(v,manage){
+    const st=String(v.status||'pending_validation').toLowerCase(); const me=String(S.profile?.id||''); let out='';
+    if(String(v.employee_id||'')===me&&['for_explanation','needs_explanation','pending_validation'].includes(st))out+=`<button class="btn sm orange" onclick="v68EmployeeExplainViolation('${esc68(v.id)}')">Explain Now</button> `;
+    if(manage){
+      if(!['validated','closed / deducted','cancelled','rejected'].includes(st))out+=`<button class="btn sm yellow" onclick="v68AskViolationExplanation('${esc68(v.id)}',this)">Ask Explanation</button> `;
+      out+=`<button class="btn sm blue" onclick="v68ViewExplanation('violation','${esc68(v.id)}')">View Explanation</button> `;
+      if(!['validated','closed / deducted','cancelled','rejected'].includes(st))out+=`<button class="btn sm green validateDirectVio" data-id="${esc68(v.id)}">Validate & Deduct</button> `;
+      if(!['cancelled','validated','closed / deducted'].includes(st))out+=`<button class="btn sm dark cancelDirectVio" data-id="${esc68(v.id)}">Cancel</button>`;
+    }
+    return out||'<span class="small muted">Done</span>';
+  }
+  window.violationTable=violationTable=function(arr,manage){
+    const cards=(arr||[]).map(v=>`<div class="v68-card"><h4>${esc68(v.violation_type||v.type_name||'Violation')}</h4><p class="small muted"><b>Employee:</b> ${esc68(emp68(v.employee_id).full_name)}<br><b>Branch:</b> ${esc68(v.branch||emp68(v.employee_id).branch||'-')}<br><b>Points:</b> ${money68(v.point_deduction??v.points??0)}<br><b>Status:</b> <span class="v68-status ${String(v.status||'').includes('validated')?'good':'warn'}">${esc68(v.status||'pending_validation')}</span></p><div class="v68-text-preview">${esc68(v.description||v.manager_remarks||'')}</div>${(typeof img==='function')?img(v.evidence_url):''}<div class="v68-actions" style="margin-top:9px">${violationActions68(v,manage)}</div></div>`).join('')||'<div class="empty">No violation records.</div>';
+    return `<div class="v68-report-grid">${cards}</div>`;
+  };
+  // Keep existing violationsPage form but table now renders as mobile cards through violationTable override.
+
+  const oldProofTask68=window.proofTask||proofTask;
+  window.proofTask=proofTask=function(id){
+    modal(`<h2>Submit Mission Proof</h2><div class="field"><label>Proof Photo</label><input id="proofFile" type="file" accept="image/*" capture="environment" class="input" required></div><div class="v68-actions"><button class="btn green" id="proofBtn">Submit Proof</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+    decorate68($68('.modal')||document);
+    $68('#proofBtn').onclick=async e=>act(e.currentTarget,{busy:'Uploading...',success:'Proof Sent',reset:'Submit Proof',toast:'Proof submitted.'},async()=>{
+      const input=$68('#proofFile'); const file=input?.files?.[0]; if(!file)throw new Error('Proof photo is required.'); updatePreview68(input,35,'Compressing proof photo...'); const imgd=await imageData(file,1000); updatePreview68(input,80,'Saving mission proof...'); let r=await sb.from('vscore_tasks').update({proof_url:imgd,status:'submitted',submitted_at:new Date().toISOString()}).eq('id',id);if(r.error&&String(r.error.message||'').includes('submitted_at'))r=await sb.from('vscore_tasks').update({proof_url:imgd,status:'submitted'}).eq('id',id);if(r.error)throw r.error; updatePreview68(input,100,'Proof uploaded successfully.');
+    },async()=>{closeModal();await loadData();renderPage()});
+  };
+  const oldSubmitConcern68=window.submitConcern||submitConcern;
+  window.submitConcern=submitConcern=async function(e){
+    e.preventDefault(); const b=e.submitter;
+    await act(b,{busy:'Submitting...',success:'Submitted',reset:'Submit Again',toast:'Private report sent.'},async()=>{
+      const input=$68('#repFile'); const file=input?.files?.[0]; if(!file)throw new Error('Evidence photo is required.'); updatePreview68(input,30,'Compressing evidence...'); const imgd=await imageData(file,1000); updatePreview68(input,80,'Saving report...'); const r=await sb.from('investigation_reports').insert({reporter_employee_id:S.profile.id,reported_employee_id:$68('#repEmp')?.value||null,reported_name_manual:$68('#repManual')?.value||'',manager_on_duty:$68('#repManager')?.value||'',branch:S.profile.branch,story:$68('#repStory')?.value||'',evidence_url:imgd,status:'new_private',happened_at:new Date().toISOString()}); if(r.error)throw r.error; updatePreview68(input,100,'Report submitted successfully.');
+    },async()=>{await loadData();renderPage()});
+  };
+
+  function dateRange68(){return {from:($68('#v68From')?.value||localStorage.getItem('v68_att_from')||defaultFrom68()),to:($68('#v68To')?.value||localStorage.getItem('v68_att_to')||defaultTo68())}}
+  function inDateRange68(d,from,to){const x=String(d||'').slice(0,10);return (!from||x>=from)&&(!to||x<=to)}
+  function visibleAttendanceLogs68(){
+    const {from,to}=dateRange68(); let logs=(S.attendanceLogs||[]).filter(r=>inDateRange68(r.work_date||r.created_at,from,to));
+    if(!owner68())logs=logs.filter(r=>String(r.branch||emp68(r.employee_id).branch||'')===String(S.profile?.branch||''));
+    return logs;
+  }
+  function groupedAttendance68(logs){
+    const g={};
+    (logs||[]).forEach(r=>{const date=String(r.work_date||r.created_at||'').slice(0,10); const id=String(r.employee_id||''); const k=id+'|'+date; if(!g[k])g[k]={employee_id:r.employee_id,branch:r.branch||emp68(r.employee_id).branch,work_date:date,tin:null,tout:null,logs:[]}; g[k].logs.push(r); if(String(r.event_type)==='time_in'&&!g[k].tin)g[k].tin=r; if(String(r.event_type)==='time_out'&&!g[k].tout)g[k].tout=r;});
+    return Object.values(g).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))||String(a.branch||'').localeCompare(String(b.branch||''))||String(emp68(a.employee_id).full_name||'').localeCompare(String(emp68(b.employee_id).full_name||'')));
+  }
+  function hours68(a,b){try{if(!a||!b)return '';const ms=new Date(b)-new Date(a);if(ms<=0)return '';return (ms/36e5).toFixed(2)}catch(_){return ''}}
+  function timeOnly68(v){try{return v?new Date(v).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'-'}catch(_){return '-'}}
+  function loc68(r){return r?.location_text||r?.location||r?.address||((r?.latitude||r?.lat)?`${r.latitude||r.lat}, ${r.longitude||r.lng}`:'')}
+  function photo68(r){return r?.proof_url||r?.photo_url||r?.image_url||r?.selfie_url||''}
+  function branchList68(rows){return [...new Set(rows.map(r=>r.branch||emp68(r.employee_id).branch||'No Branch'))].sort()}
+  function branchSummary68(branch,rows){const bRows=branch==='__ALL__'?rows:rows.filter(r=>String(r.branch||'')===String(branch));const staff=new Set(bRows.map(r=>String(r.employee_id))).size;const complete=bRows.filter(r=>r.tin&&r.tout).length;const missing=bRows.filter(r=>!r.tin||!r.tout).length;const hrs=bRows.reduce((s,r)=>s+Number(hours68(r.tin?.created_at,r.tout?.created_at)||0),0);return {staff,complete,missing,hrs:hrs.toFixed(2),count:bRows.length}}
+  function attendanceFolderCard68(branch,rows){const s=branchSummary68(branch,rows);return `<div class="v68-folder"><h3>${esc68(branch==='__ALL__'?'All Branches':branch)}</h3><div class="v68-folder-meta"><div class="v68-mini-kpi"><span>Staff</span><b>${s.staff}</b></div><div class="v68-mini-kpi"><span>Complete</span><b>${s.complete}</b></div><div class="v68-mini-kpi"><span>Missing</span><b>${s.missing}</b></div></div><p class="small muted">Rows: ${s.count} · Hours rendered: <b>${s.hrs}</b></p><div class="v68-actions"><button class="btn sm blue" onclick="v68OpenAttendanceBranch('${esc68(branch)}')">Open Folder</button><button class="btn sm green" onclick="v68DownloadAttendanceExcel('${esc68(branch)}')">Download Excel</button></div></div>`}
+  function attendanceEmployeeCard68(r){const e=emp68(r.employee_id);const hrs=hours68(r.tin?.created_at,r.tout?.created_at);const pIn=photo68(r.tin), pOut=photo68(r.tout);return `<div class="v68-card"><div class="v68-att-row"><img class="v68-att-face" src="${esc68(pIn||pOut||'')}" onerror="this.style.display='none'"><div><h4>${esc68(e.full_name)}</h4><p class="small muted">${esc68(r.branch||e.branch||'-')} · ${esc68(r.work_date)}</p><span class="v68-status ${r.tin&&r.tout?'good':'bad'}">${r.tin&&r.tout?'Complete':'Missing IN/OUT'}</span></div></div><p><b>Time In:</b> ${esc68(timeOnly68(r.tin?.created_at))}<br><b>Time Out:</b> ${esc68(timeOnly68(r.tout?.created_at))}<br><b>Hours Rendered:</b> ${esc68(hrs||'-')}</p><p class="small muted"><b>IN Location:</b> ${esc68(loc68(r.tin)||'-')}<br><b>OUT Location:</b> ${esc68(loc68(r.tout)||'-')}<br><b>Remarks:</b> ${esc68(r.tin?.remarks||r.tout?.remarks||'-')}</p>${pIn?`<button class="btn sm ghost" onclick="zoom('${esc68(pIn)}')">View IN Photo</button>`:''}${pOut?` <button class="btn sm ghost" onclick="zoom('${esc68(pOut)}')">View OUT Photo</button>`:''}</div>`}
+  window.v68OpenAttendanceBranch=function(branch){window.__v68OpenBranch=branch;renderPage()};
+  window.v68CloseAttendanceBranch=function(){window.__v68OpenBranch='';renderPage()};
+  window.v68ApplyAttendanceRange=function(){localStorage.setItem('v68_att_from',$68('#v68From')?.value||defaultFrom68());localStorage.setItem('v68_att_to',$68('#v68To')?.value||defaultTo68());renderPage()};
+  function attendanceFilterHTML68(){const {from,to}=dateRange68();return `<div class="v68-filter"><div class="v68-date-grid"><div class="field"><label>Start Date</label><input id="v68From" type="date" class="input" value="${esc68(from)}"></div><div class="field"><label>End Date</label><input id="v68To" type="date" class="input" value="${esc68(to)}"></div><div class="field"><label>&nbsp;</label><button class="btn blue full" onclick="v68ApplyAttendanceRange()">Apply Date Range</button></div></div></div>`}
+  window.attendanceMonitorPage68=function(){
+    const logs=visibleAttendanceLogs68(); const rows=groupedAttendance68(logs); const branch=window.__v68OpenBranch||''; const branches=branchList68(rows); if(owner68()&&!branches.includes('__ALL__'))branches.unshift('__ALL__');
+    if(branch){const bRows=branch==='__ALL__'?rows:rows.filter(r=>String(r.branch||'')===String(branch));return `<div class="v68-shell"><div class="card"><h3>${esc68(branch==='__ALL__'?'All Branches':branch)} · Attendance Folder</h3><p class="muted">Date range attendance summary. Download gives Excel-readable file with name, branch, time in, time out, and hours rendered.</p>${attendanceFilterHTML68()}<br><div class="v68-actions"><button class="btn ghost" onclick="v68CloseAttendanceBranch()">Back to Branch Folders</button><button class="btn green" onclick="v68DownloadAttendanceExcel('${esc68(branch)}')">Download Excel Summary</button></div></div><div>${bRows.map(attendanceEmployeeCard68).join('')||'<div class="empty">No attendance logs in this range.</div>'}</div></div>`}
+    return `<div class="v68-shell"><div class="card"><h3>Time In / Time Out Monitoring</h3><p class="muted">Retail/management view: open each branch folder, check selfies, time stamps, locations, missing Time Out, and download Excel summary by date range.</p>${attendanceFilterHTML68()}</div><div class="v68-folder-grid">${branches.map(b=>attendanceFolderCard68(b,rows)).join('')||'<div class="empty">No attendance logs in this date range.</div>'}</div></div>`;
+  };
+  window.v68DownloadAttendanceExcel=function(branch='__ALL__'){
+    const logs=visibleAttendanceLogs68(); const rows=groupedAttendance68(logs).filter(r=>branch==='__ALL__'||String(r.branch||'')===String(branch)); const {from,to}=dateRange68();
+    const htmlRows=rows.map(r=>{const e=emp68(r.employee_id);return `<tr><td>${esc68(e.full_name)}</td><td>${esc68(r.branch||e.branch||'')}</td><td>${esc68(r.work_date)}</td><td>${esc68(r.tin?new Date(r.tin.created_at).toLocaleString():'')}</td><td>${esc68(r.tout?new Date(r.tout.created_at).toLocaleString():'')}</td><td>${esc68(hours68(r.tin?.created_at,r.tout?.created_at)||'')}</td><td>${esc68(loc68(r.tin)||'')}</td><td>${esc68(loc68(r.tout)||'')}</td><td>${esc68(r.tin?.remarks||r.tout?.remarks||'')}</td></tr>`}).join('');
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
+    const safeBranch=String(branch==='__ALL__'?'ALL_BRANCHES':branch).replace(/[^a-z0-9_-]+/gi,'_'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'})); a.download=`V-SCORE_ATTENDANCE_${safeBranch}_${from}_to_${to}.xls`; document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  const oldNav68=window.nav||nav;
+  window.nav=nav=function(){let n=[];try{n=oldNav68.apply(this,arguments)||[]}catch(_){n=[]} if(manager68()&&!n.find(x=>x&&x[0]==='attendance_monitor')){const i=n.findIndex(x=>x&&x[0]==='attendance'); n.splice(i>=0?i+1:n.length,0,['attendance_monitor','Attendance Monitor']);} return n};
+  const oldRenderPage68=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){addStyle68(); const page=$68('#page'); if(S&&S.tab==='attendance_monitor'&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Attendance Monitor</span></div>${attendanceMonitorPage68()}`;bind();setTimeout(()=>decorate68(page),50);return;} if(S&&S.tab==='attendance'&&manager68()&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Attendance Monitor</span></div>${attendanceMonitorPage68()}`;bind();setTimeout(()=>decorate68(page),50);return;} const out=oldRenderPage68.apply(this,arguments);setTimeout(()=>decorate68($68('#page')||document),80);return out};
+  const oldBind68=window.bind||bind;
+  window.bind=bind=function(){try{oldBind68.apply(this,arguments)}catch(e){console.warn(e)}decorate68($68('#page')||document);$$68('.trueReport').forEach(b=>b.onclick=()=>resolveReport(b.dataset.id,true,b));$$68('.falseReport').forEach(b=>b.onclick=()=>resolveReport(b.dataset.id,false,b));$$68('.cancelReport').forEach(b=>b.onclick=()=>cancelReport(b.dataset.id,b));$$68('.validateDirectVio').forEach(b=>b.onclick=()=>validateDirectVio(b.dataset.id,b));$$68('.cancelDirectVio').forEach(b=>b.onclick=()=>cancelDirectVio(b.dataset.id,b));};
+  document.addEventListener('DOMContentLoaded',()=>{addStyle68();setTimeout(()=>decorate68(document),350);setTimeout(()=>decorate68(document),1200)});
+  console.log('V68 management workflow + attendance Excel folders loaded');
+})();
+/* ================= END V68 ================= */
+
+
+
+/* ================= V69 CLOSING PHOTO + CHECKLIST PROOF + SHARE TASKLIST =================
+   Requested upgrades:
+   1) Investigation/report/violation closing now requires a closing photo attachment.
+   2) Mission proof is checklist-style: every task item must be checked and every item needs its own photo.
+      The photos are combined into one proof image so the existing proof_url program remains safe.
+   3) Share My Task List is restored as its own phone-friendly tab, with management monitoring.
+   4) Existing News Feed, barcode, attendance, training, memo, and General Control remain untouched.
+*/
+(function(){
+  const $69=(s,r=document)=>r.querySelector(s);
+  const $$69=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc69=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const fmt69=v=>{try{return (typeof fmt==='function')?fmt(v):(v?new Date(v).toLocaleString():'-')}catch(_){return v||'-'}};
+  const money69=n=>{try{return (typeof money==='function')?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n??'')}};
+  const emp69=id=>{try{return (typeof emp==='function'?emp(id):null)||{full_name:'-',branch:'-'}}catch(_){return {full_name:'-',branch:'-'}}};
+  const toast69=(m,t='ok')=>{try{typeof toast==='function'?toast(m,t):alert(m)}catch(_){alert(m)}};
+  const owner69=()=>{try{return typeof isOwner==='function'&&isOwner()}catch(_){return false}};
+  const manager69=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return owner69()}};
+  const me69=()=>String(S?.profile?.id||'');
+  function addStyle69(){
+    if(document.getElementById('v69-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v69-style">
+      .v69-card{border:1px solid #e5e7eb;border-radius:17px;background:#fff;padding:13px;margin:0 0 10px;box-shadow:0 8px 24px rgba(15,23,42,.05);overflow-wrap:anywhere;word-break:break-word}.v69-card h4{margin:0 0 6px;color:#7f1d1d}.v69-note{background:#fff7ed;border-left:5px solid #f59e0b;color:#78350f;border-radius:14px;padding:10px;margin:8px 0}.v69-good{background:#f0fdf4;border-left-color:#22c55e;color:#14532d}.v69-danger{background:#fef2f2;border-left-color:#ef4444;color:#7f1d1d}.v69-text{white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px}.v69-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.v69-actions .btn{flex:1 1 auto}.v69-proof-row{border:1px solid #e5e7eb;background:#f8fafc;border-radius:14px;padding:10px;margin:8px 0}.v69-proof-row label{font-weight:900;display:flex;gap:8px;align-items:flex-start}.v69-proof-row input[type=checkbox]{width:auto;margin-top:3px}.v69-thumbline{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px}.v69-mini-thumb{width:48px;height:48px;border-radius:10px;border:1px solid #e5e7eb;object-fit:cover;background:#fff}.v69-progress{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:7px}.v69-progress span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#16a34a);transition:.25s ease}.v69-status-text{font-size:12px;color:#64748b;margin-top:4px}.v69-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.v69-task-list{display:grid;gap:8px}.v69-task-meta{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0}.v69-task-chip{border-radius:999px;background:#f3f4f6;color:#374151;font-size:12px;font-weight:900;padding:5px 9px}.v69-safe-modal .modal-card{max-width:760px}.v69-close-photo{background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:10px;margin:8px 0}.v69-bigbox{min-height:180px!important}
+      @media(max-width:820px){.v69-grid2{grid-template-columns:1fr}.v69-card{border-radius:15px;padding:11px}.v69-actions{display:grid;grid-template-columns:1fr}.v69-proof-row{padding:9px}.v69-mini-thumb{width:42px;height:42px}.v69-safe-modal .modal-card{width:94vw!important;padding:14px!important}.v69-safe-modal h2{font-size:20px!important;line-height:1.15}.v69-safe-modal h3{font-size:17px!important;line-height:1.18}.v69-bigbox{min-height:230px!important}}
+    </style>`);
+  }
+  function dataUrlToImage69(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+  function splitItems69(txt){return String(txt||'').split(/\n|\r|•|- /).map(x=>x.trim()).filter(Boolean).slice(0,30)}
+  async function safeUpdate69(table,id,patches){
+    let last=null;
+    for(const p of patches){
+      try{const r=await sb.from(table).update(p).eq('id',id); if(!r.error)return r; last=r.error}catch(e){last=e}
+    }
+    if(last)throw last;
+  }
+  function attachPreview69(input){
+    if(!input||input.__v69Preview)return; input.__v69Preview=true;
+    const wrap=document.createElement('div'); wrap.className='v69-thumbline'; wrap.innerHTML='<span class="small muted">No photo selected yet.</span><div class="v69-progress" style="width:100%"><span></span></div><div class="v69-status-text">Waiting for camera/photo...</div>';
+    input.insertAdjacentElement('afterend',wrap);
+    input.addEventListener('change',()=>updatePreview69(input,12,'Photo selected — ready to submit.'));
+  }
+  function updatePreview69(input,pct,msg){
+    try{
+      const wrap=input?.nextElementSibling; if(!wrap||!wrap.classList.contains('v69-thumbline'))return;
+      const file=input.files?.[0];
+      const progress=wrap.querySelector('.v69-progress span'); const status=wrap.querySelector('.v69-status-text');
+      wrap.querySelectorAll('img,.pill').forEach(x=>x.remove());
+      if(file){
+        if(file.type&&file.type.startsWith('image/')){const im=document.createElement('img');im.className='v69-mini-thumb';im.src=URL.createObjectURL(file);wrap.prepend(im)}
+        else{const chip=document.createElement('span');chip.className='pill';chip.textContent=file.name;wrap.prepend(chip)}
+        const first=wrap.querySelector('.small.muted'); if(first)first.textContent='Selected:';
+      }
+      if(progress)progress.style.width=Math.max(0,Math.min(100,pct||0))+'%'; if(status)status.textContent=msg||'';
+    }catch(e){console.warn('v69 preview skipped',e)}
+  }
+  function decorate69(root=document){addStyle69(); try{root.querySelectorAll('input[type=file]').forEach(attachPreview69)}catch(_){}}
+
+  async function buildChecklistProof69(task,items,files){
+    const safeItems=items.length?items:['Completed mission proof'];
+    const data=[];
+    for(let i=0;i<safeItems.length;i++){data.push(files[i]?await imageData(files[i],520):'')}
+    const rowH=170, pad=28, header=150, footer=70;
+    const w=1000, h=header+(safeItems.length*rowH)+footer;
+    const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d');
+    x.fillStyle='#fffdf4'; x.fillRect(0,0,w,h);
+    x.fillStyle='#b91c1c'; x.fillRect(0,0,w,16);
+    x.fillStyle='#111827'; x.font='bold 38px Arial'; x.fillText('V-SCORE Mission Checklist Proof',pad,65);
+    x.font='22px Arial'; x.fillStyle='#374151'; x.fillText('Mission: '+String(task?.title||'Mission').slice(0,70),pad,102);
+    x.font='18px Arial'; x.fillStyle='#64748b'; x.fillText('Employee: '+String(S?.profile?.full_name||'-')+'   Date: '+new Date().toLocaleString(),pad,132);
+    for(let i=0;i<safeItems.length;i++){
+      const y=header+i*rowH;
+      x.fillStyle=i%2?'#ffffff':'#f8fafc'; x.fillRect(18,y-8,w-36,rowH-10);
+      x.strokeStyle='#e5e7eb'; x.strokeRect(18,y-8,w-36,rowH-10);
+      x.fillStyle='#16a34a'; x.font='bold 34px Arial'; x.fillText('✓',pad,y+48);
+      x.fillStyle='#111827'; x.font='bold 24px Arial'; x.fillText('Task '+(i+1),pad+44,y+38);
+      x.font='20px Arial'; x.fillStyle='#374151'; wrapText69(x,String(safeItems[i]),pad+44,y+68,560,24,3);
+      if(data[i]){
+        try{const im=await dataUrlToImage69(data[i]); const tx=760, ty=y+12, tw=190, th=130; x.fillStyle='#fff'; x.fillRect(tx,ty,tw,th); x.strokeStyle='#cbd5e1'; x.strokeRect(tx,ty,tw,th); const s=Math.min(tw/im.width,th/im.height); const iw=im.width*s, ih=im.height*s; x.drawImage(im,tx+(tw-iw)/2,ty+(th-ih)/2,iw,ih)}catch(_){ }
+      } else {x.fillStyle='#fee2e2'; x.fillRect(760,y+12,190,130); x.fillStyle='#991b1b'; x.font='bold 18px Arial'; x.fillText('No photo',810,y+82)}
+    }
+    x.fillStyle='#64748b'; x.font='16px Arial'; x.fillText('Generated by V-SCORE. Every checked task has a required photo attachment.',pad,h-30);
+    return c.toDataURL('image/jpeg',.82);
+  }
+  function wrapText69(ctx,text,x,y,maxWidth,lineHeight,maxLines){
+    const words=String(text||'').split(/\s+/); let line='', lines=0;
+    for(const word of words){const test=line?line+' '+word:word; if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y); line=word; y+=lineHeight; lines++; if(maxLines&&lines>=maxLines-1){break}}else line=test}
+    if(line)ctx.fillText(line,x,y);
+  }
+
+  function closingModal69(kind,id,mode){
+    addStyle69();
+    const isReport=kind==='report'; const list=isReport?(S.reports||[]):(S.violations||[]); const rec=list.find(x=>String(x.id)===String(id));
+    if(!rec)return toast69('Record not found','error');
+    const title=isReport?'Investigation / Report Closing':'Violation Closing';
+    const label=mode==='true'?'Close TRUE / Proven':mode==='false'?'Close FALSE / Unproven':mode==='validate'?'Validate & Deduct':'Cancel / Close';
+    const employee=isReport?(rec.reported_employee_id?emp69(rec.reported_employee_id).full_name:(rec.reported_name_manual||'-')):emp69(rec.employee_id).full_name;
+    const pointsHtml= mode==='true'?`<div class="v69-grid2"><div class="field"><label>Reward Reporter Points</label><input id="v69Reward" type="number" step="0.01" class="input" value="${esc69(rec.reward_points||1)}"></div><div class="field"><label>Demerit Reported Employee Points</label><input id="v69Demerit" type="number" step="0.01" class="input" value="${esc69(rec.reported_demerit_points||3)}"></div></div>`:
+      mode==='false'?`<div class="field"><label>False Report Penalty Points</label><input id="v69Penalty" type="number" step="0.01" class="input" value="${esc69(rec.false_report_penalty||3)}"></div>`:
+      mode==='validate'?`<div class="field"><label>Demerit Points</label><input id="v69Demerit" type="number" step="0.01" class="input" value="${esc69(rec.point_deduction??rec.points??1)}"></div>`:'';
+    modal(`<div class="v69-safe-modal"><h2>${esc69(title)}</h2><h3>${esc69(label)}</h3><div class="v69-note v69-danger"><b>Closing photo required.</b><br>Before closing this case, attach proof/photo of final action, validation, or cancellation reason.</div><p><b>Employee / Reported:</b> ${esc69(employee)}<br><b>Status:</b> ${esc69(rec.status||'-')}</p><div class="v69-text">${esc69(rec.story||rec.description||rec.manager_remarks||rec.resolution||'')}</div><div class="field"><label>Closing Action / Final Remarks</label><textarea id="v69ClosingRemarks" class="v69-bigbox" placeholder="Type what was done, validated, corrected, or why this is being closed...">${mode==='true'?'Proven true after investigation.':mode==='false'?'False/unproven after investigation.':mode==='validate'?'Validated and approved for deduction.':'Cancelled / closed by management.'}</textarea></div>${pointsHtml}<div class="field v69-close-photo"><label>Closing Photo Attachment</label><input id="v69ClosingFile" type="file" accept="image/*" capture="environment" class="input" required></div><div class="v69-actions"><button id="v69CloseSubmit" class="btn green">Submit Closing Action</button><button class="btn dark" onclick="closeModal()">Cancel</button></div></div>`);
+    decorate69($69('.modal')||document);
+    $69('#v69CloseSubmit').onclick=async e=>{
+      const input=$69('#v69ClosingFile'); const file=input?.files?.[0]; if(!file)return toast69('Closing photo is required before closing.','error');
+      await act(e.currentTarget,{busy:'Closing...',success:'Closed ✓',reset:'Submit Closing Action',toast:'Closing action saved.'},async()=>{
+        updatePreview69(input,35,'Compressing closing photo...'); const photo=await imageData(file,1000); updatePreview69(input,80,'Saving closing record...');
+        const remarks=($69('#v69ClosingRemarks')?.value||'').trim(); const now=new Date().toISOString();
+        if(isReport){
+          if(mode==='true'){
+            const rw=Number($69('#v69Reward')?.value||0), dm=Number($69('#v69Demerit')?.value||0);
+            if(rw)await addPoints(rec.reporter_employee_id,rw,'Valid private report','investigation',id);
+            if(dm&&rec.reported_employee_id)await addPoints(rec.reported_employee_id,-Math.abs(dm),'Proven private report demerit','investigation',id);
+            await safeUpdate69('investigation_reports',id,[{status:'resolved_true',resolution:remarks,closing_action:remarks,closure_evidence_url:photo,resolved_by:S.profile.id,resolved_at:now,updated_at:now},{status:'resolved_true',resolution:remarks,closing_photo_url:photo,resolved_by:S.profile.id,resolved_at:now},{status:'resolved_true',resolution:remarks,resolution_evidence_url:photo,resolved_by:S.profile.id,resolved_at:now},{status:'resolved_true',resolution:remarks,evidence_url:photo,resolved_by:S.profile.id,resolved_at:now}]);
+          }else{
+            const pen=Number($69('#v69Penalty')?.value||0); if(pen)await addPoints(rec.reporter_employee_id,-Math.abs(pen),'False/unproven private report penalty','investigation',id);
+            await safeUpdate69('investigation_reports',id,[{status:'resolved_false',resolution:remarks,closing_action:remarks,closure_evidence_url:photo,resolved_by:S.profile.id,resolved_at:now,updated_at:now},{status:'resolved_false',resolution:remarks,closing_photo_url:photo,resolved_by:S.profile.id,resolved_at:now},{status:'resolved_false',resolution:remarks,resolution_evidence_url:photo,resolved_by:S.profile.id,resolved_at:now},{status:'resolved_false',resolution:remarks,evidence_url:photo,resolved_by:S.profile.id,resolved_at:now}]);
+          }
+        }else{
+          if(mode==='validate'){
+            const dm=Number($69('#v69Demerit')?.value||0); if(dm&&rec.employee_id)await addPoints(rec.employee_id,-Math.abs(dm),`Validated violation: ${rec.violation_type||rec.type_name||'Violation'}`,'violation',id);
+            await safeUpdate69('violations',id,[{status:'validated',resolution:remarks,closing_action:remarks,closure_evidence_url:photo,validated_by:S.profile.id,validated_at:now,updated_at:now},{status:'validated',manager_remarks:remarks,closing_photo_url:photo,validated_by:S.profile.id,validated_at:now},{status:'validated',manager_remarks:remarks,resolution_evidence_url:photo,validated_by:S.profile.id,validated_at:now},{status:'validated',manager_remarks:remarks,evidence_url:photo,validated_by:S.profile.id,validated_at:now}]);
+          }else{
+            await safeUpdate69('violations',id,[{status:'cancelled',resolution:remarks,closing_action:remarks,closure_evidence_url:photo,cancelled_by:S.profile.id,cancelled_at:now,updated_at:now},{status:'cancelled',manager_remarks:remarks,closing_photo_url:photo,cancelled_by:S.profile.id,cancelled_at:now},{status:'cancelled',manager_remarks:remarks,resolution_evidence_url:photo,cancelled_by:S.profile.id,cancelled_at:now},{status:'cancelled',manager_remarks:remarks,evidence_url:photo,cancelled_by:S.profile.id,cancelled_at:now}]);
+          }
+        }
+        try{await auditEvent('Closing action with photo',isReport?'investigation_reports':'violations',id)}catch(_){ }
+        updatePreview69(input,100,'Closing photo saved.');
+      },async()=>{closeModal();await loadData();renderPage()});
+    };
+  }
+  window.v69OpenReportClose=function(id,truth){closingModal69('report',id,truth?'true':'false')};
+  window.v69OpenViolationClose=function(id,mode){closingModal69('violation',id,mode||'validate')};
+  try{window.resolveReport=resolveReport=function(id,truth,btn){return window.v69OpenReportClose(id,!!truth)}}catch(_){window.resolveReport=function(id,truth){return window.v69OpenReportClose(id,!!truth)}}
+  try{window.validateDirectVio=validateDirectVio=function(id,btn){return window.v69OpenViolationClose(id,'validate')}}catch(_){window.validateDirectVio=function(id){return window.v69OpenViolationClose(id,'validate')}}
+  try{window.cancelDirectVio=cancelDirectVio=function(id,btn){return window.v69OpenViolationClose(id,'cancel')}}catch(_){window.cancelDirectVio=function(id){return window.v69OpenViolationClose(id,'cancel')}}
+
+  function closePhotoThumb69(r){const p=r?.closure_evidence_url||r?.closing_photo_url||r?.resolution_evidence_url||r?.close_photo_url||''; return p?`<div class="v69-close-photo"><b>Closing photo:</b><br>${typeof img==='function'?img(p):`<img src="${esc69(p)}" class="thumb">`}</div>`:''}
+  function reportActions69(r,manage){
+    const st=String(r.status||'new_private').toLowerCase(); const isReported=String(r.reported_employee_id||'')===me69(); let out='';
+    if(isReported&&['for_explanation','needs_explanation','read','under_investigation'].includes(st))out+=`<button class="btn sm orange" onclick="v68EmployeeExplainReport('${esc69(r.id)}')">Explain Now</button>`;
+    if(manage){
+      if(!['resolved_true','resolved_false','cancelled'].includes(st))out+=`<button class="btn sm yellow" onclick="v68AskReportExplanation('${esc69(r.id)}',this)">Ask Explanation</button>`;
+      out+=`<button class="btn sm blue" onclick="v68ViewExplanation('report','${esc69(r.id)}')">View Explanation</button>`;
+      if(!['resolved_true','resolved_false','cancelled'].includes(st))out+=`<button class="btn sm green" onclick="v69OpenReportClose('${esc69(r.id)}',true)">Close True + Photo</button><button class="btn sm dark" onclick="v69OpenReportClose('${esc69(r.id)}',false)">Close False + Photo</button>`;
+    }
+    return out||'<span class="small muted">No action</span>';
+  }
+  window.reportsTable=reportsTable=function(arr,manage){
+    const cards=(arr||[]).map(r=>{const reported=r.reported_employee_id?emp69(r.reported_employee_id).full_name:(r.reported_name_manual||'-');return `<div class="v69-card"><h4>Private Report / Investigation</h4><div class="v69-task-meta"><span class="v69-task-chip">${esc69(r.status||'new_private')}</span><span class="v69-task-chip">${esc69(r.branch||emp69(r.reported_employee_id).branch||'-')}</span></div><p class="small muted"><b>Reporter:</b> ${esc69(emp69(r.reporter_employee_id).full_name)}<br><b>Reported:</b> ${esc69(reported)}<br><b>Date:</b> ${fmt69(r.created_at||r.happened_at)}</p><div class="v69-text">${esc69(r.story||r.resolution||'')}</div>${typeof img==='function'?img(r.evidence_url):''}${closePhotoThumb69(r)}<div class="v69-actions">${reportActions69(r,manage)}</div></div>`}).join('')||'<div class="empty">No reports.</div>';
+    return `<div class="v69-task-list">${cards}</div>`;
+  };
+  window.reportsPage=reportsPage=function(){return `<div class="card"><h3>Private Reports / Investigations</h3><p class="muted">Closing now requires a final photo attachment. This protects both management and employee records.</p>${reportsTable(S.reports||[],true)}</div>`};
+  function violationActions69(v,manage){
+    const st=String(v.status||'pending_validation').toLowerCase(); let out='';
+    if(String(v.employee_id||'')===me69()&&['for_explanation','needs_explanation','pending_validation'].includes(st))out+=`<button class="btn sm orange" onclick="v68EmployeeExplainViolation('${esc69(v.id)}')">Explain Now</button>`;
+    if(manage){
+      if(!['validated','closed / deducted','cancelled','rejected'].includes(st))out+=`<button class="btn sm yellow" onclick="v68AskViolationExplanation('${esc69(v.id)}',this)">Ask Explanation</button>`;
+      out+=`<button class="btn sm blue" onclick="v68ViewExplanation('violation','${esc69(v.id)}')">View Explanation</button>`;
+      if(!['validated','closed / deducted','cancelled','rejected'].includes(st))out+=`<button class="btn sm green" onclick="v69OpenViolationClose('${esc69(v.id)}','validate')">Validate + Photo</button><button class="btn sm dark" onclick="v69OpenViolationClose('${esc69(v.id)}','cancel')">Cancel + Photo</button>`;
+    }
+    return out||'<span class="small muted">Done</span>';
+  }
+  window.violationTable=violationTable=function(arr,manage){
+    const cards=(arr||[]).map(v=>`<div class="v69-card"><h4>${esc69(v.violation_type||v.type_name||'Violation')}</h4><div class="v69-task-meta"><span class="v69-task-chip">${esc69(v.status||'pending_validation')}</span><span class="v69-task-chip">${esc69(v.branch||emp69(v.employee_id).branch||'-')}</span></div><p class="small muted"><b>Employee:</b> ${esc69(emp69(v.employee_id).full_name)}<br><b>Points:</b> ${money69(v.point_deduction??v.points??0)}<br><b>Date:</b> ${fmt69(v.created_at)}</p><div class="v69-text">${esc69(v.description||v.manager_remarks||'')}</div>${typeof img==='function'?img(v.evidence_url):''}${closePhotoThumb69(v)}<div class="v69-actions">${violationActions69(v,manage)}</div></div>`).join('')||'<div class="empty">No violation records.</div>';
+    return `<div class="v69-task-list">${cards}</div>`;
+  };
+
+  window.proofTask=proofTask=function(id){
+    const t=(S.tasks||[]).find(x=>String(x.id)===String(id))||{}; const items=splitItems69(t.task_items||t.description||t.title||'Completed mission');
+    const rows=items.map((it,i)=>`<div class="v69-proof-row"><label><input type="checkbox" id="v69Chk${i}"> <span>${esc69(it)}</span></label><div class="field"><label>Photo proof for this item</label><input id="v69Proof${i}" type="file" accept="image/*" capture="environment" class="input" required></div></div>`).join('');
+    modal(`<div class="v69-safe-modal"><h2>Submit Mission Checklist Proof</h2><h3>${esc69(t.title||'Mission')}</h3><div class="v69-note"><b>Checklist proof required.</b><br>Check every completed task and attach one real photo per checklist item.</div><div class="v69-task-list">${rows}</div><div class="v69-progress"><span id="v69MissionProgress"></span></div><div id="v69MissionStatus" class="v69-status-text">Waiting for checklist and photos...</div><div class="v69-actions"><button id="v69SubmitMissionProof" class="btn green">Submit Checklist Proof</button><button class="btn dark" onclick="closeModal()">Close</button></div></div>`);
+    decorate69($69('.modal')||document);
+    $69('#v69SubmitMissionProof').onclick=async e=>{
+      const files=[];
+      for(let i=0;i<items.length;i++){
+        if(!$69('#v69Chk'+i)?.checked)return toast69('Please check all completed task items first.','error');
+        const file=$69('#v69Proof'+i)?.files?.[0]; if(!file)return toast69('Please attach a photo for task item '+(i+1)+'.','error'); files.push(file);
+      }
+      await act(e.currentTarget,{busy:'Uploading checklist...',success:'Checklist Sent',reset:'Submit Checklist Proof',toast:'Mission checklist proof submitted.'},async()=>{
+        const bar=$69('#v69MissionProgress'), stat=$69('#v69MissionStatus'); if(bar)bar.style.width='20%'; if(stat)stat.textContent='Preparing checklist proof image...';
+        const proof=await buildChecklistProof69(t,items,files); if(bar)bar.style.width='70%'; if(stat)stat.textContent='Saving checklist proof...';
+        const now=new Date().toISOString(); const details={items:items.map((it,i)=>({item:it,checked:true,photo_attached:true})),submitted_at:now,mode:'checklist_per_item_photo'};
+        await safeUpdate69('vscore_tasks',id,[{proof_url:proof,proof_details:details,status:'submitted',submitted_at:now},{proof_url:proof,checklist_proof:details,status:'submitted',submitted_at:now},{proof_url:proof,completion_details:JSON.stringify(details),status:'submitted',submitted_at:now},{proof_url:proof,status:'submitted'}]);
+        try{await auditEvent('Mission checklist proof submitted','vscore_tasks',id)}catch(_){ }
+        if(bar)bar.style.width='100%'; if(stat)stat.textContent='Checklist proof uploaded successfully.';
+      },async()=>{closeModal();await loadData();renderPage()});
+    };
+  };
+
+  function tasklistForm69(){return `<form id="v69TasklistForm"><div class="field"><label>Tasklist Title</label><input id="v69TaskTitle" class="input" value="Today's Task List" required></div><div class="field"><label>What did you do today? One task per line</label><textarea id="v69TaskItems" class="input" placeholder="Example:\nCleaned dining area\nRefilled stocks\nAssisted customer line" required></textarea></div><div class="field"><label>Share Scope</label><select id="v69TaskScope"><option value="branch">My Branch Only</option><option value="national">National / Management View</option></select></div><div class="field"><label>Main proof photo</label><input id="v69TaskPhoto" type="file" accept="image/*" capture="environment" class="input" required></div><button class="btn green full">Share My Task List</button></form>`}
+  function tasklistCards69(arr,manage){
+    return (arr||[]).map(t=>`<div class="v69-card"><h4>${esc69(t.title||'Shared Task List')}</h4><div class="v69-task-meta"><span class="v69-task-chip">${esc69(t.status||'pending_merit')}</span><span class="v69-task-chip">${esc69(t.branch||emp69(t.assigned_to_employee_id).branch||'-')}</span><span class="v69-task-chip">${fmt69(t.created_at||t.submitted_at)}</span></div><p class="small muted"><b>Employee:</b> ${esc69(emp69(t.assigned_to_employee_id).full_name)}</p><div class="v69-text">${esc69(t.task_items||'')}</div>${typeof img==='function'?img(t.proof_url):''}<div class="v69-actions">${manage&&['pending_merit','submitted'].includes(String(t.status||'').toLowerCase())?`<button class="btn sm green approveTask" data-id="${esc69(t.id)}">Approve Merit</button>`:''}<button class="btn sm blue proofTask" data-id="${esc69(t.id)}">Submit / Update Checklist Proof</button></div></div>`).join('')||'<div class="empty">No shared task list yet.</div>';
+  }
+  window.tasklistPage69=function(){
+    let rows=(S.tasks||[]).filter(t=>String(t.source_type||'')==='self_tasklist');
+    if(!manager69())rows=rows.filter(t=>String(t.assigned_to_employee_id||'')===me69());
+    else if(!owner69())rows=rows.filter(t=>String(t.branch||emp69(t.assigned_to_employee_id).branch||'')===String(S.profile?.branch||''));
+    return `<div class="v69-grid2"><div class="card"><h3>Share My Task List</h3><p class="muted">For daily work sharing. Staff can post what they are doing and attach proof.</p>${tasklistForm69()}</div><div class="card"><h3>${manager69()?'Task List Monitoring':'My Shared Task Lists'}</h3><p class="muted">Management can monitor daily shared task lists and approve merit when valid.</p>${tasklistCards69(rows,manager69())}</div></div>`;
+  };
+  window.submitTasklist69=async function(e){
+    e.preventDefault(); const b=e.submitter; const input=$69('#v69TaskPhoto'); const file=input?.files?.[0]; if(!file)return toast69('Main proof photo is required.','error');
+    await act(b,{busy:'Sharing...',success:'Shared ✓',reset:'Share Again',toast:'Task list shared.'},async()=>{
+      updatePreview69(input,35,'Compressing proof photo...'); const photo=await imageData(file,1000); updatePreview69(input,80,'Saving task list...');
+      const scope=$69('#v69TaskScope')?.value||'branch'; const now=new Date().toISOString();
+      const row={title:$69('#v69TaskTitle')?.value||'Shared Task List',task_items:$69('#v69TaskItems')?.value||'',assigned_to_employee_id:S.profile.id,assigned_by_employee_id:S.profile.id,branch:S.profile.branch,source_type:'self_tasklist',target_scope:scope,status:'pending_merit',proof_url:photo,submitted_at:now,merit_points:1};
+      const r=await sb.from('vscore_tasks').insert(row); if(r.error)throw r.error; updatePreview69(input,100,'Task list posted successfully.');
+    },async()=>{await loadData();renderPage()});
+  };
+
+  const oldNav69=window.nav||nav;
+  window.nav=nav=function(){let n=[];try{n=oldNav69.apply(this,arguments)||[]}catch(_){n=[]} if(!n.find(x=>x&&x[0]==='tasklist')){const i=n.findIndex(x=>x&&x[0]==='missions');n.splice(i>=0?i:n.length,0,['tasklist',manager69()?'Tasklist Monitor':'Share My Task List']);} return n};
+  const oldRenderPage69=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){addStyle69(); const page=$69('#page'); if(S&&S.tab==='tasklist'&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">${manager69()?'Tasklist Monitor':'Share My Task List'}</span></div>${tasklistPage69()}`; bind(); decorate69(page); return;} const out=oldRenderPage69.apply(this,arguments); setTimeout(()=>decorate69($69('#page')||document),90); return out};
+  const oldBind69=window.bind||bind;
+  window.bind=bind=function(){try{oldBind69.apply(this,arguments)}catch(e){console.warn(e)} decorate69($69('#page')||document); $69('#v69TasklistForm')?.addEventListener('submit',submitTasklist69); $$69('.proofTask').forEach(b=>b.onclick=()=>proofTask(b.dataset.id)); $$69('.approveTask').forEach(b=>b.onclick=()=>approveTask(b.dataset.id,b)); $$69('.trueReport').forEach(b=>b.onclick=()=>v69OpenReportClose(b.dataset.id,true)); $$69('.falseReport').forEach(b=>b.onclick=()=>v69OpenReportClose(b.dataset.id,false)); $$69('.validateDirectVio').forEach(b=>b.onclick=()=>v69OpenViolationClose(b.dataset.id,'validate')); $$69('.cancelDirectVio').forEach(b=>b.onclick=()=>v69OpenViolationClose(b.dataset.id,'cancel'));};
+  document.addEventListener('DOMContentLoaded',()=>{addStyle69();setTimeout(()=>decorate69(document),500);setTimeout(()=>decorate69(document),1500)});
+  console.log('V69 closing photo + checklist proof + share tasklist loaded');
+})();
+/* ================= END V69 ================= */
+
+
+/* ================= V70 LAUNCH POINT CULTURE + ROLE LIMITS SAFE GUARD =================
+   Purpose: Clarify that V-POINTS is for confidence, appreciation, communication, reporting,
+   training, healthy competition, and positive Ka-Varda community.
+   Safe approach: no database rebuild, no deletion, no barcode/attendance/training disruption.
+*/
+(function(){
+  const V70_VERSION='V70_LAUNCH_POINT_CULTURE_ROLE_LIMITS';
+  window.VSCORE_VERSION=(window.VSCORE_VERSION||'')+' + '+V70_VERSION;
+  window.__v70ErrorCount=0;
+
+  function $70(s,r=document){return r.querySelector(s)}
+  function $$70(s,r=document){return Array.from(r.querySelectorAll(s))}
+  function esc70(v){try{return typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}}
+  function role70(){try{return String(S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_')}catch(_){return 'employee'}}
+  function owner70(){try{return typeof isOwner==='function'?isOwner():['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(role70())}catch(_){return false}}
+  function manager70(){try{return typeof isManager==='function'?isManager():owner70()||['manager','branch_manager','team_leader'].includes(role70())}catch(_){return false}}
+  function roleGroup70(){if(owner70())return 'retail'; if(manager70())return 'manager'; return 'staff'}
+  function roleLimits70(){
+    const g=roleGroup70();
+    if(g==='retail')return {group:'Retail / Head Office Management',feedLimit:999,scope:'All branches / national',approval:'Full management approval with audit trail',attendance:'All branches by folder + date range export',cases:'Can validate/close all allowed cases with proof',tabs:'General Control can show/hide tabs'};
+    if(g==='manager')return {group:'Manager / Team Leader',feedLimit:5,scope:'Own branch + management view',approval:'Can monitor and recommend/approve branch items only where allowed',attendance:'Own branch monitoring and export',cases:'Can manage branch cases; higher validation remains for retail/admin where needed',tabs:'Sees manager tools only'};
+    return {group:'Staff',feedLimit:3,scope:'My Branch Only or National / Management View',approval:'Can earn points but cannot approve points for others',attendance:'Own Time In / Time Out only',cases:'Can report, explain, train, submit proof, and complete actions',tabs:'Sees simple staff tools only'};
+  }
+  window.roleLimits70=roleLimits70;
+
+  function addStyle70(){
+    if(document.getElementById('v70Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v70Style">
+      .v70-culture{border:1px solid #fde68a;background:linear-gradient(135deg,#fff7ed,#fff,#fefce8);border-radius:18px;padding:14px;margin:0 0 12px;box-shadow:0 8px 24px rgba(15,23,42,.05);overflow:hidden;overflow-wrap:anywhere}.v70-culture h3{margin:0 0 6px;color:#7f1d1d}.v70-culture p{margin:5px 0}.v70-mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.v70-mini{border:1px solid #fed7aa;background:#fff;border-radius:13px;padding:9px;font-size:12px}.v70-mini b{display:block;color:#991b1b;margin-bottom:3px}.v70-limit-card{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.v70-limit-card h4{margin:0 0 8px;color:#7f1d1d}.v70-rule-row{display:grid;grid-template-columns:160px 1fr;gap:8px;padding:6px 0;border-top:1px solid #f3f4f6}.v70-rule-row:first-of-type{border-top:0}.v70-launch-ok{border-left:5px solid #16a34a;background:#f0fdf4;color:#14532d;border-radius:14px;padding:10px;margin:10px 0}.v70-feed-meter{font-size:12px;font-weight:900;color:#64748b;margin-top:6px}.v70-safe-toast{position:fixed;left:12px;right:12px;bottom:12px;z-index:999;background:#111827;color:#fff;border-radius:14px;padding:12px;box-shadow:0 14px 38px rgba(15,23,42,.22);font-size:13px;display:none}.v70-safe-toast.show{display:block}
+      @media(max-width:820px){.v70-mini-grid{grid-template-columns:1fr}.v70-rule-row{grid-template-columns:1fr}.v70-culture{border-radius:15px;padding:12px}.v70-limit-card{border-radius:14px;padding:10px}}
+    </style>`);
+  }
+
+  function pointCultureHtml70(){
+    const lim=roleLimits70();
+    return `<div id="v70Culture" class="v70-culture"><h3>V-POINTS Culture</h3><p><b>Purpose:</b> confidence, appreciation, sharing, communication, reporting, training, and healthy “pasikat” competition for Ka-Varda staff.</p><p class="small muted">Points are not only for violations. Positive points should encourage staff to show good work, report properly, finish training, help the team, and build a healthy social community.</p><div class="v70-mini-grid"><div class="v70-mini"><b>Your Role</b>${esc70(lim.group)}</div><div class="v70-mini"><b>News Feed Limit</b>${lim.feedLimit>=999?'No daily cap for management':lim.feedLimit+' posts / day'}</div><div class="v70-mini"><b>Visibility</b>${esc70(lim.scope)}</div></div></div>`;
+  }
+
+  function roleLimitsPanel70(){
+    const rows=[
+      ['Staff','Earn points from training, reports, achievements, tasklists, communication, and approved missions. Cannot approve points for others. News Feed: 3 posts/day. Scope: branch or national/management view.'],
+      ['Manager / Team Leader','Can monitor branch staff, missions, reports, training, memo acknowledgment, and branch cases. News Feed: 5 posts/day. Case closing requires proof where required.'],
+      ['Retail / Head Office Management','Can monitor all allowed branches, attendance by branch folders, download summaries, control tabs, validate cases, and keep full audit trail.'],
+      ['Launch Rule','No program/data is deleted by these controls. Hidden tabs are menu visibility only. News Feed, merit popups, training, barcode, attendance, and acknowledgment remain protected.']
+    ];
+    return `<div id="v70RoleLimits" class="v70-limit-card"><h4>Role Limits & Launch Rules</h4><div class="v70-launch-ok"><b>Launch-safe rule:</b> Different limits apply by role, but the same V-POINTS culture remains positive and fair.</div>${rows.map(r=>`<div class="v70-rule-row"><b>${esc70(r[0])}</b><span>${esc70(r[1])}</span></div>`).join('')}</div>`;
+  }
+
+  function feedPostCountToday70(){
+    try{
+      const todayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+      return (S.newsPosts||[]).filter(p=>String(p.created_by)===String(S.profile?.id) && ['news','memory'].includes(String(p.post_type||'news')) && new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(p.created_at))===todayKey).length;
+    }catch(_){return 0}
+  }
+  window.feedPostCountToday70=feedPostCountToday70;
+
+  // Replace the old one-post boolean with role-based count limit.
+  window.alreadyPostedToday=alreadyPostedToday=function(){
+    const lim=roleLimits70().feedLimit;
+    if(lim>=999)return false;
+    return feedPostCountToday70()>=lim;
+  };
+
+  // Make National scope visible across branches while keeping branch scope local.
+  const oldPostVisible70=window.postVisible||postVisible;
+  window.postVisible=postVisible=function(p){
+    try{
+      const scope=String(p?.share_scope||'all').toLowerCase();
+      if(scope==='national'||scope==='all')return true;
+      if(owner70())return true;
+      if(scope==='branch')return String(p?.branch||'')===String(S.profile?.branch||'') || String(p?.created_by)===String(S.profile?.id||'');
+      return oldPostVisible70.apply(this,arguments);
+    }catch(e){try{return oldPostVisible70.apply(this,arguments)}catch(_){return true}}
+  };
+
+  window.newsPage=newsPage=function(){
+    addStyle70();
+    const posts=typeof visibleFeedPosts==='function'?visibleFeedPosts():(S.newsPosts||[]).filter(p=>postVisible(p));
+    const lim=roleLimits70(); const used=feedPostCountToday70(); const blocked=alreadyPostedToday()&&!owner70();
+    const group=roleGroup70();
+    const scopeFields= group==='staff'
+      ? `<div class="field"><label>Share Scope</label><select id="newsScope"><option value="branch">My Branch Only</option><option value="all">National / Management View</option></select></div><div class="field"><label>Branch</label><input class="input" value="${esc70(S.profile?.branch||'')}" disabled></div>`
+      : `<div class="field"><label>Share Scope</label><select id="newsScope"><option value="all">National / All Branches</option><option value="branch">Selected Branch Only</option></select></div><div class="field"><label>Branch</label>${typeof branchSelect==='function'?branchSelect('newsBranch',S.profile?.branch||''):''}</div>`;
+    return `<div class="card"><div class="feed-toolbar"><div><h3 style="margin:0">VARDA News Feed</h3><p class="muted" style="margin:4px 0 0">Healthy Ka-Varda sharing: appreciation, communication, reports of good work, training wins, and positive pasikat. Posts/images auto-clean after 24 hours.</p><div class="v70-feed-meter">Today: ${used} / ${lim.feedLimit>=999?'∞':lim.feedLimit} posts used · ${esc70(lim.group)}</div></div><button id="toggleNewsPost" class="btn green">Add Post</button></div><div id="newsPostBox" class="feed-form-wrap"><hr>${blocked?`<div class="notice">You reached your daily News Feed limit (${lim.feedLimit} posts/day for ${esc70(lim.group)}). You can post again tomorrow.</div>`:`<form id="newsForm"><div class="grid two">${scopeFields}</div><div class="field"><label>Caption / Appreciation / Communication</label><textarea id="newsCaption" placeholder="Share a positive work update, task photo, appreciation, training win, or announcement..."></textarea></div><div class="field"><label>Photos (optional, max 10)</label><input id="newsPhotos" type="file" multiple accept="image/*" capture="environment" class="input"><p class="small muted">Images are compressed. Posts/images are temporary and hidden after 24 hours.</p></div>${manager70()?`<div class="field"><label>Comments</label><select id="newsCommentsOn"><option value="true">Comments ON</option><option value="false">Comments OFF for staff level</option></select></div>`:`<input id="newsCommentsOn" type="hidden" value="true">`}<button class="btn green full">Post to VARDA News Feed</button></form>`}</div></div><br>${posts.map(p=>postCard(p,'news')).join('')||'<div class="empty">No posts yet. Be the first to share a positive Varda update.</div>'}`;
+  };
+
+  window.createSocialPost=createSocialPost=async function(e,type='news'){
+    e.preventDefault(); const b=e.submitter; const lim=roleLimits70();
+    await act(b,{busy:'Posting...',success:'Posted ✓',reset:'Post Again',toast:'Posted to VARDA News Feed.'},async()=>{
+      const used=feedPostCountToday70(); if(lim.feedLimit<999 && used>=lim.feedLimit)throw new Error(`Daily News Feed limit reached: ${lim.feedLimit} posts/day for ${lim.group}.`);
+      const files=Array.from($70('#newsPhotos')?.files||[]).slice(0,10); const photos=[];
+      for(const f of files)photos.push({url:await imageData(f,900),name:f.name});
+      const caption=($70('#newsCaption')?.value||'').trim(); if(!caption&&!photos.length)throw new Error('Add a caption or at least one photo.');
+      let scope=$70('#newsScope')?.value||'branch'; if(scope==='national')scope='all';
+      const branch=scope==='branch'?($70('#newsBranch')?.value||S.profile?.branch||''):(S.profile?.branch||'');
+      const comments=manager70()?($70('#newsCommentsOn')?.value!=='false'):true;
+      const row={post_type:'news',caption,photos_json:JSON.stringify(photos),created_by:S.profile.id,branch,share_scope:scope,comments_enabled:comments,expires_at:new Date(Date.now()+86400000).toISOString(),is_active:true};
+      const r=await sb.from('vscore_social_posts').insert(row); if(r.error)throw r.error; try{await auditEvent('VARDA News Feed post created','vscore_social_posts',caption.slice(0,80)||'photo post')}catch(_){ }
+    },async()=>{await loadData();renderPage()});
+  };
+
+  function inject70(){
+    try{
+      addStyle70(); const page=$70('#page'); if(!page||!S?.profile)return;
+      if(S.tab==='dashboard'&&!$70('#v70Culture',page))page.insertAdjacentHTML('afterbegin',pointCultureHtml70());
+      if(S.tab==='general_control'&&!$70('#v70RoleLimits',page))page.insertAdjacentHTML('beforeend',roleLimitsPanel70());
+    }catch(e){console.warn('V70 inject skipped',e)}
+  }
+  const oldRenderPage70=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){const out=oldRenderPage70.apply(this,arguments); setTimeout(inject70,120); return out};
+
+  function safeToast70(msg){
+    try{addStyle70(); let t=$70('#v70SafeToast'); if(!t){document.body.insertAdjacentHTML('beforeend','<div id="v70SafeToast" class="v70-safe-toast"></div>'); t=$70('#v70SafeToast')} t.textContent=msg; t.classList.add('show'); clearTimeout(window.__v70SafeTimer); window.__v70SafeTimer=setTimeout(()=>t.classList.remove('show'),4500)}catch(_){}
+  }
+  window.addEventListener('error',ev=>{window.__v70ErrorCount++; console.warn('V70 launch guard caught:',ev.message); if(window.__v70ErrorCount<=3)safeToast70('Something did not load perfectly. Please refresh once. Your data is safe.');});
+  window.addEventListener('unhandledrejection',ev=>{window.__v70ErrorCount++; console.warn('V70 launch guard caught promise:',ev.reason); if(window.__v70ErrorCount<=3)safeToast70('Saving/loading issue detected. Please retry. Your data is safe.');});
+  document.addEventListener('DOMContentLoaded',()=>{addStyle70();setTimeout(inject70,900)});
+  console.log('V70 launch point culture + role limits safe guard loaded');
+})();
+/* ================= END V70 ================= */
+
+
+
 init();
 </script></body></html>
