@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<title>V-SCORE V51 | Overall Interface + Case Workflow Final</title>
+<title>V-SCORE V62 | Case Center + Perfect Phone Monitoring</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b91c1c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -7154,6 +7154,439 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   console.log('V59 stability + final mobile attendance patch loaded');
 })();
 /* ================= END V59 ================= */
+
+
+/* ================= V60 NO FLOATING NAV + UTAK-STYLE TIME CLOCK =================
+   User request: remove the 4 floating bottom buttons, keep the left Menu only,
+   and make Time In / Time Out work like UTAK: tap a circle, take selfie/photo,
+   then save timestamp + location. Barcode/scanner code is untouched.
+*/
+(function(){
+  const q60=(s,r=document)=>r.querySelector(s);
+  const qa60=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc60=(v)=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}catch(_){return String(v??'')}};
+  const phDate60=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const phTime60=()=>new Date().toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit',hour12:true});
+  const isMobile60=()=>window.matchMedia&&window.matchMedia('(max-width:820px)').matches;
+  function addStyle60(){
+    if(document.getElementById('v60-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v60-style">
+      :root{--v60-safe-top:env(safe-area-inset-top,0px);--v60-safe-bottom:env(safe-area-inset-bottom,0px)}
+      @media(max-width:820px){
+        html,body{width:100%!important;overflow-x:hidden!important}.app{display:block!important;min-height:100svh!important}.main{padding:10px 10px calc(14px + var(--v60-safe-bottom))!important}.v50-bottom-nav,.v58-bottom-nav,#v50BottomNav,#v58BottomNav,.v58-more-sheet,.v58-more-overlay,#v58MoreSheet,#v58MoreOverlay,#v58TopMore,.v58-top-more,.chat-bubble,.v50-install-hint{display:none!important;visibility:hidden!important;pointer-events:none!important}.topbar{position:sticky!important;top:0!important;z-index:90!important;display:block!important;margin:0 -10px 12px!important;padding:calc(14px + var(--v60-safe-top)) 12px 12px!important;border-radius:0 0 18px 18px!important;background:linear-gradient(135deg,#fff,#fff7ed)!important;border-top:4px solid #facc15!important;box-shadow:0 10px 28px rgba(15,23,42,.10)!important}.v50-toprow{display:flex!important;align-items:flex-start!important;gap:10px!important;width:100%!important}.v50-toprow>#v50MenuToggle,.v50-mobile-toggle{display:inline-flex!important;visibility:visible!important;pointer-events:auto!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;width:74px!important;min-width:74px!important;min-height:54px!important;border-radius:18px!important;background:#111827!important;color:#fff!important;font-weight:1000!important;padding:9px 10px!important;box-shadow:0 8px 18px rgba(15,23,42,.18)!important}.v50-toprow>#v50MenuToggle{font-size:0!important}.v50-toprow>#v50MenuToggle:before{content:'☰';font-size:20px;line-height:1;display:block}.v50-toprow>#v50MenuToggle:after{content:'Menu';font-size:13px;line-height:1.1;display:block;margin-top:2px}.v50-toprow>div{min-width:0!important;flex:1 1 auto!important}.topbar h2{font-size:18px!important;line-height:1.14!important;margin:0!important;word-break:break-word!important}.topbar .small{font-size:11px!important}.topbar>.split{display:none!important}#page>.split:first-child{margin-bottom:8px!important;align-items:center!important}#page>.split:first-child #pageRef{display:none!important}#page>.split:first-child .pill{font-size:11px!important;padding:5px 9px!important}.sidebar{position:fixed!important;z-index:180!important;top:0!important;left:0!important;width:min(86vw,340px)!important;height:100svh!important;min-height:100svh!important;overflow:auto!important;transform:translateX(-110%);transition:.22s ease!important;border-radius:0 24px 24px 0!important;padding-top:calc(20px + var(--v60-safe-top))!important}.v50-menu-open .sidebar{transform:translateX(0)!important}.v50-overlay{display:block!important;position:fixed!important;inset:0!important;background:rgba(15,23,42,.55)!important;z-index:170!important;opacity:0;pointer-events:none;transition:.2s ease}.v50-menu-open .v50-overlay{opacity:1!important;pointer-events:auto!important}.card,.v47-card,.launch-card,.notice,.v59-att-card{border-radius:17px!important;max-width:100%!important}.card,.v47-card,.launch-card,.v59-att-card{padding:13px!important}.grid.two,.grid.three,.grid.four,.v54-grid{grid-template-columns:1fr!important}.btn{min-height:42px!important}.input,select,textarea{font-size:16px!important}table{display:block!important;max-width:100%!important;overflow-x:auto!important;white-space:normal!important}th,td{white-space:normal!important;min-width:120px!important}.v49-policy-results,.v59-table-scroll{max-width:100%!important;overflow-x:auto!important}.modal{z-index:250!important}.modal-card{width:96vw!important;max-height:88svh!important}.academy-viewer,.training-viewer,#trainingViewer{padding-bottom:18px!important}
+      }
+      .v60-utak-card{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:24px;padding:18px;box-shadow:0 14px 34px rgba(15,23,42,.07);text-align:center;overflow:hidden}.v60-utak-name{font-size:24px;font-weight:1000;color:#334155;letter-spacing:.02em;text-transform:uppercase}.v60-utak-hours{font-size:18px;color:#64748b;margin:3px 0 16px}.v60-circle-row{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}.v60-time-circle{width:132px;height:132px;border-radius:999px;border:2px solid #e5e7eb;background:#f8fafc;color:#334155;font-weight:1000;font-size:26px;display:inline-grid;place-items:center;text-align:center;box-shadow:0 8px 22px rgba(15,23,42,.08);transition:.15s ease}.v60-time-circle:active{transform:scale(.97)}.v60-time-circle.in{background:#9bd5ad;border-color:#9bd5ad;color:#fff}.v60-time-circle.out{background:#f3a56b;border-color:#f3a56b;color:#fff}.v60-time-circle.disabled{opacity:.45;filter:grayscale(.2);cursor:not-allowed;box-shadow:none}.v60-time-circle.done{background:#f8fafc;color:#64748b;border-color:#d1d5db}.v60-selfie{width:116px;height:116px;border-radius:999px;object-fit:cover;border:3px solid #bbf7d0;background:#f8fafc;box-shadow:0 8px 20px rgba(15,23,42,.09)}.v60-selfie.outpic{border-color:#fed7aa}.v60-proof-labels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.v60-proof-label{font-size:16px;font-weight:1000;color:#334155}.v60-dot{display:inline-block;width:11px;height:11px;border-radius:999px;background:#d1d5db;margin-right:6px}.v60-dot.ok{background:#86efac}.v60-dot.warn{background:#fdba74}.v60-proof-time{color:#64748b;font-size:16px;margin-top:5px;min-height:22px}.v60-mini-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:14px}.v60-note{font-size:12px;color:#64748b;margin-top:10px}.v60-manager-card{margin-top:14px}
+      @media(max-width:420px){.v60-circle-row{gap:12px}.v60-time-circle{width:116px;height:116px;font-size:22px}.v60-selfie{width:104px;height:104px}.v60-utak-name{font-size:21px}.v60-proof-label{font-size:14px}.v60-proof-time{font-size:14px}}
+    </style>`);
+  }
+  function cleanFloating60(){
+    try{document.body.classList.remove('v58-more-open');['v58BottomNav','v58MoreSheet','v58MoreOverlay','v58TopMore','v50BottomNav'].forEach(id=>document.getElementById(id)?.remove());qa60('.v58-bottom-nav,.v58-more-sheet,.v58-more-overlay,.v58-top-more,.v50-bottom-nav,.v50-install-hint').forEach(el=>el.remove());}catch(e){}
+  }
+  function ensureLeftMenu60(){
+    try{
+      const tb=q60('.topbar'); if(!tb)return;
+      // Ensure original left hamburger exists. V50 normally creates it; if not, create a simple one.
+      if(!document.getElementById('v50MenuToggle')){
+        const first=tb.firstElementChild;
+        const wrap=document.createElement('div');wrap.className='v50-toprow';
+        const btn=document.createElement('button');btn.id='v50MenuToggle';btn.className='v50-mobile-toggle';btn.type='button';btn.textContent='☰ Menu';btn.onclick=()=>document.body.classList.toggle('v50-menu-open');
+        if(first){tb.insertBefore(wrap,first);wrap.appendChild(btn);wrap.appendChild(first)}else tb.appendChild(btn);
+      }
+      q60('#v50MenuToggle').onclick=()=>document.body.classList.toggle('v50-menu-open');
+      // Top right three-dot is removed per request.
+      q60('#v58TopMore')?.remove();
+    }catch(e){console.warn('V60 menu guard skipped',e)}
+  }
+  function renderChrome60(){addStyle60();cleanFloating60();ensureLeftMenu60()}
+  window.v60RenderChrome=renderChrome60;
+  // Override older V58 renderer so it cannot recreate the floating bottom buttons.
+  window.v58RenderChrome=renderChrome60;
+  window.v58Go=function(tab){try{S.tab=tab;localStorage.setItem('vscore_last_tab',tab);document.body.classList.remove('v50-menu-open','v58-more-open');renderPage();setTimeout(renderChrome60,80)}catch(e){console.warn(e)}};
+  function todayLogs60(){try{return (S.attendanceLogs||[]).filter(r=>String(r.employee_id)===String(S.profile?.id)&&String(r.work_date||'')===phDate60()).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))}catch(_){return []}}
+  function firstInOut60(logs){return {tin:logs.find(r=>String(r.event_type)==='time_in'),tout:logs.find(r=>String(r.event_type)==='time_out')}}
+  function picFromLog60(log){
+    if(!log)return '';
+    const raw=log.photo_json||log.photo_url||'';
+    try{const parsed=JSON.parse(raw);if(Array.isArray(parsed))return parsed[0]?.url||'';if(parsed&&typeof parsed==='object')return parsed.url||'';}catch(_){ }
+    return String(raw||'');
+  }
+  function fmtLogTime60(log){try{return log?new Date(log.created_at).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true}):'—'}catch(_){return '—'}}
+  function hours60(a,b){try{const ms=new Date(b)-new Date(a);if(!isFinite(ms)||ms<0)return '0 hour\n0 minute';const mins=Math.floor(ms/60000);return `${Math.floor(mins/60)} hour\n${mins%60} minute`}catch(_){return '0 hour\n0 minute'}}
+  function manager60(){try{return (typeof isManager==='function'&&isManager())||(typeof canMgr59==='function'&&canMgr59())}catch(_){return false}}
+  window.attendancePage60=function(){
+    addStyle60();
+    const mine=todayLogs60();const {tin,tout}=firstInOut60(mine);const inPic=picFromLog60(tin),outPic=picFromLog60(tout);const hasIn=!!tin,hasOut=!!tout;
+    const total=(tin&&tout)?hours60(tin.created_at,tout.created_at):'0 hour\n0 minute';
+    const allRows=(manager60()&&typeof groupRows59==='function')?groupRows59(S.attendanceLogs||[]):[];
+    const summary=(manager60()&&typeof attendanceList59==='function')?`<div class="v59-att-card v60-manager-card"><div class="split" style="justify-content:space-between"><div><h3>Attendance Summary</h3><p class="muted">Staff Time In / Time Out with proof and location.</p></div><button class="btn blue" onclick="exportAttendance59&&exportAttendance59()">Download CSV</button></div><div class="v59-table-scroll">${attendanceList59(allRows)}</div></div>`:'';
+    return `<div class="v60-utak-card"><div class="v60-utak-name">${esc60(S.profile?.full_name||'My Attendance')}</div><div class="v60-utak-hours">${esc60(total).replace(/\n/g,'<br>')}</div><input id="attProof59" type="file" accept="image/*" style="display:none"><input type="checkbox" id="attConfirm59" checked style="display:none"><textarea id="attRemarks59" style="display:none"></textarea><div class="v60-circle-row"><button type="button" class="v60-time-circle in ${hasIn?'done disabled':''}" ${hasIn?'disabled':''} onclick="v60OneTapAttendance('time_in',this)">${inPic?`<img src="${esc60(inPic)}" class="v60-selfie">`:'IN'}</button><button type="button" class="v60-time-circle out ${(!hasIn||hasOut)?'disabled':''} ${hasOut?'done':''}" ${(!hasIn||hasOut)?'disabled':''} onclick="v60OneTapAttendance('time_out',this)">${outPic?`<img src="${esc60(outPic)}" class="v60-selfie outpic">`:'OUT'}</button></div><div class="v60-proof-labels"><div><div class="v60-proof-label"><span class="v60-dot ${hasIn?'ok':''}"></span>Selfie-In</div><div class="v60-proof-time">${hasIn?'Today<br>'+esc60(fmtLogTime60(tin)):'—'}</div></div><div><div class="v60-proof-label"><span class="v60-dot ${hasOut?'warn':''}"></span>Selfie-Out</div><div class="v60-proof-time">${hasOut?'Today<br>'+esc60(fmtLogTime60(tout)):'—'}</div></div></div><div class="v60-mini-actions"><button type="button" class="btn sm ghost" onclick="v60ManualGallery()">Choose from Gallery</button><button type="button" class="btn sm blue" onclick="loadData().then(renderPage)">Refresh</button></div><div id="attPreview59" class="v59-proof-preview"><span class="v59-pill ${hasIn&&!hasOut?'warn':hasOut?'ok':'blue'}">${hasOut?'Time Out complete':hasIn?'Ready for Time Out':'Tap IN to start'}</span></div><div class="v60-note">Tap the IN/OUT circle. Camera opens, then the app saves photo, phone location, and timestamp. Use Gallery only if camera is blocked.</div></div>${summary}`;
+  };
+  let pendingType60='', pendingBtn60=null, saving60=false;
+  window.v60ManualGallery=function(){
+    const logs=todayLogs60();const {tin,tout}=firstInOut60(logs);pendingType60=!tin?'time_in':(!tout?'time_out':'');if(!pendingType60)return toast('Time In and Time Out are already complete today.','error');pendingBtn60=null;const input=q60('#attProof59');if(input){input.click()}
+  };
+  window.v60OneTapAttendance=function(type,btn){
+    const logs=todayLogs60();const {tin,tout}=firstInOut60(logs);if(type==='time_in'&&tin)return toast('Time In already recorded today.','error');if(type==='time_out'&&!tin)return toast('Time In required first.','error');if(type==='time_out'&&tout)return toast('Time Out already recorded today.','error');
+    const input=q60('#attProof59');if(!input)return toast('Attendance photo field is loading. Refresh once.','error');
+    pendingType60=type;pendingBtn60=btn;saving60=false;input.value='';
+    try{if(typeof v58OpenCamera==='function')return v58OpenCamera(input,{prefix:'attendance_'+type,facing:'user'});}catch(e){console.warn(e)}
+    input.click();
+  };
+  function bindAttendance60(){
+    const input=q60('#attProof59'); if(!input||input.__v60Bound)return; input.__v60Bound=true;
+    input.addEventListener('change',async()=>{
+      if(!pendingType60||saving60)return;
+      const file=input.files&&input.files[0];if(!file)return;
+      saving60=true;
+      try{if(typeof setPreview59==='function')setPreview59(file,'Saving '+(pendingType60==='time_in'?'Time In':'Time Out')+'...')}catch(e){}
+      try{const cb=q60('#attConfirm59');if(cb)cb.checked=true;await attendanceLog59(pendingType60,pendingBtn60||q60('.v60-time-circle:not(.disabled)')||input);}
+      catch(e){saving60=false;console.error(e);try{toast(e.message||String(e),'error')}catch(_){}}
+      finally{pendingType60='';pendingBtn60=null;setTimeout(()=>{saving60=false},1200)}
+    });
+  }
+  const oldRenderPage60=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle60();
+    if(S&&S.tab==='attendance'){
+      const page=document.getElementById('page');
+      if(page){try{page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Time In / Time Out</span></div>${window.attendancePage60()}`;bindAttendance60();setTimeout(renderChrome60,80);return;}catch(e){console.error(e);}}
+    }
+    const out=oldRenderPage60.apply(this,arguments);setTimeout(renderChrome60,80);setTimeout(renderChrome60,400);return out;
+  };
+  const oldRenderApp60=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){const out=oldRenderApp60.apply(this,arguments);setTimeout(renderChrome60,120);setTimeout(renderChrome60,600);return out;};
+  // Stop any older MutationObserver from recreating bottom bars permanently.
+  const mo60=new MutationObserver(()=>{if(!window.__v60Clean){window.__v60Clean=true;setTimeout(()=>{window.__v60Clean=false;renderChrome60()},80)}});
+  try{mo60.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
+  document.addEventListener('DOMContentLoaded',()=>{addStyle60();setTimeout(renderChrome60,400);setTimeout(renderChrome60,1200)});
+  console.log('V60 no-floating-nav + UTAK-style attendance loaded');
+})();
+/* ================= END V60 ================= */
+
+/* ================= V61 COMPACT FRIENDLY UI FINAL =================
+   Goals:
+   1) No floating buttons and no floating chatbox.
+   2) Left menu only; compact top header.
+   3) Cleaner employee menu and dashboard.
+   4) UTAK-style attendance stays as the Time In / Time Out screen.
+   5) Mobile tables become clean cards for missions and policies.
+*/
+(function(){
+  const q61=(s,r=document)=>r.querySelector(s);
+  const qa61=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const safe61=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money61=(n)=>{try{return (typeof money==='function')?money(n):String(Number(n||0).toFixed(0));}catch(_){return String(n||0)}};
+  const mobile61=()=>window.matchMedia && window.matchMedia('(max-width:820px)').matches;
+  const manager61=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return false}};
+  const owner61=()=>{try{return typeof isOwner==='function'&&isOwner()}catch(_){return false}};
+
+  function addStyle61(){
+    if(document.getElementById('v61-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v61-style">
+      :root{--v61-safe-top:env(safe-area-inset-top,0px);--v61-safe-bottom:env(safe-area-inset-bottom,0px)}
+      .v61-home-grid{display:grid;gap:12px}.v61-kpi-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.v61-kpi-card{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:18px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.06)}.v61-kpi-card b{font-size:24px;color:#991b1b}.v61-kpi-card span{display:block;font-size:11px;font-weight:1000;color:#64748b;text-transform:uppercase;letter-spacing:.04em}.v61-primary-card{background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:20px;padding:16px;box-shadow:0 14px 32px rgba(15,23,42,.08)}.v61-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.v61-att-mini{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.v61-att-dot{width:12px;height:12px;border-radius:999px;background:#d1d5db;display:inline-block;margin-right:6px}.v61-att-dot.ok{background:#86efac}.v61-att-dot.warn{background:#fdba74}.v61-card-list{display:grid;gap:10px}.v61-list-card{border:1px solid var(--line,#e5e7eb);border-radius:16px;background:#fff;padding:13px;box-shadow:0 8px 18px rgba(15,23,42,.05)}.v61-list-card h4{margin:0 0 6px;color:#111827;font-size:16px}.v61-list-card .meta{font-size:12px;color:#64748b;display:grid;gap:2px}.v61-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}.v61-chat-card{display:grid;grid-template-rows:auto minmax(260px,1fr) auto;min-height:min(72vh,720px);padding:0!important;overflow:hidden}.v61-chat-title{padding:12px 14px;background:linear-gradient(135deg,#b91c1c,#7f1d1d);color:#fff;display:flex;align-items:center;justify-content:space-between}.v61-chat-title h3{margin:0;color:#fff}.v61-chat-card .chat-body{min-height:280px;max-height:60vh;overflow:auto;background:#fff7ed}.v61-chat-card .chat-compose{border-top:1px solid #e5e7eb;background:#fff;padding:10px}.v61-chat-card .chat-shell{height:auto;min-height:280px}.v61-chat-card .chat-rooms{max-height:240px}.v61-policy-card .policy-code{font-weight:1000;color:#111827}.v61-policy-card .policy-desc{color:#64748b;margin-top:3px;line-height:1.25}.v61-policy-card .pill{margin-top:6px}.v61-muted{color:#64748b}.v61-hide{display:none!important}
+      @media(max-width:820px){
+        html,body{width:100%!important;overflow-x:hidden!important;background:#f8fafc!important}.app{display:block!important;min-height:100svh!important}.main{padding:8px 10px calc(16px + var(--v61-safe-bottom))!important}.v50-bottom-nav,.v58-bottom-nav,#v50BottomNav,#v58BottomNav,.v58-more-sheet,.v58-more-overlay,#v58MoreSheet,#v58MoreOverlay,#v58TopMore,.v58-top-more,.chat-bubble,#chatBubble,.chat-panel,#chatPanel,.v50-install-hint{display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important}.topbar{position:sticky!important;top:0!important;z-index:90!important;display:block!important;margin:0 -10px 10px!important;padding:calc(8px + var(--v61-safe-top)) 10px 9px!important;border-radius:0 0 14px 14px!important;background:#fff!important;border-top:4px solid #facc15!important;box-shadow:0 8px 22px rgba(15,23,42,.08)!important}.v50-toprow{display:flex!important;align-items:center!important;gap:9px!important;width:100%!important}.v50-toprow>#v50MenuToggle,.v50-mobile-toggle{display:inline-flex!important;visibility:visible!important;pointer-events:auto!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;width:50px!important;min-width:50px!important;min-height:46px!important;border-radius:15px!important;background:#111827!important;color:#fff!important;font-weight:1000!important;padding:6px!important;box-shadow:0 7px 16px rgba(15,23,42,.16)!important}.v50-toprow>#v50MenuToggle{font-size:0!important}.v50-toprow>#v50MenuToggle:before{content:'☰';font-size:24px;line-height:1;display:block}.v50-toprow>#v50MenuToggle:after{content:''!important;display:none!important}.v50-toprow>div{min-width:0!important;flex:1 1 auto!important}.topbar h2{font-size:15px!important;line-height:1.12!important;margin:0!important;color:#991b1b!important;word-break:break-word!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.topbar .small{font-size:10px!important;line-height:1.15!important}.topbar>.split{display:none!important}#page>.split:first-child{display:none!important}.card,.v47-card,.launch-card,.notice,.v59-att-card,.v60-utak-card{border-radius:15px!important;max-width:100%!important}.card,.v47-card,.launch-card,.v59-att-card,.v60-utak-card{padding:12px!important}.card h3,.v47-card h3,.launch-card h3{font-size:20px!important;margin-top:0!important}.grid.two,.grid.three,.grid.four,.v54-grid{grid-template-columns:1fr!important}.grid{gap:10px!important}.split{gap:7px!important}.btn{min-height:40px!important;border-radius:13px!important}.btn.sm{min-height:32px!important;padding:7px 9px!important}.input,select,textarea{font-size:16px!important;border-radius:14px!important;padding:12px!important}textarea{min-height:104px!important}.num{font-size:25px!important}.kpi{font-size:10px!important}.v61-kpi-row{grid-template-columns:repeat(3,1fr);gap:7px}.v61-kpi-card{padding:10px;border-radius:14px}.v61-kpi-card b{font-size:20px}.v61-primary-card{border-radius:16px;padding:13px}.v61-att-mini{grid-template-columns:1fr}.v61-chat-card{min-height:calc(100svh - 116px)}.v61-chat-card .chat-shell{display:grid!important;grid-template-columns:1fr!important}.v61-chat-card .chat-rooms{display:flex!important;gap:6px;overflow:auto;border-right:0!important;border-bottom:1px solid #e5e7eb}.v61-chat-card .chat-room-tab{width:auto!important;min-width:112px!important}.v61-chat-card .chat-compose .row{display:grid!important}.v61-chat-card .chat-body{max-height:calc(100svh - 270px)}.v60-mini-actions .btn.sm.blue{display:none!important}.v60-note{display:none!important}.v60-utak-card{box-shadow:0 10px 24px rgba(15,23,42,.06)!important}.v60-utak-name{font-size:20px!important}.v60-time-circle{width:118px!important;height:118px!important;font-size:22px!important}.v60-selfie{width:108px!important;height:108px!important}table{display:block!important;max-width:100%!important;overflow-x:auto!important;white-space:normal!important}th,td{white-space:normal!important;min-width:110px!important}.v49-policy-results,.v59-table-scroll{max-width:100%!important;overflow-x:auto!important}.sidebar{position:fixed!important;z-index:180!important;top:0!important;left:0!important;width:min(84vw,330px)!important;height:100svh!important;min-height:100svh!important;overflow:auto!important;transform:translateX(-110%);transition:.2s ease!important;border-radius:0 22px 22px 0!important;padding-top:calc(16px + var(--v61-safe-top))!important}.v50-menu-open .sidebar{transform:translateX(0)!important}.sidebar .brand{margin-bottom:10px!important}.sidebar .nav{gap:6px!important}.sidebar .nav button{padding:11px!important;border-radius:12px!important}.v50-overlay{display:block!important;position:fixed!important;inset:0!important;background:rgba(15,23,42,.52)!important;z-index:170!important;opacity:0;pointer-events:none;transition:.2s ease}.v50-menu-open .v50-overlay{opacity:1!important;pointer-events:auto!important}.modal{z-index:250!important;padding:10px!important}.modal-card{width:96vw!important;max-height:88svh!important;border-radius:20px!important;padding:14px!important}.academy-viewer,.training-viewer,#trainingViewer{padding-bottom:14px!important}.thumb{width:68px!important;height:50px!important}.v61-list-card .btn{width:auto!important}.v61-list-card .meta{font-size:12px}.v61-actions .btn{flex:1 1 auto}.v61-policy-card{overflow:hidden}.v61-policy-card .policy-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} }
+      @media(max-width:390px){.v61-kpi-row{grid-template-columns:1fr}.v60-time-circle{width:108px!important;height:108px!important}.v60-selfie{width:98px!important;height:98px!important}.topbar h2{font-size:14px!important}}
+    </style>`);
+  }
+
+  function removeFloating61(){
+    try{
+      document.body.classList.remove('v58-more-open');
+      ['v50BottomNav','v58BottomNav','v58MoreSheet','v58MoreOverlay','v58TopMore','chatBubble','chatPanel'].forEach(id=>q61('#'+id)?.remove());
+      qa61('.v50-bottom-nav,.v58-bottom-nav,.v58-more-sheet,.v58-more-overlay,.v58-top-more,.chat-bubble,.chat-panel,.v50-install-hint').forEach(el=>el.remove());
+    }catch(e){}
+  }
+
+  function ensureMenu61(){
+    try{
+      const tb=q61('.topbar'); if(!tb)return;
+      if(!q61('#v50MenuToggle')){
+        const first=tb.firstElementChild;
+        const wrap=document.createElement('div');wrap.className='v50-toprow';
+        const btn=document.createElement('button');btn.id='v50MenuToggle';btn.className='v50-mobile-toggle';btn.type='button';btn.setAttribute('aria-label','Open menu');btn.textContent='☰';
+        if(first){tb.insertBefore(wrap,first);wrap.appendChild(btn);wrap.appendChild(first)}else tb.appendChild(btn);
+      }
+      const btn=q61('#v50MenuToggle'); if(btn)btn.onclick=()=>document.body.classList.toggle('v50-menu-open');
+      if(!q61('#v50Overlay')){document.body.insertAdjacentHTML('beforeend','<div id="v50Overlay" class="v50-overlay"></div>');}
+      const ov=q61('#v50Overlay'); if(ov)ov.onclick=()=>document.body.classList.remove('v50-menu-open');
+    }catch(e){console.warn('V61 menu guard skipped',e)}
+  }
+  function clean61(){addStyle61();removeFloating61();ensureMenu61();}
+  window.v61CleanUI=clean61;
+
+  // Disable all floating chatbox versions. Chat will live inside the Chat page only.
+  window.renderFloatingChat=function(){removeFloating61();};
+
+  const oldNav61=window.nav || (typeof nav==='function'?nav:null);
+  if(oldNav61 && !window.__v61NavPatched){
+    window.__v61NavPatched=true;
+    window.nav=nav=function(){
+      const base=oldNav61.apply(this,arguments)||[];
+      if(manager61()||owner61())return base;
+      const labels={dashboard:'Home',attendance:'Time In / Time Out',notifications:'Alerts',memos:'Memos',missions:'Missions',training:'Training',academy:'Training',records:'My Records',chat:'Chat / Messages',profile:'Profile'};
+      const by=new Map(base.map(x=>[x[0],x]));
+      if(!by.has('attendance'))by.set('attendance',['attendance','Time In / Time Out']);
+      if(!by.has('chat'))by.set('chat',['chat','Chat / Messages']);
+      const order=['dashboard','attendance','notifications','memos','missions','training','academy','records','chat','profile'];
+      const out=[]; order.forEach(k=>{if(by.has(k)&&!out.find(x=>x[0]===k))out.push([k,labels[k]||by.get(k)[1]]);});
+      return out;
+    };
+  }
+
+  // Clean, compact employee home.
+  window.empDash=empDash=function(){
+    const p=S.profile||{};
+    const myTasks=(S.tasks||[]).filter(t=>String(t.assigned_to_employee_id)===String(p.id));
+    const pendingTasks=myTasks.filter(t=>!['approved','completed','cancelled'].includes(String(t.status||'').toLowerCase()));
+    const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));
+    const pendingMemos=(S.memos||[]).filter(m=>!acked.has(String(m.id))).length;
+    let attStatus='Tap to record Time In'; let attClass='';
+    try{
+      const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Manila'});
+      const logs=(S.attendanceLogs||[]).filter(r=>String(r.employee_id)===String(p.id)&&String(r.work_date||'').slice(0,10)===today).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+      const tin=logs.find(r=>String(r.event_type)==='time_in'), tout=logs.find(r=>String(r.event_type)==='time_out');
+      if(tin&&!tout){attStatus='Time In done · Ready for Time Out';attClass='warn'};
+      if(tin&&tout){attStatus='Attendance complete today';attClass='ok'};
+    }catch(_){ }
+    return `<div class="v61-home-grid"><div class="v61-kpi-row"><div class="v61-kpi-card"><span>V-Points</span><b>${money61(p.current_points||100)}</b></div><div class="v61-kpi-card"><span>Alerts</span><b>${pendingMemos}</b></div><div class="v61-kpi-card"><span>Missions</span><b>${pendingTasks.length}</b></div></div><div class="v61-primary-card"><div class="v61-att-mini"><div><h3 style="margin:0 0 4px;color:#7f1d1d">Time In / Time Out</h3><div class="v61-muted"><span class="v61-att-dot ${attClass}"></span>${safe61(attStatus)}</div></div><button class="btn green" onclick="v61Go('attendance')">Open Time Clock</button></div></div><div class="v61-primary-card"><div class="v61-row"><div><h3 style="margin:0 0 4px;color:#7f1d1d">Today’s Mission</h3><div class="v61-muted">${pendingTasks[0]?safe61(pendingTasks[0].title):'No active mission right now.'}</div></div><button class="btn blue" onclick="v61Go('missions')">View</button></div></div></div>`;
+  };
+
+  const oldMissionActions61=window.missionActions || (typeof missionActions==='function'?missionActions:null);
+  const oldTaskTable61=window.taskTable || (typeof taskTable==='function'?taskTable:null);
+  window.taskTable=taskTable=function(arr,manage){
+    if(!mobile61() && oldTaskTable61){
+      try{ return oldTaskTable61(arr,manage); }catch(e){ }
+    }
+    arr=arr||[];
+    return `<div class="v61-card-list">${arr.map(t=>`<div class="v61-list-card"><h4>${safe61(t.title)}</h4><div class="meta"><div><b>Task:</b> ${safe61(t.task_items||'-')}</div><div><b>Assigned to:</b> ${safe61((typeof safeName==='function'?safeName(t.assigned_to_employee_id):'-'))}</div><div><b>From:</b> ${safe61((typeof safeName==='function'?safeName(t.assigned_by_employee_id):'-'))}</div><div><b>Status:</b> ${safe61(t.status||'-')}</div>${t.due_at?`<div><b>Due:</b> ${(typeof fmt==='function'?fmt(t.due_at):safe61(t.due_at))}</div>`:''}</div>${t.proof_url?`<div style="margin-top:8px">${(typeof img==='function'?img(t.proof_url):'')}</div>`:''}<div class="v61-actions">${oldMissionActions61?oldMissionActions61(t,manage):''}</div></div>`).join('')||'<div class="empty">No missions.</div>'}</div>`;
+  };
+  function legacyTaskTable61(arr,manage){return `<table><tbody>${(arr||[]).map(t=>`<tr><td>${safe61(t.title)}</td><td>${safe61(t.status)}</td></tr>`).join('')}</tbody></table>`}
+  
+  const oldPolicyTable61=window.policyTable || (typeof policyTable==='function'?policyTable:null);
+  window.policyTable=policyTable=function(arr,canEdit){
+    if(!mobile61() && oldPolicyTable61)return oldPolicyTable61(arr,canEdit);
+    arr=arr||[];
+    return `<div class="v61-card-list">${arr.map(p=>`<div class="v61-list-card v61-policy-card"><div class="policy-code">${safe61(p.policy_code||p.title||'Policy')}</div><div class="policy-desc">${safe61(p.description||p.policy_title||p.title||'')}</div><div class="meta"><div><b>Category:</b> ${safe61(p.category||p.department_owner||'-')}</div><div><b>Points:</b> ${money61(p.deduction_points??p.points??0)}</div><div><b>Basis:</b> ${safe61(p.source||p.evidence_required||'-')}</div></div>${p.severity?`<span class="pill ${String(p.severity).toLowerCase()==='critical'?'red':'yellow'}">${safe61(p.severity)}</span>`:''}${canEdit?`<div class="v61-actions"><button class="btn sm blue editPolicy" data-id="${safe61(p.id)}">Edit</button><button class="btn sm dark delPolicy" data-id="${safe61(p.id)}">Delete</button></div>`:''}</div>`).join('')||'<div class="empty">No policy rules yet.</div>'}</div>`;
+  };
+
+  function chatCompactPage61(){
+    return `<div class="card v61-chat-card"><div class="v61-chat-title"><h3>Chat / Messages</h3><button class="btn sm green" id="newRoom">New</button></div><div id="chatBody" class="chat-body"></div><div class="chat-compose"><div class="row"><input id="chatText" class="input" placeholder="Type message..."><button class="btn blue" id="sendChat">Send</button></div><div class="row" style="margin-top:7px"><input id="chatPhoto" type="file" accept="image/*" multiple class="input"><span class="small muted">Photo optional.</span></div></div></div>`;
+  }
+  window.chatPage=chatPage=function(){return chatCompactPage61();};
+  function bindChatPage61(){
+    if(S&&S.tab==='chat'){
+      try{ if(typeof renderChatBody==='function')renderChatBody(); }catch(e){const b=q61('#chatBody'); if(b)b.innerHTML='<div class="empty">Chat is loading.</div>';}
+      setTimeout(()=>{try{q61('#newRoom')&&(q61('#newRoom').onclick=newChatRoom);q61('#sendChat')&&(q61('#sendChat').onclick=sendChatMessage);}catch(_){ }},80);
+    }
+  }
+
+  window.v61Go=function(tab){try{S.tab=tab;document.body.classList.remove('v50-menu-open','v58-more-open');if(typeof loadData==='function'){loadData().then(()=>{renderPage();setTimeout(clean61,80);}).catch(()=>{renderPage();setTimeout(clean61,80);});}else{renderPage();setTimeout(clean61,80);}}catch(e){console.warn(e)}};
+
+  const oldRenderPage61=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle61();
+    if(S&&S.tab==='chat'){
+      const page=q61('#page');
+      if(page){page.innerHTML=chatCompactPage61();bindChatPage61();setTimeout(clean61,60);return;}
+    }
+    const out=oldRenderPage61.apply(this,arguments);
+    setTimeout(()=>{clean61();bindChatPage61();},60);
+    setTimeout(clean61,450);
+    return out;
+  };
+  const oldRenderApp61=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){const out=oldRenderApp61.apply(this,arguments);setTimeout(clean61,80);setTimeout(clean61,700);return out;};
+
+  const mo61=new MutationObserver(()=>{if(!window.__v61CleanQueued){window.__v61CleanQueued=true;setTimeout(()=>{window.__v61CleanQueued=false;clean61();},80)}});
+  try{mo61.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
+  document.addEventListener('DOMContentLoaded',()=>{addStyle61();setTimeout(clean61,300);setTimeout(clean61,1000)});
+  console.log('V61 compact friendly UI loaded');
+})();
+/* ================= END V61 ================= */
+
+
+
+/* ================= V62 CASE CENTER + PERFECT PHONE MONITORING =================
+   Adds: Case Center, My Actions, compact monitoring dashboard, closing actions for problems,
+   and final mobile-first card layout. Existing barcode and attendance camera code remain untouched.
+*/
+(function(){
+  const $62=(s,r=document)=>r.querySelector(s);
+  const $$62=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const safe62=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const fmt62=d=>{try{return (typeof fmt==='function')?fmt(d):(d?new Date(d).toLocaleString():'-')}catch(_){return d||'-'}};
+  const money62=n=>{try{return (typeof money==='function')?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n||0)}};
+  const mobile62=()=>window.matchMedia&&window.matchMedia('(max-width:820px)').matches;
+  const manager62=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return false}};
+  const owner62=()=>{try{return typeof isOwner==='function'&&isOwner()}catch(_){return false}};
+  const todayPH62=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const emp62=id=>{try{return (typeof emp==='function'?emp(id):null)||{full_name:'-',branch:'-'}}catch(_){return {full_name:'-',branch:'-'}}};
+  const img62=url=>{try{return url&&typeof img==='function'?img(url):''}catch(_){return ''}};
+  const toast62=(m,t)=>{try{typeof toast==='function'?toast(m,t):alert(m)}catch(_){alert(m)}};
+  function addStyle62(){
+    if(document.getElementById('v62-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v62-style">
+      .v62-shell{display:grid;gap:14px}.v62-hero{background:linear-gradient(135deg,#7f1d1d,#b91c1c);color:#fff;border-radius:24px;padding:18px;box-shadow:0 18px 44px rgba(127,29,29,.22);overflow:hidden;position:relative}.v62-hero:after{content:'';position:absolute;right:-50px;top:-60px;width:160px;height:160px;border-radius:999px;background:rgba(250,204,21,.28)}.v62-hero h2{margin:0 0 6px;font-size:25px;line-height:1.08}.v62-hero p{margin:0;color:#fee2e2}.v62-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.v62-kpi{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:20px;padding:14px;box-shadow:0 10px 28px rgba(15,23,42,.05)}.v62-kpi span{display:block;color:#64748b;font-size:12px;font-weight:1000;text-transform:uppercase;letter-spacing:.04em}.v62-kpi b{display:block;color:#7f1d1d;font-size:30px;line-height:1;margin-top:7px}.v62-section{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:22px;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.05)}.v62-section h3{margin:0 0 10px;color:#7f1d1d}.v62-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}.v62-tab{border-radius:999px;padding:8px 11px;background:#f1f5f9;color:#334155;font-weight:1000;font-size:12px}.v62-tab.active{background:#b91c1c;color:#fff}.v62-card-list{display:grid;gap:10px}.v62-case{border:1px solid #e5e7eb;border-radius:18px;padding:14px;background:#fff;display:grid;gap:9px}.v62-case-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.v62-case-title{font-size:17px;font-weight:1000;color:#0f172a;line-height:1.15}.v62-case-meta{display:grid;gap:4px;color:#64748b;font-size:13px}.v62-case-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}.v62-status{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:1000;white-space:nowrap}.v62-status.open{background:#fee2e2;color:#991b1b}.v62-status.explain{background:#ffedd5;color:#9a3412}.v62-status.action{background:#fef3c7;color:#92400e}.v62-status.validate{background:#dbeafe;color:#1e40af}.v62-status.closed{background:#dcfce7;color:#166534}.v62-dot{width:10px;height:10px;border-radius:999px;background:#ef4444;display:inline-block;margin-right:6px}.v62-action{border:1px solid #e5e7eb;border-left:6px solid #b91c1c;border-radius:18px;padding:14px;background:#fff;display:grid;gap:8px}.v62-action h4{margin:0;color:#0f172a;font-size:18px}.v62-muted{color:#64748b}.v62-dashboard-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.v62-mini-list{display:grid;gap:8px}.v62-mini-item{border:1px solid #e5e7eb;background:#f8fafc;border-radius:15px;padding:11px;display:flex;justify-content:space-between;gap:10px;align-items:center}.v62-stage{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin:12px 0}.v62-stage div{height:7px;border-radius:999px;background:#e5e7eb}.v62-stage div.on{background:#b91c1c}.v62-empty{padding:20px;border:1px dashed #cbd5e1;border-radius:18px;text-align:center;background:#f8fafc;color:#64748b}.v62-search-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.v62-close-note{background:#f0fdf4;border-left:6px solid #22c55e;border-radius:16px;padding:12px;color:#14532d}.v62-critical{background:#fef2f2;border-left:6px solid #ef4444;border-radius:16px;padding:12px;color:#7f1d1d}.v62-table-safe{max-width:100%;overflow:auto}.nav button[data-tab="case_center"],.nav button[data-tab="my_actions"]{background:rgba(250,204,21,.10);border:1px solid rgba(250,204,21,.22)}
+      @media(max-width:820px){.v62-hero{border-radius:18px;padding:15px}.v62-hero h2{font-size:21px}.v62-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v62-kpi{border-radius:16px;padding:12px}.v62-kpi b{font-size:25px}.v62-dashboard-grid{grid-template-columns:1fr}.v62-section{border-radius:18px;padding:13px}.v62-case{border-radius:16px;padding:12px}.v62-case-head{display:grid}.v62-case-title{font-size:16px}.v62-case-actions .btn{width:100%}.v62-search-row{grid-template-columns:1fr}.v62-stage{grid-template-columns:repeat(5,1fr)}.sidebar .nav{display:grid!important;grid-template-columns:1fr!important}.main{padding-bottom:18px!important}table{font-size:13px}.topbar>.split{display:none!important}#page>.split:first-child #pageRef{display:none!important}}
+    </style>`);
+  }
+  function normStatus62(raw){
+    const s=String(raw||'open').toLowerCase().replace(/[_\s-]+/g,'_');
+    if(['closed','resolved','resolved_true','resolved_false','cancelled','approved','validated','completed','done','closed_deducted','closed_/_deducted'].includes(s))return 'closed';
+    if(['for_validation','submitted','pending_validation','pending_merit','under_review'].includes(s))return 'validate';
+    if(['for_action','accepted','assigned','in_progress'].includes(s))return 'action';
+    if(['for_explanation','disagreed','needs_explanation','read','under_investigation'].includes(s))return 'explain';
+    return 'open';
+  }
+  function statusLabel62(st){return ({open:'Open',explain:'For Explanation',action:'For Action',validate:'For Validation',closed:'Closed'}[st]||'Open')}
+  function stageIndex62(st){return ({open:1,explain:2,action:3,validate:4,closed:5}[st]||1)}
+  function statusPill62(st){return `<span class="v62-status ${st}">${statusLabel62(st)}</span>`}
+  function belongs62(c){
+    if(owner62())return true;
+    if(manager62())return String(c.branch||'')===String(S.profile?.branch||'') || String(c.owner_id||'')===String(S.profile?.id||'') || String(c.employee_id||'')===String(S.profile?.id||'');
+    return String(c.employee_id||'')===String(S.profile?.id||'') || String(c.owner_id||'')===String(S.profile?.id||'') || String(c.reporter_id||'')===String(S.profile?.id||'');
+  }
+  function caseKey62(type,id){return `${type}:${id}`}
+  function parsePhoto62(raw){
+    if(!raw)return '';
+    try{const p=JSON.parse(raw); if(Array.isArray(p))return p[0]?.url||''; if(p&&typeof p==='object')return p.url||'';}catch(_){ }
+    return String(raw||'');
+  }
+  function allCases62(){
+    const cases=[];
+    const today=todayPH62();
+    (S.violations||[]).forEach(v=>{
+      const e=emp62(v.employee_id); const st=normStatus62(v.status||'pending_validation');
+      cases.push({key:caseKey62('violation',v.id),type:'violation',source_table:'violations',source_id:v.id,kind:'Violation Case',title:v.violation_type||v.type_name||'Violation Report',description:v.description||v.manager_remarks||'',employee_id:v.employee_id,employee_name:e.full_name,branch:v.branch||e.branch,status:st,raw_status:v.status||'pending_validation',evidence:v.evidence_url,created_at:v.created_at,owner_id:v.reported_by,points:v.point_deduction??v.points??0,record:v,closing_required:st!=='closed'});
+    });
+    (S.reports||[]).forEach(r=>{
+      const e=r.reported_employee_id?emp62(r.reported_employee_id):{full_name:r.reported_name_manual||'Manual / Not Listed',branch:r.branch}; const st=normStatus62(r.status||'new_private');
+      cases.push({key:caseKey62('report',r.id),type:'report',source_table:'investigation_reports',source_id:r.id,kind:'Private Report Case',title:'Private report / investigation',description:r.story||'',employee_id:r.reported_employee_id,employee_name:e.full_name,branch:r.branch||e.branch,status:st,raw_status:r.status||'new_private',evidence:r.evidence_url,created_at:r.happened_at||r.created_at,owner_id:r.resolved_by||r.reporter_employee_id,reporter_id:r.reporter_employee_id,record:r,closing_required:st!=='closed'});
+    });
+    (S.tasks||[]).forEach(t=>{
+      const e=emp62(t.assigned_to_employee_id); const st=normStatus62(t.status||'assigned');
+      if(st==='closed' && !manager62())return;
+      cases.push({key:caseKey62('task',t.id),type:'task',source_table:'vscore_tasks',source_id:t.id,kind:String(t.source_type||'').includes('case')?'Corrective Action':'Mission / Task',title:t.title||'Assigned task',description:t.task_items||'',employee_id:t.assigned_to_employee_id,employee_name:e.full_name,branch:t.branch||e.branch,status:st,raw_status:t.status||'assigned',evidence:t.proof_url,created_at:t.created_at,due_at:t.due_at,owner_id:t.assigned_by_employee_id,record:t,closing_required:!['closed','approved','cancelled'].includes(String(t.status||'').toLowerCase())});
+    });
+    (S.fsqa||[]).forEach(f=>{
+      const critical=String(f.critical_failure||f.has_critical||f.critical||'false')==='true' || Number(f.score||f.score_percent||100)<85;
+      const st=normStatus62(f.status||f.rectification_status||(critical?'for_action':'closed'));
+      if(!critical && st==='closed')return;
+      cases.push({key:caseKey62('fsqa',f.id),type:'fsqa',source_table:'fsqa_audits',source_id:f.id,kind:'FSQA Finding',title:`FSQA Audit ${money62(f.score||f.score_percent||0)}%`,description:f.findings||f.notes||'FSQA audit requires monitoring.',employee_id:null,employee_name:f.branch||'Branch',branch:f.branch||S.profile?.branch,status:st,raw_status:f.status||f.rectification_status||'for_action',evidence:f.evidence_url||f.audit_evidence_url,created_at:f.created_at,owner_id:f.created_by,record:f,closing_required:st!=='closed'});
+    });
+    try{
+      const logs=(S.attendanceLogs||[]).filter(x=>String(x.work_date||'').slice(0,10)===today);
+      const ids=(manager62()?S.employees:[S.profile]).filter(Boolean).map(e=>e.id);
+      ids.forEach(id=>{
+        const e=emp62(id); const mine=logs.filter(x=>String(x.employee_id)===String(id));
+        const tin=mine.find(x=>String(x.event_type)==='time_in'), tout=mine.find(x=>String(x.event_type)==='time_out');
+        if(!tin || (tin&&!tout))cases.push({key:caseKey62('attendance',`${id}_${today}`),type:'attendance',kind:'Attendance Action',title:!tin?'No Time In today':'Missing Time Out today',description:'Attendance needs staff action before closing.',employee_id:id,employee_name:e.full_name,branch:e.branch,status:!tin?'open':'action',raw_status:!tin?'no_time_in':'missing_time_out',evidence:parsePhoto62(tin?.photo_json||tin?.photo_url),created_at:new Date().toISOString(),owner_id:id,record:{employee_id:id,work_date:today,tin,tout},closing_required:true});
+      });
+    }catch(_){ }
+    try{
+      const active=(typeof activeMemos==='function'?activeMemos():S.memos||[]); const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));
+      active.forEach(m=>{ if(!acked.has(String(m.id)))cases.push({key:caseKey62('memo',m.id),type:'memo',kind:'Memo Acknowledgment',title:m.title||'Mandatory memo',description:m.content||'',employee_id:S.profile?.id,employee_name:S.profile?.full_name,branch:S.profile?.branch,status:'open',raw_status:'unacknowledged',evidence:m.attachment_url,created_at:m.created_at,owner_id:S.profile?.id,record:m,closing_required:true}); });
+    }catch(_){ }
+    return cases.filter(belongs62).sort((a,b)=>{const ia=stageIndex62(a.status),ib=stageIndex62(b.status); if(ia!==ib)return ia-ib; return new Date(b.created_at||0)-new Date(a.created_at||0)});
+  }
+  function counts62(cases){return {open:cases.filter(c=>c.status==='open').length,explain:cases.filter(c=>c.status==='explain').length,action:cases.filter(c=>c.status==='action').length,validate:cases.filter(c=>c.status==='validate').length,closed:cases.filter(c=>c.status==='closed').length,total:cases.length}}
+  function caseCard62(c,compact=false){
+    const stage=stageIndex62(c.status);
+    return `<div class="v62-case" data-case="${safe62(c.key)}"><div class="v62-case-head"><div><div class="v62-case-title">${safe62(c.title)}</div><div class="v62-case-meta"><span><b>${safe62(c.kind)}</b> · ${safe62(c.employee_name||'-')}</span><span>${safe62(c.branch||'-')} · ${fmt62(c.created_at)}</span>${c.due_at?`<span>Due: ${fmt62(c.due_at)}</span>`:''}</div></div>${statusPill62(c.status)}</div><div class="v62-stage">${[1,2,3,4,5].map(i=>`<div class="${i<=stage?'on':''}"></div>`).join('')}</div>${compact?'':`<div class="v62-muted">${safe62(String(c.description||'').slice(0,220))}</div>${c.evidence?`<div>${img62(c.evidence)}</div>`:''}`}<div class="v62-case-actions">${caseActions62(c,compact)}</div></div>`;
+  }
+  function caseActions62(c,compact){
+    const b=[];
+    if(c.type==='memo')b.push(`<button class="btn sm yellow" onclick="v62AckMemo('${safe62(c.source_id)}',this)">Acknowledge</button>`);
+    else if(c.type==='attendance')b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
+    else if(c.type==='task'){
+      if(String(c.raw_status).toLowerCase()==='assigned')b.push(`<button class="btn sm green" onclick="acceptTask('${safe62(c.source_id)}',this)">Accept</button>`);
+      if(!['submitted','approved','cancelled','closed'].includes(String(c.raw_status).toLowerCase()))b.push(`<button class="btn sm blue" onclick="proofTask('${safe62(c.source_id)}')">Submit Proof</button>`);
+      if(manager62()&&['submitted','pending_merit','for_validation'].includes(String(c.raw_status).toLowerCase()))b.push(`<button class="btn sm green" onclick="approveTask('${safe62(c.source_id)}',this)">Validate / Close</button>`);
+    } else {
+      if(!manager62() && c.status==='explain')b.push(`<button class="btn sm orange" onclick="v62EmployeeExplain('${safe62(c.key)}',this)">Submit Explanation</button>`);
+      if(manager62() && c.status!=='closed'){
+        if(c.status==='open')b.push(`<button class="btn sm orange" onclick="v62RequestExplanation('${safe62(c.key)}',this)">Request Explanation</button>`);
+        if(c.status==='explain'||c.status==='open')b.push(`<button class="btn sm blue" onclick="v62SetCorrectiveAction('${safe62(c.key)}',this)">Set Action</button>`);
+        if(c.status==='action')b.push(`<button class="btn sm yellow" onclick="v62MoveValidation('${safe62(c.key)}',this)">For Validation</button>`);
+        b.push(`<button class="btn sm green" onclick="v62CloseCase('${safe62(c.key)}',this)">Close Case</button>`);
+      }
+    }
+    b.push(`<button class="btn sm ghost" onclick="v62ViewCase('${safe62(c.key)}')">Details</button>`);
+    return b.join(' ');
+  }
+  function caseByKey62(key){return allCases62().find(c=>String(c.key)===String(key));}
+  function caseCenterPage62(){
+    const cases=allCases62(); const c=counts62(cases); const filter=localStorage.getItem('v62_case_filter')||'active';
+    const filtered=filter==='active'?cases.filter(x=>x.status!=='closed'):filter==='all'?cases:cases.filter(x=>x.status===filter);
+    return `<div class="v62-shell"><div class="v62-hero"><h2>Case Center</h2><p>Every problem has an owner, status, proof, and closing action.</p></div><div class="v62-kpis"><div class="v62-kpi"><span>Open</span><b>${c.open}</b></div><div class="v62-kpi"><span>For Action</span><b>${c.action}</b></div><div class="v62-kpi"><span>Validation</span><b>${c.validate}</b></div><div class="v62-kpi"><span>Closed</span><b>${c.closed}</b></div></div><div class="v62-section"><div class="v62-tabs">${[['active','Active'],['open','Open'],['explain','Explanation'],['action','Action'],['validate','Validation'],['closed','Closed'],['all','All']].map(x=>`<button class="v62-tab ${filter===x[0]?'active':''}" data-v62-filter="${x[0]}">${x[1]}</button>`).join('')}</div><div class="v62-card-list">${filtered.map(x=>caseCard62(x,false)).join('')||'<div class="v62-empty">No cases in this filter.</div>'}</div></div></div>`;
+  }
+  function myActionsPage62(){
+    const cases=allCases62().filter(c=>c.status!=='closed' && (String(c.employee_id||'')===String(S.profile?.id||'') || String(c.owner_id||'')===String(S.profile?.id||'') || String(c.reporter_id||'')===String(S.profile?.id||'')));
+    const urgent=cases.filter(c=>['open','explain','action','validate'].includes(c.status));
+    return `<div class="v62-shell"><div class="v62-hero"><h2>My Actions</h2><p>This is your personal to-do list. Tap Do Now until every item is closed.</p></div><div class="v62-kpis"><div class="v62-kpi"><span>Need Action</span><b>${urgent.length}</b></div><div class="v62-kpi"><span>Memo</span><b>${urgent.filter(c=>c.type==='memo').length}</b></div><div class="v62-kpi"><span>Mission</span><b>${urgent.filter(c=>c.type==='task').length}</b></div><div class="v62-kpi"><span>Case</span><b>${urgent.filter(c=>!['memo','task','attendance'].includes(c.type)).length}</b></div></div><div class="v62-section"><h3>Action Required</h3><div class="v62-card-list">${urgent.map(x=>caseCard62(x,true)).join('')||'<div class="v62-empty">No pending action. Good job.</div>'}</div></div></div>`;
+  }
+  function ownerDash62(){
+    const cases=allCases62(); const cc=counts62(cases); const risky=[...(S.employees||[])].sort((a,b)=>Number(a.current_points||100)-Number(b.current_points||100)).slice(0,5);
+    return `<div class="v62-shell"><div class="v62-hero"><h2>${owner62()?'Management Monitoring':'Branch Monitoring'}</h2><p>Fast view of open problems, staff risk, attendance, memos, and missions.</p></div><div class="v62-kpis"><div class="v62-kpi"><span>Active Cases</span><b>${cases.filter(c=>c.status!=='closed').length}</b></div><div class="v62-kpi"><span>For Explanation</span><b>${cc.explain}</b></div><div class="v62-kpi"><span>For Validation</span><b>${cc.validate}</b></div><div class="v62-kpi"><span>Employees</span><b>${(S.employees||[]).length}</b></div></div><div class="v62-dashboard-grid"><div class="v62-section"><div class="v62-case-head"><h3>Urgent Cases</h3><button class="btn sm blue" onclick="v62Go('case_center')">Open Case Center</button></div><div class="v62-card-list">${cases.filter(c=>c.status!=='closed').slice(0,6).map(c=>caseCard62(c,true)).join('')||'<div class="v62-empty">No active cases.</div>'}</div></div><div class="v62-section"><h3>Staff Needs Attention</h3><div class="v62-mini-list">${risky.map(e=>`<div class="v62-mini-item"><div><b>${safe62(e.full_name)}</b><br><span class="v62-muted">${safe62(e.branch)}</span></div><span class="pill ${Number(e.current_points||100)<90?'red':'yellow'}">${money62(e.current_points||100)} pts</span></div>`).join('')||'<div class="v62-empty">No staff data.</div>'}</div></div></div></div>`;
+  }
+  function empDash62(){
+    const p=S.profile||{}; const cases=allCases62().filter(c=>c.status!=='closed'&&(String(c.employee_id||'')===String(p.id)||String(c.owner_id||'')===String(p.id)||String(c.reporter_id||'')===String(p.id))); const action=cases[0];
+    let att='Open Time Clock'; try{const today=todayPH62();const logs=(S.attendanceLogs||[]).filter(r=>String(r.employee_id)===String(p.id)&&String(r.work_date||'').slice(0,10)===today);const tin=logs.find(r=>r.event_type==='time_in'),tout=logs.find(r=>r.event_type==='time_out');att=tin&&tout?'Attendance Complete':tin?'Tap Time Out':'Tap Time In'}catch(_){ }
+    return `<div class="v62-shell"><div class="v62-hero"><h2>Hi, ${safe62((p.full_name||'Ka-Varda').split(' ')[0])}</h2><p>What do you need to do today?</p></div><div class="v62-kpis"><div class="v62-kpi"><span>V-Points</span><b>${money62(p.current_points||100)}</b></div><div class="v62-kpi"><span>My Actions</span><b>${cases.length}</b></div><div class="v62-kpi"><span>Missions</span><b>${cases.filter(c=>c.type==='task').length}</b></div><div class="v62-kpi"><span>Alerts</span><b>${cases.filter(c=>c.type==='memo').length}</b></div></div><div class="v62-dashboard-grid"><div class="v62-section"><h3>Time In / Time Out</h3><div class="v62-mini-item"><div><b>${safe62(att)}</b><br><span class="v62-muted">UTAK-style selfie, time, and location.</span></div><button class="btn green" onclick="v62Go('attendance')">Open</button></div></div><div class="v62-section"><h3>Next Action</h3>${action?caseCard62(action,true):'<div class="v62-empty">No pending action today.</div>'}<br><button class="btn blue full" onclick="v62Go('my_actions')">Open My Actions</button></div></div></div>`;
+  }
+  async function audit62(action,table,details){try{if(typeof auditEvent==='function')await auditEvent(action,table,details);else await sb.from('audit_trail').insert({action,table_name:table,details:String(details||''),changed_by:S.profile?.id,created_at:new Date().toISOString()})}catch(e){console.warn('audit skipped',e.message)}}
+  async function safeUpdate62(table,id,patch){
+    const tries=[patch,{status:patch.status,resolution:patch.resolution||patch.manager_remarks||patch.corrective_action||patch.employee_statement,updated_at:new Date().toISOString()},{status:patch.status},{resolution:patch.resolution||patch.manager_remarks||patch.corrective_action||patch.employee_statement}].filter(x=>Object.values(x).some(v=>v!==undefined&&v!==null&&v!==''));
+    let last=null; for(const p of tries){try{const r=await sb.from(table).update(p).eq('id',id); if(!r.error)return r; last=r.error;}catch(e){last=e}}
+    if(last)throw last; return null;
+  }
+  async function setStatus62(c,status,note,btn){
+    if(!c)return toast62('Case not found','error');
+    const table=c.source_table, id=c.source_id; const now=new Date().toISOString();
+    const patch={status,resolution:note,manager_remarks:note,corrective_action:note,employee_statement:note,updated_at:now,resolved_by:S.profile?.id,resolved_at:status==='closed'?now:null,validated_by:S.profile?.id,validated_at:status==='closed'?now:null};
+    await act(btn||null,{busy:'Saving...',success:'Saved',reset:'Done',toast:'Case updated.'},async()=>{await safeUpdate62(table,id,patch);await audit62('Case status update',table,`${c.title} -> ${status}: ${note||''}`);},async()=>{await loadData();renderPage();});
+  }
+  window.v62RequestExplanation=async function(key,btn){const c=caseByKey62(key);const note=prompt('What explanation is required from the employee?',c?.title||'');if(!note)return;await setStatus62(c,'for_explanation',note,btn)};
+  window.v62EmployeeExplain=async function(key,btn){const c=caseByKey62(key);const note=prompt('Type your explanation / statement:');if(!note)return;await setStatus62(c,'for_action',`Employee statement: ${note}`,btn)};
+  window.v62SetCorrectiveAction=async function(key,btn){const c=caseByKey62(key);const note=prompt('Corrective action required before closing:');if(!note)return;await act(btn,{busy:'Creating action...',success:'Action Set',reset:'Set Action',toast:'Corrective action assigned.'},async()=>{await safeUpdate62(c.source_table,c.source_id,{status:'for_action',corrective_action:note,resolution:note,updated_at:new Date().toISOString()});if(c.employee_id){try{await sb.from('vscore_tasks').insert({title:'Corrective Action: '+c.title,task_items:note,assigned_to_employee_id:c.employee_id,assigned_by_employee_id:S.profile.id,branch:c.branch,source_type:'case_corrective_action',source_id:c.source_id,status:'assigned',created_at:new Date().toISOString()})}catch(e){console.warn('corrective task skipped',e.message)}}await audit62('Corrective action assigned',c.source_table,`${c.title}: ${note}`)},async()=>{await loadData();renderPage();})};
+  window.v62MoveValidation=async function(key,btn){const c=caseByKey62(key);const note=prompt('Validation note / proof status:','Ready for validation');if(!note)return;await setStatus62(c,'for_validation',note,btn)};
+  window.v62CloseCase=async function(key,btn){const c=caseByKey62(key);const note=prompt('Final closing action / decision:','Closed with management validation');if(!note)return;await setStatus62(c,'closed',note,btn)};
+  window.v62AckMemo=async function(id,btn){try{await ackMemo(id,btn);await loadData();renderPage();}catch(e){toast62(e.message||String(e),'error')}};
+  window.v62ViewCase=function(key){const c=caseByKey62(key); if(!c)return toast62('Case not found','error'); const html=`<h2>${safe62(c.title)}</h2><div class="v62-close-note"><b>Status:</b> ${statusLabel62(c.status)}<br><b>Closing rule:</b> This item stays visible until explanation, action, validation, and final close are completed.</div><p><b>Type:</b> ${safe62(c.kind)}<br><b>Employee / Branch:</b> ${safe62(c.employee_name||'-')} · ${safe62(c.branch||'-')}<br><b>Created:</b> ${fmt62(c.created_at)}<br><b>Raw Status:</b> ${safe62(c.raw_status||'-')}</p><p style="white-space:pre-wrap">${safe62(c.description||'No details')}</p>${c.evidence?img62(c.evidence):''}<div class="v62-case-actions" style="margin-top:14px">${caseActions62(c,false)}</div><br><button class="btn dark" onclick="closeModal()">Close Window</button>`; try{modal(html)}catch(_){alert(c.title+'\n'+(c.description||''))} };
+  window.v62Go=function(tab){try{S.tab=tab;document.body.classList.remove('v50-menu-open','v58-more-open');renderPage();setTimeout(()=>{try{window.v61CleanUI&&window.v61CleanUI()}catch(_){ }},80);if(typeof loadData==='function')loadData().then(()=>{renderPage();setTimeout(()=>{try{window.v61CleanUI&&window.v61CleanUI()}catch(_){ }},80)}).catch(console.warn)}catch(e){console.warn(e)}};
+
+  window.nav=nav=function(){
+    if(owner62())return [['dashboard','Monitoring Dashboard'],['case_center','Case Center'],['my_actions','My Actions'],['employees','Employee Universe'],['accounts','Account Backup'],['attendance','Attendance Monitor'],['missions','Missions / Actions'],['standings','Standing Rules'],['approvals','Merit Approvals'],['violations','Violations'],['fsqa','FSQA'],['policies','Policy Basis'],['forms','Forms Library'],['reports','Private Reports'],['memos','Memo Hub'],['rewards','Rewards'],['audit','Audit Trail'],['settings','Settings']];
+    if(manager62())return [['dashboard','Branch Monitor'],['case_center','Case Center'],['my_actions','My Actions'],['attendance','Time Clock'],['employees','Branch Staff'],['missions','Missions / Actions'],['violations','Violations'],['fsqa','FSQA'],['policies','Policies'],['forms','Forms'],['memos','Memos'],['achievement','File Achievement'],['concern','Report Concern'],['records','My Records'],['chat','Chat / Messages'],['profile','Profile']];
+    return [['dashboard','Home'],['my_actions','My Actions'],['attendance','Time In / Time Out'],['memos','Memos / Alerts'],['missions','Missions'],['training','Training'],['records','My Records'],['concern','Report Concern'],['chat','Chat / Messages'],['profile','Profile']];
+  };
+
+  window.empDash=empDash=function(){return empDash62()};
+  window.ownerDash=ownerDash=function(){return ownerDash62()};
+
+  const oldRenderPage62=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle62();
+    const page=$62('#page');
+    if(S&&S.tab==='case_center'&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Case Center</span></div>${caseCenterPage62()}`;bind62();setTimeout(cleanAfter62,80);return;}
+    if(S&&S.tab==='my_actions'&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">My Actions</span></div>${myActionsPage62()}`;bind62();setTimeout(cleanAfter62,80);return;}
+    const out=oldRenderPage62.apply(this,arguments); setTimeout(()=>{bind62();cleanAfter62()},80); return out;
+  };
+  const oldRenderApp62=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){addStyle62(); const out=oldRenderApp62.apply(this,arguments); setTimeout(cleanAfter62,120); return out;};
+  function bind62(){
+    $$62('[data-v62-filter]').forEach(b=>b.onclick=()=>{localStorage.setItem('v62_case_filter',b.dataset.v62Filter);renderPage();});
+    $$62('[data-tab]').forEach(b=>{if(!b.__v62CloseMenu){b.__v62CloseMenu=true;b.addEventListener('click',()=>document.body.classList.remove('v50-menu-open'))}});
+  }
+  function cleanAfter62(){try{addStyle62(); window.v61CleanUI&&window.v61CleanUI(); $$62('.v50-bottom-nav,.v58-bottom-nav,.chat-bubble,.chat-panel,#v50BottomNav,#v58BottomNav,#chatBubble,#chatPanel').forEach(e=>e.remove());}catch(e){}}
+  const oldBind62=window.bind||bind;
+  window.bind=bind=function(){try{oldBind62.apply(this,arguments)}catch(e){console.warn(e)} bind62();};
+  document.addEventListener('DOMContentLoaded',()=>{addStyle62();setTimeout(cleanAfter62,400);});
+  console.log('V62 Case Center + Perfect Phone Monitoring loaded');
+})();
+/* ================= END V62 ================= */
 
 init();
 </script></body></html>
