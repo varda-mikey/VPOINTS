@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<title>V-SCORE V62 | Case Center + Perfect Phone Monitoring</title>
+<title>V-SCORE V65 | Mobile Case Text + Logout + Merit Popups</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b91c1c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -7587,6 +7587,444 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   console.log('V62 Case Center + Perfect Phone Monitoring loaded');
 })();
 /* ================= END V62 ================= */
+
+
+
+/* ================= V64 CLEAN MENU FOOTER + NEWS FEED FIX =================
+   Goals:
+   1) Keep left menu only, no floating buttons.
+   2) Put Logout and Close Menu at the lower part of the sidebar.
+   3) Restore News Feed inside the actual running script.
+   4) Keep compact phone layout and do not touch barcode/attendance logic.
+*/
+(function(){
+  const $64=(s,r=document)=>r.querySelector(s);
+  const $$64=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc64=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const hasApp64=()=>!!($64('.app') && window.S && S.profile);
+
+  function addStyle64(){
+    if(document.getElementById('v64-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v64-style">
+      :root{--v64-safe-top:env(safe-area-inset-top,0px);--v64-safe-bottom:env(safe-area-inset-bottom,0px)}
+      .v64-menu-footer{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding-top:12px;background:linear-gradient(180deg,rgba(17,24,39,0),rgba(17,24,39,.96) 18%);position:sticky;bottom:0}.v64-menu-profile{font-size:12px;color:#d1d5db;line-height:1.25;margin-bottom:10px}.v64-menu-profile b{display:block;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v64-footer-actions{display:grid;grid-template-columns:1fr;gap:8px}.v64-logout-btn,.v64-close-btn{width:100%;border-radius:13px;padding:11px 12px;font-weight:1000}.v64-logout-btn{background:#ef4444;color:#fff}.v64-close-btn{background:rgba(255,255,255,.12);color:#fff}.v64-close-btn{display:none}.v64-news-mini{background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:16px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}.v64-news-mini b{color:#7f1d1d}.v64-news-count{background:#b91c1c;color:#fff;border-radius:999px;min-width:28px;height:28px;display:inline-grid;place-items:center;font-weight:1000;font-size:12px}.sidebar .nav button[data-tab="news"]{background:rgba(250,204,21,.12);color:#fff;border:1px solid rgba(250,204,21,.22)}.sidebar .nav button[data-tab="news"].active{background:linear-gradient(135deg,#facc15,#f59e0b)!important;color:#5b1d00!important}.sidebar .nav button[data-tab="chat"]{background:rgba(255,255,255,.06)}
+      @media(min-width:821px){.sidebar{display:flex!important;flex-direction:column!important}.sidebar .nav{flex:1 1 auto!important}.v64-menu-footer{padding-bottom:4px}.v64-close-btn{display:none!important}}
+      @media(max-width:820px){
+        .v50-bottom-nav,.v58-bottom-nav,#v50BottomNav,#v58BottomNav,.v58-more-sheet,.v58-more-overlay,#v58MoreSheet,#v58MoreOverlay,#v58TopMore,.v58-top-more,.chat-bubble,#chatBubble,.chat-panel,#chatPanel,.v50-install-hint{display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important}
+        .sidebar{display:flex!important;flex-direction:column!important;overflow:hidden!important;padding-bottom:calc(10px + var(--v64-safe-bottom))!important}.sidebar .brand{flex:0 0 auto}.sidebar .nav{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding-right:2px!important;margin-bottom:8px!important}.v64-menu-footer{flex:0 0 auto!important;position:relative!important;bottom:auto!important;padding:12px 0 0!important;margin-top:0!important;background:linear-gradient(180deg,rgba(17,24,39,0),rgba(17,24,39,.96) 22%)}.v64-close-btn{display:block}.v64-footer-actions{grid-template-columns:1fr 1fr}.v64-logout-btn,.v64-close-btn{min-height:42px}.v64-news-mini{border-radius:14px;padding:11px}.feed-card{border-radius:16px!important;padding:12px!important}.feed-head{gap:8px!important}.social-actions{display:flex!important;gap:7px!important;flex-wrap:wrap!important}.social-actions .btn{flex:1 1 auto!important}.fb-comments{max-height:180px!important}.news-pill{font-size:10px!important}
+      }
+    </style>`);
+  }
+
+  function injectTab64(list,key,label,after){
+    if(!Array.isArray(list)) return list||[];
+    list=list.filter(x=>x&&x[0]!==key);
+    const i=list.findIndex(x=>x&&x[0]===after);
+    list.splice(i>=0?i+1:Math.min(1,list.length),0,[key,label]);
+    return list;
+  }
+
+  const oldNav64=window.nav||nav;
+  window.nav=nav=function(){
+    let n=[]; try{n=oldNav64.apply(this,arguments)||[]}catch(e){n=[]}
+    n=injectTab64(n,'news','VARDA News Feed','dashboard');
+    if(!(n||[]).find(x=>x&&x[0]==='chat')) n=injectTab64(n,'chat','Chat / Messages','news');
+    return n;
+  };
+
+  function logout64(){
+    try{document.body.classList.remove('v50-menu-open','v58-more-open')}catch(_){ }
+    try{ if(typeof logout==='function') return logout(); }catch(e){console.warn(e)}
+    try{localStorage.removeItem('VSCORE_SESSION'); S.user=null; S.profile=null; S.tab='dashboard'; renderAuth();}catch(_){location.reload()}
+  }
+  window.v64Logout=logout64;
+  window.v64CloseMenu=function(){document.body.classList.remove('v50-menu-open','v58-more-open')};
+
+  function ensureFooter64(){
+    if(!hasApp64())return;
+    addStyle64();
+    const sidebar=$64('.sidebar'); if(!sidebar)return;
+    let footer=$64('#v64MenuFooter',sidebar);
+    const name=esc64(S.profile?.full_name||'Ka-Varda');
+    const branch=esc64(S.profile?.branch||'');
+    const roleTxt=esc64((typeof roleLabel==='function')?roleLabel(S.profile?.role):String(S.profile?.role||''));
+    const html=`<div class="v64-menu-profile"><b>${name}</b><span>${roleTxt}</span><br><span>${branch}</span></div><div class="v64-footer-actions"><button type="button" class="v64-close-btn" id="v64CloseMenuBtn">Close Menu</button><button type="button" class="v64-logout-btn" id="v64LogoutBtn">Logout</button></div>`;
+    if(!footer){sidebar.insertAdjacentHTML('beforeend',`<div id="v64MenuFooter" class="v64-menu-footer">${html}</div>`);footer=$64('#v64MenuFooter',sidebar);}else{footer.innerHTML=html;}
+    const out=$64('#v64LogoutBtn',footer); if(out)out.onclick=logout64;
+    const close=$64('#v64CloseMenuBtn',footer); if(close)close.onclick=()=>document.body.classList.remove('v50-menu-open','v58-more-open');
+    $$64('[data-tab]',sidebar).forEach(b=>{if(!b.__v64MenuClose){b.__v64MenuClose=true;b.addEventListener('click',()=>document.body.classList.remove('v50-menu-open','v58-more-open'))}});
+  }
+
+  function newsCount64(){
+    try{return (S.newsPosts||[]).filter(p=>String(p.post_type||'news')==='news').length}catch(_){return 0}
+  }
+  window.v64GoNews=function(){
+    try{S.tab='news';document.body.classList.remove('v50-menu-open','v58-more-open');renderPage(); if(typeof loadData==='function')loadData().then(renderPage).catch(console.warn);}catch(e){console.warn(e)}
+  };
+
+  const oldEmpDash64=window.empDash||empDash;
+  window.empDash=empDash=function(){
+    let html=''; try{html=oldEmpDash64.apply(this,arguments)||''}catch(e){html='<div class="notice danger">Dashboard error: '+esc64(e.message||e)+'</div>'}
+    if(html.includes('v64-news-mini')||html.includes('VARDA News Feed')) return html;
+    const mini=`<div class="v64-news-mini"><div><b>VARDA News Feed</b><br><span class="small muted">Announcements, updates, recognition, and memories.</span></div><div class="split" style="align-items:center"><span class="v64-news-count">${newsCount64()}</span><button class="btn sm yellow" onclick="v64GoNews()">Open</button></div></div>`;
+    return html+mini;
+  };
+
+  const oldRenderApp64=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){addStyle64();const r=oldRenderApp64.apply(this,arguments);setTimeout(ensureFooter64,60);setTimeout(ensureFooter64,350);return r;};
+  const oldRenderPage64=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){addStyle64();const r=oldRenderPage64.apply(this,arguments);setTimeout(ensureFooter64,50);return r;};
+  const oldBind64=window.bind||bind;
+  window.bind=bind=function(){try{oldBind64.apply(this,arguments)}catch(e){console.warn(e)}ensureFooter64();};
+  const mo64=new MutationObserver(()=>{if(!window.__v64Queued){window.__v64Queued=true;setTimeout(()=>{window.__v64Queued=false;ensureFooter64();},90)}});
+  try{mo64.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
+  document.addEventListener('DOMContentLoaded',()=>{addStyle64();setTimeout(ensureFooter64,300);setTimeout(ensureFooter64,1200)});
+  console.log('V64 clean menu footer + news feed fixed loaded');
+})();
+/* ================= END V64 ================= */
+
+
+/* ================= V65 MOBILE CASE TEXT + LOGOUT POSITION + MERIT POPUP GUARD =================
+   Requested fixes:
+   1) File Case / Violation text must fit the phone screen.
+   2) Logout must stay at the lower part of the left menu.
+   3) Keep all merit celebration popups and News Feed auto-posting for approved achievements/merits.
+*/
+(function(){
+  const $65=(s,r=document)=>r.querySelector(s);
+  const $$65=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const safe65=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const money65=v=>{try{return (typeof money==='function')?money(v):Number(v||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(v??0)}};
+  const fmt65=v=>{try{return (typeof fmt==='function')?fmt(v):new Date(v).toLocaleString()}catch(_){return '-'}};
+  const emp65=id=>{try{return (typeof emp==='function')?emp(id):((S.employees||[]).find(e=>String(e.id)===String(id))||{})}catch(_){return {}}};
+  const img65=url=>{try{return (typeof img==='function')?img(url):''}catch(_){return ''}};
+
+  function addStyle65(){
+    if(document.getElementById('v65-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v65-style">
+      html,body,#root,.app,.main,#page{max-width:100%;overflow-x:hidden!important}.card,.notice,.modal-card,.v62-section,.v62-case,.launch-card,.feed-card{max-width:100%;overflow-wrap:anywhere;word-break:normal}.card *,.notice *,.modal-card *,.v62-case *,.v62-section *{min-width:0}.field,.field *{max-width:100%}.input,select,textarea{max-width:100%;min-width:0;overflow-wrap:anywhere}.field select{white-space:normal;text-overflow:ellipsis}#dvPolicyPreview,.v65-wrap-text{white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important;max-width:100%!important;line-height:1.35!important}.v65-desktop-table{max-width:100%;overflow:auto}.v65-mobile-cards{display:none}.v65-viocard{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:18px;padding:13px;margin-bottom:10px;box-shadow:0 8px 22px rgba(15,23,42,.05);display:grid;gap:8px;overflow:hidden}.v65-viocard h4{margin:0;color:#7f1d1d;font-size:17px;line-height:1.2;overflow-wrap:anywhere}.v65-row{font-size:13px;color:#334155;line-height:1.35;overflow-wrap:anywhere}.v65-row b{color:#0f172a}.v65-actions{display:flex;gap:7px;flex-wrap:wrap}.v65-actions .btn{flex:1 1 auto}.v65-evidence{display:flex;gap:8px;flex-wrap:wrap}.v65-case-form-note{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px;color:#475569;font-size:13px;line-height:1.35;margin-top:8px}.topbar #logout{display:none!important}.sidebar{display:flex!important;flex-direction:column!important}.sidebar .nav{flex:1 1 auto!important}.v64-menu-footer,#v64MenuFooter{margin-top:auto!important}.merit-celebrate-wrap,.merit-feed-badge,.balloon,.confetti{display:block!important;visibility:visible!important;opacity:1}.merit-close-top{display:flex!important}.feed-card p{overflow-wrap:anywhere;word-break:break-word}.news-pill{white-space:nowrap}
+      @media(max-width:820px){body{width:100%;position:relative}.main{padding-left:12px!important;padding-right:12px!important}.topbar{padding:10px 12px!important;border-radius:16px!important}.topbar h2{font-size:17px!important;line-height:1.18!important;overflow-wrap:anywhere}.grid.two,.grid.three,.grid.four{grid-template-columns:1fr!important}.card{border-radius:16px!important;padding:12px!important;overflow:hidden}.card h3{font-size:18px!important;line-height:1.18!important}.notice{border-radius:13px!important;padding:10px!important}.v65-desktop-table{display:none!important}.v65-mobile-cards{display:grid!important;gap:10px}.v65-actions .btn{width:100%;min-height:40px}.thumb{max-width:84px!important;height:58px!important}.modal{padding:10px!important}.modal-card{width:calc(100vw - 20px)!important;max-width:calc(100vw - 20px)!important;border-radius:18px!important}.sidebar{min-height:100dvh!important;height:100dvh!important;max-height:100dvh!important}.sidebar .nav{overflow-y:auto!important;padding-bottom:8px!important}.v64-menu-footer,#v64MenuFooter{flex:0 0 auto!important;margin-top:auto!important;position:relative!important;bottom:auto!important;border-top:1px solid rgba(255,255,255,.16)!important}.v64-footer-actions{grid-template-columns:1fr!important}.v64-close-btn,.v64-logout-btn{width:100%!important}.field label{font-size:11px!important}.field textarea{min-height:92px!important}.split{max-width:100%}.split .btn{white-space:normal}.feed-head{display:grid!important;grid-template-columns:1fr!important}.feed-photos{grid-template-columns:repeat(2,minmax(0,1fr))!important}.feed-photos img{height:110px!important}}
+    </style>`);
+  }
+
+  // Safer violation table: desktop remains a table; phone gets clean cards so text never spills out.
+  if(typeof violationTable==='function' && !window.__v65ViolationTablePatched){
+    window.__v65ViolationTablePatched=true;
+    const oldViolationTable65=violationTable;
+    violationTable=function(arr,manage){
+      arr=Array.isArray(arr)?arr:[];
+      let table='';
+      try{table=oldViolationTable65(arr,manage)}catch(e){table=`<div class="notice danger">Violation table error: ${safe65(e.message||e)}</div>`}
+      const cards=arr.map(v=>{
+        let p=null,a=null;
+        try{p=(typeof policyForViolation==='function')?policyForViolation(v):null}catch(_){p=null}
+        try{a=(typeof caseActionFor==='function')?caseActionFor(v.id):null}catch(_){a=null}
+        let status=''; try{status=(typeof actionStatusPill==='function')?actionStatusPill(v):safe65(v.status||'pending')}catch(_){status=safe65(v.status||'pending')}
+        let actions='-'; try{actions=manage&&typeof violationActions==='function'?violationActions(v):'-'}catch(_){actions='-'}
+        const employee=emp65(v.employee_id);
+        const title=v.violation_type||v.type_name||p?.title||'Violation / Case Report';
+        const basis=p?.policy_code||'Manual';
+        const desc=v.description||v.manager_remarks||'';
+        const pts=v.point_deduction??v.points??(typeof policyPoints==='function'?policyPoints(p):0);
+        return `<div class="v65-viocard"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h4>${safe65(title)}</h4><div>${status}</div></div><div class="v65-row"><b>Employee:</b> ${safe65(employee.full_name||'-')}</div><div class="v65-row"><b>VARDA ACT / Basis:</b> ${safe65(basis)}</div><div class="v65-row"><b>Description:</b> <span class="v65-wrap-text">${safe65(desc||'No details')}</span></div><div class="v65-row"><b>Points:</b> ${safe65(money65(pts))}</div><div class="v65-row"><b>Action Plan:</b> ${a?`<span class="v65-wrap-text">${safe65(a.status||'Action set')} — ${safe65(a.action_plan||'')}</span><br><span class="small muted">Due: ${fmt65(a.due_at)}</span>`:'<span class="pill yellow">No action plan yet</span>'}</div><div class="v65-evidence">${img65(v.evidence_url)} ${img65(a?.proof_url)}</div><div class="v65-actions">${actions}</div></div>`;
+      }).join('')||'<div class="empty">No case records.</div>';
+      return `<div class="v65-desktop-table">${table}</div><div class="v65-mobile-cards">${cards}</div>`;
+    };
+    window.violationTable=violationTable;
+  }
+
+  // Add helper note and wrap protection to File Case form without changing its workflow.
+  if(typeof violationsPage==='function' && !window.__v65ViolationsPagePatched){
+    window.__v65ViolationsPagePatched=true;
+    const oldViolationsPage65=violationsPage;
+    violationsPage=function(){
+      let html='';
+      try{html=oldViolationsPage65.apply(this,arguments)||''}catch(e){html=`<div class="notice danger">Violation page error: ${safe65(e.message||e)}</div>`}
+      if(!html.includes('v65-case-form-note')){
+        html=html.replace('<form id="directViolationForm">','<form id="directViolationForm"><div class="v65-case-form-note">Phone view fixed: long VARDA ACT text, story, evidence, and action buttons will wrap inside the screen.</div>');
+      }
+      return html;
+    };
+    window.violationsPage=violationsPage;
+  }
+
+  // Guard: keep the V18/V46 merit celebration and news feed auto-posting alive.
+  if(typeof addPoints==='function' && !window.__v65MeritGuardPatched){
+    window.__v65MeritGuardPatched=true;
+    const oldAddPoints65=addPoints;
+    window.__v65CelebrationLocks=window.__v65CelebrationLocks||{};
+    addPoints=async function(id,pts,reason,type='manual',sid=null){
+      const points=Number(pts||0);
+      const result=await oldAddPoints65.apply(this,arguments);
+      const meritTypes=['achievement','mission','training','fsqa','customer_service','customer_rating','tasklist'];
+      const key=[id,points,type,sid||reason].join('|');
+      if(points>0 && meritTypes.includes(String(type||'').toLowerCase()) && !window.__v65CelebrationLocks[key]){
+        window.__v65CelebrationLocks[key]=Date.now();
+        try{
+          if(typeof createMeritCelebration==='function') await createMeritCelebration(id,points,reason,type,sid||null);
+        }catch(e){console.warn('V65 merit celebration guard skipped:',e.message||e)}
+        setTimeout(()=>{delete window.__v65CelebrationLocks[key]},9000);
+      }
+      return result;
+    };
+    window.addPoints=addPoints;
+  }
+
+  // Small manager-side confirmation popup after approving a merit; staff still receives the big unseen notification popup.
+  window.v65ManagerMeritToast=function(employeeId,points,reason){
+    try{
+      if(!points||Number(points)<=0)return;
+      const e=emp65(employeeId);
+      const name=safe65(e.full_name||'Ka-Varda');
+      if(typeof modal==='function'){
+        modal(`<div class="merit-celebrate-wrap"><div class="confetti"></div><div class="merit-feed-badge">NEWS FEED + POPUP SAVED</div><h2 class="merit-title">Congratulations posted!</h2><div class="merit-points">+${safe65(money65(points))}</div><p class="merit-msg">${name} received approved merit points. The congratulations popup and VARDA News Feed recognition are preserved.</p><div class="split" style="justify-content:center"><button class="btn green" onclick="closeModal()">Done</button><button class="btn blue" onclick="closeModal();S.tab='news';loadData().then(renderPage)">Open News Feed</button></div></div>`);
+      }
+    }catch(e){console.warn(e)}
+  };
+
+  if(typeof approveAch==='function' && !window.__v65ApproveAchPopupPatched){
+    window.__v65ApproveAchPopupPatched=true;
+    const oldApproveAch65=approveAch;
+    approveAch=async function(id,btn){
+      const a=(S.achievements||[]).find(x=>String(x.id)===String(id));
+      await oldApproveAch65.apply(this,arguments);
+      setTimeout(()=>{
+        try{
+          const after=(S.achievements||[]).find(x=>String(x.id)===String(id))||a;
+          const pts=Number(after?.points||0);
+          if(pts>0)window.v65ManagerMeritToast(after.employee_id,pts,'Approved achievement');
+        }catch(e){}
+      },700);
+    };
+    window.approveAch=approveAch;
+  }
+  if(typeof approveTask==='function' && !window.__v65ApproveTaskPopupPatched){
+    window.__v65ApproveTaskPopupPatched=true;
+    const oldApproveTask65=approveTask;
+    approveTask=async function(id,btn){
+      const t=(S.tasks||[]).find(x=>String(x.id)===String(id));
+      await oldApproveTask65.apply(this,arguments);
+      setTimeout(()=>{
+        try{
+          const pts=Number(t?.merit_points||0);
+          if(pts>0)window.v65ManagerMeritToast(t.assigned_to_employee_id,pts,'Mission merit approved');
+        }catch(e){}
+      },700);
+    };
+    window.approveTask=approveTask;
+  }
+
+  function ensure65(){
+    addStyle65();
+    try{ if(typeof ensureFooter64==='function')ensureFooter64(); }catch(_){ }
+    try{ $$65('.topbar #logout').forEach(b=>b.style.display='none'); }catch(_){ }
+  }
+  const oldRenderApp65=window.renderApp||renderApp;
+  renderApp=function(){addStyle65();const r=oldRenderApp65.apply(this,arguments);setTimeout(ensure65,60);setTimeout(ensure65,400);return r};
+  window.renderApp=renderApp;
+  const oldRenderPage65=window.renderPage||renderPage;
+  renderPage=function(){addStyle65();const r=oldRenderPage65.apply(this,arguments);setTimeout(ensure65,60);return r};
+  window.renderPage=renderPage;
+  const oldBind65=window.bind||bind;
+  bind=function(){try{oldBind65.apply(this,arguments)}catch(e){console.warn(e)}ensure65();};
+  window.bind=bind;
+  document.addEventListener('DOMContentLoaded',()=>{addStyle65();setTimeout(ensure65,350);setTimeout(ensure65,1200)});
+  console.log('V65 mobile case text + logout + merit popup guard loaded');
+})();
+/* ================= END V65 ================= */
+
+
+/* ================= V66 PHONE FIT + MEMO ACK FIX + TRAINING + GENERAL CONTROL =================
+   Requested fixes:
+   1) Memo acknowledgment must not show random "not found" issues.
+   2) All tabs/tables must fit phone screens; no embarrassing overlap.
+   3) Bring back My Training / Training Center.
+   4) Add General Control tab to show/hide tabs without removing program code.
+   5) Preserve popups, merit congratulations, News Feed, barcode, and attendance logic.
+*/
+(function(){
+  const $66=(s,r=document)=>r.querySelector(s);
+  const $$66=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const safe66=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const fmt66=v=>{try{return (typeof fmt==='function')?fmt(v):(v?new Date(v).toLocaleString():'-')}catch(_){return v||'-'}};
+  const role66=()=>{try{return String((typeof role==='function'?role():S.profile?.role)||'employee').toLowerCase().replace(/\s+/g,'_')}catch(_){return 'employee'}};
+  const owner66=()=>{try{return (typeof isOwner==='function')?isOwner():['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(role66())}catch(_){return false}};
+  const manager66=()=>{try{return (typeof isManager==='function')?isManager():owner66()||['manager','branch_manager','team_leader'].includes(role66())}catch(_){return false}};
+  const localKey66='VSCORE_TAB_VISIBILITY_V66';
+  const protectedTabs66=new Set(['dashboard','general_control','profile','news']);
+  const allTabs66=[
+    ['dashboard','Home / Dashboard'],['case_center','Case Center'],['my_actions','My Actions'],['attendance','Time Clock / Attendance'],['news','VARDA News Feed'],['chat','Chat / Messages'],['training','My Training / Training Center'],['employees','Employee Monitoring'],['accounts','Account Backup'],['missions','Missions / Actions'],['taskmonitor','Tasklist Monitoring'],['standings','Standing Rules'],['approvals','Merit Approvals'],['violations','Violation Reports'],['fsqa','FSQA Monitoring'],['policies','Policy Basis'],['forms','Forms Library'],['reports','Private Reports'],['memos','Memos / Alerts'],['rewards','Rewards'],['audit','Audit Trail'],['settings','Settings / Logo'],['achievement','File Achievement'],['concern','Report Concern'],['records','My Records'],['profile','Profile'],['general_control','General Control']
+  ];
+
+  function addStyle66(){
+    if(document.getElementById('v66-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v66-style">
+      html,body,#root,.app,.main,#page{max-width:100%!important;overflow-x:hidden!important}.card,.notice,.modal-card,.feed-card,.v62-case,.v65-viocard,.v66-mobile-card{overflow-wrap:anywhere!important;word-break:break-word!important;max-width:100%!important}.card *,.notice *,.modal-card *,.feed-card *,.v62-case *,.v65-viocard *{min-width:0}.field,.field *,.input,select,textarea{max-width:100%!important;min-width:0!important}textarea{white-space:pre-wrap!important}.btn,.tab,.pill{max-width:100%;white-space:normal!important;text-align:center}.split{max-width:100%;align-items:center}.split>*{min-width:0}.thumb{object-fit:cover}.v66-control-grid{display:grid;gap:10px}.v66-control-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line,#e5e7eb);border-radius:14px;background:#fff;padding:11px}.v66-control-row b{color:#111827}.v66-control-row small{display:block;color:#64748b;margin-top:2px}.v66-switch{display:flex;align-items:center;gap:7px;font-weight:1000;color:#0f172a}.v66-switch input{width:22px;height:22px}.v66-mobile-card{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:0 8px 22px rgba(15,23,42,.05)}.v66-card-row{font-size:13px;line-height:1.35;margin:5px 0}.v66-card-row b{display:block;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.03em}.memo-ack-card{border-left:5px solid #facc15}.memo-ack-card.acked{border-left-color:#22c55e;background:#f0fdf4}.memo-ack-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.memo-ack-actions .btn{flex:1 1 auto}.v66-hidden-note{border-left:5px solid #2563eb;background:#eff6ff;color:#1e3a8a;border-radius:14px;padding:10px;margin-bottom:12px}.v66-phone-safe{max-width:100%;overflow:hidden!important}
+      @media(max-width:820px){
+        body{width:100%!important}.main{padding:10px!important}.topbar{margin:8px 8px 12px!important;width:auto!important}.topbar h2{font-size:16px!important;line-height:1.18!important}.topbar .small{font-size:11px!important}.card{padding:12px!important;border-radius:16px!important;margin-bottom:12px}.card h2,.card h3{line-height:1.16!important;overflow-wrap:anywhere!important}.grid,.grid.two,.grid.three,.grid.four{display:grid!important;grid-template-columns:1fr!important;gap:12px!important}.field{margin:9px 0!important}.input,select,textarea{font-size:15px!important;padding:11px 12px!important;border-radius:13px!important}.split{gap:7px!important}.split .btn{flex:1 1 auto!important;min-height:40px}.modal{padding:8px!important}.modal-card{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 18px)!important;border-radius:16px!important;padding:14px!important;overflow:auto!important}.toast{left:10px!important;right:10px!important;bottom:10px!important;text-align:center}.tabs{overflow-x:auto!important;flex-wrap:nowrap!important;padding-bottom:4px}.tabs .tab{flex:0 0 auto!important}.feed-photos,.post-photos{grid-template-columns:repeat(2,minmax(0,1fr))!important}.feed-photos img,.post-photos img{height:110px!important;width:100%!important;object-fit:cover!important}.fb-comments{max-height:190px!important}.comment-input-row{display:grid!important;grid-template-columns:1fr!important}.comment-input-row .btn{width:100%!important}
+        #page table:not(.v66-keep-table){display:block!important;width:100%!important;border-collapse:separate!important;border-spacing:0!important;overflow:visible!important;white-space:normal!important}#page table:not(.v66-keep-table) thead{display:none!important}#page table:not(.v66-keep-table) tbody{display:block!important;width:100%!important}#page table:not(.v66-keep-table) tr{display:block!important;width:100%!important;background:#fff!important;border:1px solid var(--line,#e5e7eb)!important;border-radius:15px!important;margin:0 0 10px!important;padding:10px!important;box-shadow:0 7px 18px rgba(15,23,42,.05)!important;overflow:hidden!important}#page table:not(.v66-keep-table) td{display:block!important;width:100%!important;border:0!important;border-radius:0!important;padding:6px 0!important;background:transparent!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important;max-width:100%!important}#page table:not(.v66-keep-table) td::before{content:attr(data-label);display:block;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:1000;margin-bottom:2px}#page table:not(.v66-keep-table) td[colspan]::before{content:''}.v66-control-row{display:grid;grid-template-columns:1fr auto;padding:10px}.v66-control-row small{font-size:11px}.sidebar .nav button{white-space:normal!important;line-height:1.15!important}.v64-menu-footer,#v64MenuFooter{margin-top:auto!important}.v64-logout-btn{order:99}.v64-close-btn{order:1}.v64-footer-actions{display:grid!important;grid-template-columns:1fr!important}.v64-logout-btn,.v64-close-btn{width:100%!important}.topbar #logout{display:none!important}
+      }
+    </style>`);
+  }
+
+  function normalizeVis66(raw){
+    try{ if(!raw)return {hidden:[]}; const o=typeof raw==='string'?JSON.parse(raw):raw; if(Array.isArray(o))return {hidden:o}; if(o&&Array.isArray(o.hidden))return o; return {hidden:[]} }catch(_){return {hidden:[]}}
+  }
+  function getVis66(){
+    const fromSettings=window.S?.settings?.tab_visibility_json||window.S?.settings?.vscore_tab_visibility_json;
+    return normalizeVis66(fromSettings||localStorage.getItem(localKey66));
+  }
+  function setVisLocal66(v){try{localStorage.setItem(localKey66,JSON.stringify(v)); if(window.S){S.settings=S.settings||{}; S.settings.tab_visibility_json=JSON.stringify(v)}}catch(_){}}
+  function isHidden66(key){const v=getVis66();return !protectedTabs66.has(key)&&v.hidden.map(String).includes(String(key));}
+  function insertTab66(list,key,label,after){
+    list=(list||[]).filter(x=>x&&x[0]!==key);
+    const i=list.findIndex(x=>x&&x[0]===after);
+    list.splice(i>=0?i+1:list.length,0,[key,label]);
+    return list;
+  }
+
+  const oldNav66=window.nav||nav;
+  window.nav=nav=function(){
+    let n=[]; try{n=oldNav66.apply(this,arguments)||[]}catch(e){console.warn('V66 nav fallback',e);n=[]}
+    // Always bring back Training. The function already exists; this only restores the menu entry.
+    if(!n.find(x=>x&&x[0]==='training')){
+      const label=owner66()?'Training Center':'My Training';
+      const after=n.find(x=>x&&x[0]==='missions')?'missions':(n.find(x=>x&&x[0]==='forms')?'forms':'dashboard');
+      n=insertTab66(n,'training',label,after);
+    }
+    // Owner gets General Control, protected from hiding so the menu can always be recovered.
+    if(owner66()&&!n.find(x=>x&&x[0]==='general_control')) n=insertTab66(n,'general_control','General Control','dashboard');
+    // Apply show/hide control safely.
+    n=n.filter(x=>x&&(!isHidden66(x[0])||protectedTabs66.has(x[0])));
+    return n;
+  };
+
+  function tabControlPage66(){
+    const current=getVis66();
+    const hidden=new Set((current.hidden||[]).map(String));
+    const visibleNow=new Map((nav()||[]).map(x=>[x[0],x[1]]));
+    const rows=allTabs66.map(([key,label])=>{
+      const locked=protectedTabs66.has(key);
+      const checked=locked||!hidden.has(key);
+      const live=visibleNow.has(key);
+      return `<label class="v66-control-row"><div><b>${safe66(label)}</b><small>Tab key: ${safe66(key)} ${locked?'· protected':live?'· visible now':'· hidden or role-limited'}</small></div><span class="v66-switch"><input type="checkbox" class="v66-tab-toggle" data-key="${safe66(key)}" ${checked?'checked':''} ${locked?'disabled':''}> ${checked?'Show':'Hide'}</span></label>`;
+    }).join('');
+    return `<div class="card"><h3>General Control</h3><div class="v66-hidden-note"><b>Menu visibility control.</b><br>This hides or shows tabs from the left menu only. It does not delete your program, records, News Feed, merit popups, barcode, attendance, or training code.</div><div class="v66-control-grid">${rows}</div><br><div class="split"><button class="btn green" id="saveTabControl66">Save Tab Control</button><button class="btn ghost" id="resetTabControl66">Reset Show All</button></div></div>`;
+  }
+  window.v66SaveTabControl=async function(btn){
+    const toggles=$$66('.v66-tab-toggle');
+    const hidden=toggles.filter(t=>!t.checked&&!protectedTabs66.has(t.dataset.key)).map(t=>t.dataset.key);
+    const payload={hidden,updated_at:new Date().toISOString(),updated_by:window.S?.profile?.id||null};
+    await (typeof act==='function'?act(btn,{busy:'Saving...',success:'Saved',reset:'Save Tab Control',toast:'Tab control saved.'},async()=>{
+      setVisLocal66(payload);
+      try{const r=await sb.from('app_settings').upsert({setting_key:'tab_visibility_json',setting_value:JSON.stringify(payload),updated_by:S.profile?.id||null,updated_at:new Date().toISOString()},{onConflict:'setting_key'}); if(r.error)console.warn('tab control cloud save skipped',r.error.message)}catch(e){console.warn('tab control cloud save skipped',e.message||e)}
+    },async()=>{try{await loadData()}catch(_){ }renderApp();}) : (setVisLocal66(payload),renderApp()));
+  };
+  window.v66ResetTabControl=async function(btn){
+    const payload={hidden:[],updated_at:new Date().toISOString(),updated_by:window.S?.profile?.id||null};
+    setVisLocal66(payload);
+    try{await sb.from('app_settings').upsert({setting_key:'tab_visibility_json',setting_value:JSON.stringify(payload),updated_by:S.profile?.id||null,updated_at:new Date().toISOString()},{onConflict:'setting_key'})}catch(e){console.warn(e)}
+    try{toast('All tabs shown.')}catch(_){ }
+    try{await loadData()}catch(_){ }
+    renderApp();
+  };
+
+  // More reliable memo list: compares IDs as strings and remains clickable even if memo was not in local cache.
+  window.memoList=memoList=function(){
+    const memos=Array.isArray(S?.memos)?S.memos:[];
+    const myAcks=Array.isArray(S?.acks)?S.acks:[];
+    const allAcks=Array.isArray(S?.allAcks)?S.allAcks:[];
+    if(!memos.length)return '<div class="empty">No memos.</div>';
+    return memos.map(m=>{
+      const mid=String(m.id);
+      const c=allAcks.filter(a=>String(a.memo_id)===mid).length;
+      const acked=myAcks.some(a=>String(a.memo_id)===mid&&(!a.employee_id||String(a.employee_id)===String(S.profile?.id)));
+      return `<div class="notice memo-ack-card ${acked?'acked':''}" style="margin-bottom:10px"><b>${safe66(m.title||'Memo')}</b><p>${safe66(m.content||'')}</p>${(typeof img==='function')?img(m.attachment_url):''}<br><span class="small">Valid ${safe66(m.validity_days||7)} days · ${fmt66(m.created_at)}</span><br>${manager66()?`<div class="memo-ack-actions"><button class="btn sm ghost memoAcks" data-id="${safe66(mid)}">${c} acknowledged — View Names</button><button class="btn sm dark delMemo" data-id="${safe66(mid)}">Delete Memo</button></div>`:acked?'<span class="pill green">Acknowledged</span>':`<div class="memo-ack-actions"><button class="btn sm yellow ackMemo" data-id="${safe66(mid)}">Acknowledge Memo</button></div>`}</div>`;
+    }).join('');
+  };
+
+  // Safe acknowledgment path: no "memo not found" check, no strict ID mismatch, and fallback when Supabase upsert conflict is unavailable.
+  window.ackMemo=ackMemo=async function(id,btn){
+    id=String(id||btn?.dataset?.id||'').trim();
+    if(!id){try{toast('Memo ID missing. Please refresh memos.','error')}catch(_){ }return;}
+    const runner=async()=>{
+      const employeeId=S.profile?.id;
+      if(!employeeId)throw new Error('Employee session not loaded. Please login again.');
+      const now=new Date().toISOString();
+      let existing=null;
+      try{
+        const found=await sb.from('memo_acknowledgments').select('*').eq('memo_id',id).eq('employee_id',employeeId).maybeSingle();
+        if(found.error && !String(found.error.message||'').toLowerCase().includes('multiple')) console.warn('memo ack select skipped',found.error.message);
+        existing=found.data||null;
+      }catch(e){console.warn('memo ack select skipped',e.message||e)}
+      let r;
+      if(existing&&existing.id){
+        r=await sb.from('memo_acknowledgments').update({acknowledged_at:now}).eq('id',existing.id);
+      }else{
+        r=await sb.from('memo_acknowledgments').insert({memo_id:id,employee_id:employeeId,acknowledged_at:now});
+      }
+      if(r.error){
+        // Fallback for duplicate / missing unique conflict cases.
+        const up=await sb.from('memo_acknowledgments').upsert({memo_id:id,employee_id:employeeId,acknowledged_at:now},{onConflict:'memo_id,employee_id'});
+        if(up.error){
+          // Last fallback: try update by memo + employee.
+          const upd=await sb.from('memo_acknowledgments').update({acknowledged_at:now}).eq('memo_id',id).eq('employee_id',employeeId);
+          if(upd.error)throw up.error;
+        }
+      }
+      S.acks=S.acks||[]; S.allAcks=S.allAcks||[];
+      if(!S.acks.some(a=>String(a.memo_id)===id&&String(a.employee_id)===String(employeeId)))S.acks.push({memo_id:id,employee_id:employeeId,acknowledged_at:now});
+      if(!S.allAcks.some(a=>String(a.memo_id)===id&&String(a.employee_id)===String(employeeId)))S.allAcks.push({memo_id:id,employee_id:employeeId,acknowledged_at:now});
+    };
+    if(typeof act==='function'){
+      await act(btn,{busy:'Acknowledging...',success:'Acknowledged',reset:'Acknowledged',toast:'Memo acknowledged.'},runner,async()=>{document.getElementById('memoLock')?.remove();try{await loadData()}catch(e){console.warn(e)}renderPage();});
+    }else{
+      await runner(); document.getElementById('memoLock')?.remove(); renderPage();
+    }
+  };
+
+  window.activeMemos=activeMemos=function(){
+    const now=Date.now();
+    return (S.memos||[]).filter(m=>m&&m.is_required!==false&&m.is_active!==false&&(!m.expires_at||new Date(m.expires_at).getTime()>now));
+  };
+  window.showMemoLock=showMemoLock=function(){
+    try{
+      if(owner66())return;
+      document.getElementById('memoLock')?.remove();
+      const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));
+      const m=activeMemos().find(x=>!acked.has(String(x.id)));
+      if(!m)return;
+      document.body.insertAdjacentHTML('beforeend',`<div id="memoLock" class="modal"><div class="modal-card" style="max-width:700px"><div class="notice"><h2>Mandatory Memo</h2><h3>${safe66(m.title||'Memo')}</h3><p>${safe66(m.content||'')}</p>${(typeof img==='function')?img(m.attachment_url):''}<p class="small">Please acknowledge to continue using dashboard.</p><button class="btn yellow full" id="lockAck">I Have Read and Acknowledge This Memo</button></div></div></div>`);
+      const b=$66('#lockAck'); if(b)b.onclick=e=>ackMemo(m.id,e.currentTarget);
+    }catch(e){console.warn('memo lock skipped',e)}
+  };
+
+  function decorateTables66(root=document){
+    try{
+      root.querySelectorAll('table').forEach(tbl=>{
+        const heads=Array.from(tbl.querySelectorAll('thead th')).map(th=>th.textContent.trim());
+        tbl.querySelectorAll('tbody tr').forEach(tr=>Array.from(tr.children).forEach((td,i)=>{if(!td.getAttribute('data-label')&&heads[i])td.setAttribute('data-label',heads[i]);}));
+      });
+    }catch(e){console.warn('table decorate skipped',e)}
+  }
+  function clean66(){addStyle66();decorateTables66($66('#page')||document);try{if(typeof ensureFooter64==='function')ensureFooter64()}catch(_){ }try{$$66('.topbar #logout').forEach(b=>b.style.display='none')}catch(_){ }}
+
+  const oldRenderPage66=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle66();
+    const page=$66('#page');
+    if(S&&S.tab==='general_control'&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">General Control</span></div>${tabControlPage66()}`; bind(); setTimeout(clean66,60); return;}
+    const r=oldRenderPage66.apply(this,arguments); setTimeout(clean66,70); setTimeout(clean66,400); return r;
+  };
+  const oldRenderApp66=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){addStyle66();const r=oldRenderApp66.apply(this,arguments);setTimeout(clean66,80);setTimeout(clean66,500);return r;};
+  const oldBind66=window.bind||bind;
+  window.bind=bind=function(){try{oldBind66.apply(this,arguments)}catch(e){console.warn(e)}addStyle66();$$66('.ackMemo').forEach(b=>{b.onclick=()=>ackMemo(b.dataset.id,b)});const save=$66('#saveTabControl66');if(save)save.onclick=()=>v66SaveTabControl(save);const reset=$66('#resetTabControl66');if(reset)reset.onclick=()=>v66ResetTabControl(reset);setTimeout(clean66,30);};
+  document.addEventListener('DOMContentLoaded',()=>{addStyle66();setTimeout(clean66,300);setTimeout(clean66,1200)});
+  console.log('V66 phone fit + memo ack + training + general control loaded');
+})();
+/* ================= END V66 ================= */
+
 
 init();
 </script></body></html>
