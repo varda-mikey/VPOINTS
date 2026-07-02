@@ -6852,5 +6852,308 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
 })();
 /* ================= END V57 ================= */
 
+
+/* ================= V58 MOBILE CLEAN UI + CAMERA FLIP PATCH =================
+   Goals:
+   1) Camera can switch Front / Back for photo proof testing.
+   2) Replace messy mobile bottom tabs with a clean 4-button bar + More sheet.
+   3) Hide noisy floating items on phone; keep functions accessible in More.
+   4) No database changes and barcode features untouched.
+*/
+(function(){
+  const $$v58=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $v58=(s,r=document)=>r.querySelector(s);
+  const safe58=(v)=> (typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+  const mobile58=()=>window.matchMedia&&window.matchMedia('(max-width:820px)').matches;
+  const inApp58=()=>!!(document.querySelector('.app') && window.S && S.profile);
+  const tabLabel58=(tab)=>({
+    dashboard:['🏠','Home'],notifications:['🔔','Alerts'],missions:['🎯','Mission'],taskmonitor:['✅','Tasks'],news:['📰','News'],memory:['📸','Memory'],training:['🎓','Train'],academy:['🎓','Train'],memos:['📌','Memo'],forms:['📄','Forms'],policies:['📚','Policy'],chat:['💬','Chat'],profile:['👤','Profile'],rewards:['🎁','Rewards'],attendance:['⏱️','Time'],manager_actions:['⚙️','Action'],employees:['👥','Staff'],reports:['📝','Reports'],violations:['⚠️','Cases'],fsqa:['⭐','FSQA'],ratings:['⭐','Ratings']})[tab]||['•',String(tab||'Tab').replace(/_/g,' ').slice(0,12)];
+
+  function addStyle58(){
+    if(document.getElementById('v58-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v58-style">
+      :root{--v58-safe-bottom:env(safe-area-inset-bottom,0px);--v58-safe-top:env(safe-area-inset-top,0px)}
+      .v58-bottom-nav,.v58-more-sheet,.v58-more-overlay,.v58-top-more{display:none}
+      .v58-camera-video{width:100%;max-height:58vh;background:#111;border-radius:18px;object-fit:cover}.v58-camera-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}.v58-camera-tools .btn{width:100%}.v58-camera-note{font-size:12px;color:#64748b;margin-top:6px}.v58-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.v58-more-grid button{text-align:center}.v58-more-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.v58-more-head h3{margin:0;color:#7f1d1d}.v58-soft-divider{height:1px;background:#e5e7eb;margin:12px 0}
+      @media(max-width:820px){
+        body{overflow-x:hidden}.main{padding:10px 10px calc(82px + var(--v58-safe-bottom))!important}.v50-bottom-nav,.v50-install-hint,.v50-mobile-toggle,.chat-bubble{display:none!important;visibility:hidden!important;pointer-events:none!important}.topbar{display:grid!important;grid-template-columns:1fr auto!important;align-items:center!important;gap:8px!important;margin:0 -10px 12px!important;padding:calc(10px + var(--v58-safe-top)) 10px 10px!important;border-radius:0 0 18px 18px!important;min-height:auto!important}.topbar>.split{display:none!important}.topbar h2{font-size:17px!important;line-height:1.16!important;margin:0!important}.topbar .small{font-size:11px!important}.v50-toprow{display:block!important}.v50-toprow>#v50MenuToggle{display:none!important}.v58-top-more{display:inline-flex!important;width:42px;height:42px;align-items:center;justify-content:center;border-radius:14px;background:#111827;color:#fff;font-weight:1000;box-shadow:0 8px 18px rgba(15,23,42,.18)}#page>.split:first-child{margin-bottom:8px!important}#page>.split:first-child #pageRef{display:none!important}#page>.split:first-child .pill{font-size:11px!important;padding:5px 9px!important}.card,.v47-card,.launch-card,.notice{border-radius:16px!important}.card,.v47-card,.launch-card{padding:13px!important}.grid{gap:10px!important}.num{font-size:27px!important}.kpi{font-size:11px!important}.btn{min-height:42px!important}.btn.sm{min-height:34px!important;padding:7px 9px!important}.topbar+.split{display:none!important}.v58-bottom-nav{display:grid!important;position:fixed;left:10px;right:10px;bottom:calc(8px + var(--v58-safe-bottom));z-index:140;grid-template-columns:repeat(4,1fr);gap:7px;background:rgba(255,255,255,.97);border:1px solid #e5e7eb;border-radius:22px;padding:7px;box-shadow:0 16px 42px rgba(15,23,42,.24);backdrop-filter:blur(10px)}.v58-bottom-nav button{border:0;background:#f8fafc;color:#334155;border-radius:16px;min-height:54px;padding:7px 4px;font-size:11px;font-weight:1000}.v58-bottom-nav button.active{background:linear-gradient(135deg,#b91c1c,#dc2626);color:#fff;box-shadow:0 9px 18px rgba(185,28,28,.24)}.v58-bottom-nav .ico{display:block;font-size:19px;line-height:1.1}.v58-more-overlay{display:block;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:141;opacity:0;pointer-events:none;transition:.18s ease}.v58-more-sheet{display:block;position:fixed;left:10px;right:10px;bottom:calc(78px + var(--v58-safe-bottom));z-index:142;background:#fff;border:1px solid #e5e7eb;border-radius:24px;padding:16px;box-shadow:0 22px 60px rgba(15,23,42,.28);transform:translateY(16px);opacity:0;pointer-events:none;transition:.18s ease}.v58-more-open .v58-more-overlay{opacity:1;pointer-events:auto}.v58-more-open .v58-more-sheet{opacity:1;transform:translateY(0);pointer-events:auto}.sidebar{z-index:150!important}.modal{z-index:200!important}.modal-card{max-width:96vw!important}.chat-panel{display:none!important}table{font-size:13px!important}.thumb{width:72px!important;height:54px!important}.v58-camera-tools{grid-template-columns:1fr}.v58-more-grid{grid-template-columns:1fr 1fr}
+      }
+      @media(max-width:390px){.v58-bottom-nav button{font-size:10px}.v58-bottom-nav .ico{font-size:18px}.v58-more-grid{grid-template-columns:1fr}}
+    </style>`);
+  }
+
+  function mainTabs58(){
+    const available=(typeof nav==='function'?nav():[]).map(x=>x[0]);
+    const pick=[];
+    ['dashboard','notifications','missions'].forEach(t=>{if(available.includes(t))pick.push(t)});
+    if(!pick.includes('dashboard'))pick.unshift('dashboard');
+    while(pick.length<3){const next=available.find(t=>!pick.includes(t)); if(!next)break; pick.push(next)}
+    return pick.slice(0,3);
+  }
+  function go58(tab){
+    try{
+      if(!tab)return;
+      S.tab=tab;
+      localStorage.setItem('vscore_last_tab',tab);
+      document.body.classList.remove('v50-menu-open','v58-more-open');
+      if(typeof renderPage==='function')renderPage();
+      setTimeout(renderChrome58,80);
+    }catch(e){console.warn('[V58] go failed',e)}
+  }
+  function moreItems58(){
+    const available=(typeof nav==='function'?nav():[]);
+    const top=new Set([...mainTabs58(),'dashboard','notifications','missions']);
+    const preferred=['news','training','memos','attendance','taskmonitor','chat','profile','rewards','forms','policies','memory','manager_actions','employees','ratings'];
+    const out=[];
+    preferred.forEach(k=>{const item=available.find(x=>x[0]===k); if(item&&!top.has(k)&&!out.find(x=>x[0]===k))out.push(item)});
+    available.forEach(item=>{if(!top.has(item[0])&&!out.find(x=>x[0]===item[0])&&out.length<14)out.push(item)});
+    return out.slice(0,14);
+  }
+  function openMore58(){document.body.classList.add('v58-more-open');renderMoreSheet58()}
+  function closeMore58(){document.body.classList.remove('v58-more-open')}
+  function renderMoreSheet58(){
+    let ov=document.getElementById('v58MoreOverlay');
+    if(!ov){document.body.insertAdjacentHTML('beforeend','<div id="v58MoreOverlay" class="v58-more-overlay"></div>');ov=document.getElementById('v58MoreOverlay');ov.onclick=closeMore58;}
+    let sh=document.getElementById('v58MoreSheet');
+    if(!sh){document.body.insertAdjacentHTML('beforeend','<div id="v58MoreSheet" class="v58-more-sheet"></div>');sh=document.getElementById('v58MoreSheet');}
+    const items=moreItems58();
+    sh.innerHTML=`<div class="v58-more-head"><div><h3>More Menu</h3><div class="small muted">Clean shortcuts. Full sidebar is still available.</div></div><button class="btn sm dark" type="button" id="v58CloseMore">Close</button></div><div class="v58-more-grid">${items.map(it=>{const [ico,lab]=tabLabel58(it[0]);return `<button class="btn ghost" type="button" data-v58-moretab="${safe58(it[0])}"><span style="font-size:18px">${ico}</span><br>${safe58(lab)}</button>`}).join('')}</div><div class="v58-soft-divider"></div><div class="v58-more-grid"><button class="btn blue" type="button" id="v58RefreshNow">↻ Refresh</button><button class="btn ghost" type="button" id="v58FullMenu">☰ All Menu</button><button class="btn dark" type="button" id="v58LogoutNow">Logout</button></div>`;
+    $v58('#v58CloseMore')?.addEventListener('click',closeMore58);
+    $$v58('[data-v58-moretab]').forEach(b=>b.onclick=()=>go58(b.dataset.v58Moretab));
+    $v58('#v58RefreshNow')?.addEventListener('click',async e=>{try{await act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'↻ Refresh'},loadData,renderPage);setTimeout(renderChrome58,80);}catch(err){console.warn(err)}});
+    $v58('#v58FullMenu')?.addEventListener('click',()=>{closeMore58();document.body.classList.add('v50-menu-open')});
+    $v58('#v58LogoutNow')?.addEventListener('click',()=>{closeMore58(); if(typeof logout==='function')logout();});
+  }
+  function renderBottom58(){
+    let b=document.getElementById('v58BottomNav');
+    const tabs=mainTabs58();
+    const html=[...tabs,'__more'].map(t=>{const a=t==='__more'?['•••','More']:tabLabel58(t);return `<button type="button" class="${S.tab===t?'active':''}" data-v58-tab="${safe58(t)}"><span class="ico">${a[0]}</span>${safe58(a[1])}</button>`}).join('');
+    if(!b){document.body.insertAdjacentHTML('beforeend',`<div id="v58BottomNav" class="v58-bottom-nav">${html}</div>`);b=document.getElementById('v58BottomNav');}
+    else b.innerHTML=html;
+    b.querySelectorAll('[data-v58-tab]').forEach(btn=>btn.onclick=()=>btn.dataset.v58Tab==='__more'?openMore58():go58(btn.dataset.v58Tab));
+  }
+  function renderTopMore58(){
+    const tb=document.querySelector('.topbar'); if(!tb)return;
+    if(!document.getElementById('v58TopMore')){
+      const btn=document.createElement('button');btn.id='v58TopMore';btn.type='button';btn.className='v58-top-more';btn.textContent='•••';btn.title='More menu';btn.onclick=openMore58;tb.appendChild(btn);
+    }
+  }
+  function cleanFloating58(){
+    try{
+      document.querySelectorAll('.v50-install-hint').forEach(x=>x.remove());
+      document.querySelectorAll('input[type="file"][capture]').forEach(i=>i.removeAttribute('capture'));
+      if(!inApp58()){document.getElementById('v58BottomNav')?.remove();document.getElementById('v58MoreSheet')?.remove();document.getElementById('v58MoreOverlay')?.remove();document.body.classList.remove('v58-more-open');}
+    }catch(e){}
+  }
+  function renderChrome58(){
+    addStyle58(); cleanFloating58();
+    if(!inApp58())return;
+    renderTopMore58(); renderBottom58(); renderMoreSheet58();
+    const b=document.getElementById('v58BottomNav');
+    if(b)b.querySelectorAll('[data-v58-tab]').forEach(x=>x.classList.toggle('active',x.dataset.v58Tab===S.tab));
+  }
+  window.v58RenderChrome=renderChrome58;
+  window.v58Go=go58;
+
+  // Camera with front/back flip. Used by normal proof uploads and attendance.
+  async function openCamera58(input,opts={}){
+    if(!input)return;
+    addStyle58();
+    if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) || !window.isSecureContext){
+      try{toast('Camera works on HTTPS/phone browser. Opening gallery/file picker instead.','error')}catch(e){}
+      try{input.click()}catch(e){}
+      return;
+    }
+    let stream=null,facing=opts.facing||'environment';
+    const stop=()=>{try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(e){} stream=null;};
+    const start=async()=>{
+      stop();
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}},audio:false});
+      const v=document.getElementById('v58Video'); if(v)v.srcObject=stream;
+      const lbl=document.getElementById('v58FacingLabel'); if(lbl)lbl.textContent=facing==='user'?'Front Camera':'Back Camera';
+    };
+    try{
+      if(typeof modal==='function')modal(`<div class="split" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Take Photo</h2><span class="pill blue" id="v58FacingLabel">Back Camera</span></div><button class="btn sm dark" id="v58CloseCam">Close</button></div><br><video id="v58Video" class="v58-camera-video" autoplay playsinline muted></video><canvas id="v58Canvas" style="display:none"></canvas><div class="v58-camera-tools" style="margin-top:12px"><button class="btn ghost" id="v58FlipCam">🔄 Flip Front / Back</button><button class="btn blue" id="v58CaptureCam">📷 Capture Photo</button><button class="btn ghost" id="v58GalleryCam">Choose from Gallery</button></div><div class="v58-camera-note">Use Flip if the phone opens the wrong camera. Back camera is better for proof; front camera is available for testing.</div>`);
+      else document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="modal-card"><h2>Take Photo</h2><video id="v58Video" class="v58-camera-video" autoplay playsinline muted></video><canvas id="v58Canvas" style="display:none"></canvas><div class="v58-camera-tools"><button class="btn ghost" id="v58FlipCam">Flip</button><button class="btn blue" id="v58CaptureCam">Capture</button><button class="btn dark" id="v58CloseCam">Close</button></div></div></div>`);
+      await start();
+      const close=()=>{stop(); if(typeof closeModal==='function')closeModal(); else document.querySelector('.modal')?.remove();};
+      const attachFile=(blob)=>{
+        const file=new File([blob],(opts.prefix||'camera_photo')+'_'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+        try{
+          const dt=new DataTransfer();
+          if(input.multiple)Array.from(input.files||[]).forEach(f=>dt.items.add(f));
+          dt.items.add(file); input.files=dt.files; input.dispatchEvent(new Event('change',{bubbles:true}));
+        }catch(e){try{toast('Photo captured but could not attach. Use gallery instead.','error')}catch(_){}}
+        try{opts.after&&opts.after(file)}catch(e){}
+      };
+      document.getElementById('v58CloseCam').onclick=close;
+      document.getElementById('v58GalleryCam')?.addEventListener('click',()=>{close();input.click();});
+      document.getElementById('v58FlipCam').onclick=async()=>{facing=facing==='environment'?'user':'environment';try{await start()}catch(e){try{toast('This device did not allow switching camera.','error')}catch(_){}}};
+      document.getElementById('v58CaptureCam').onclick=()=>{
+        const v=document.getElementById('v58Video'),c=document.getElementById('v58Canvas');
+        c.width=v.videoWidth||1280; c.height=v.videoHeight||720; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+        c.toBlob(blob=>{if(blob)attachFile(blob); close(); setTimeout(()=>{try{window.v51CleanUploadUI&&window.v51CleanUploadUI(input.closest('form')||document)}catch(e){}},80);},'image/jpeg',0.82);
+      };
+    }catch(e){
+      stop(); try{if(typeof closeModal==='function')closeModal();}catch(_){}
+      try{toast('Camera permission unavailable. Use gallery/file instead.','error')}catch(_){}
+      try{input.click()}catch(_){}
+    }
+  }
+  window.v58OpenCamera=openCamera58;
+  window.v51UseCamera=function(input){return openCamera58(input,{prefix:'camera_photo',facing:'environment'});};
+  window.v55TakeAttendancePhoto=function(){
+    const input=document.getElementById('attProof55');
+    if(!input)return;
+    input.removeAttribute('capture');
+    return openCamera58(input,{prefix:'attendance_camera',facing:'environment',after:(file)=>{try{typeof setAttPreview55==='function'&&setAttPreview55(file,'Ready to submit')}catch(e){}}});
+  };
+
+  // Patch render lifecycle without touching barcode/scanner code.
+  const oldRenderApp58=window.renderApp||renderApp;
+  window.renderApp=renderApp=function(){const r=oldRenderApp58.apply(this,arguments);setTimeout(renderChrome58,100);setTimeout(renderChrome58,500);return r;};
+  const oldRenderPage58=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){const r=oldRenderPage58.apply(this,arguments);setTimeout(renderChrome58,100);setTimeout(cleanFloating58,250);return r;};
+  document.addEventListener('DOMContentLoaded',()=>{addStyle58();setTimeout(renderChrome58,700)});
+  const mo=new MutationObserver(()=>{if(!window.__v58Syncing){window.__v58Syncing=true;setTimeout(()=>{window.__v58Syncing=false;renderChrome58();},120)}});
+  try{mo.observe(document.documentElement,{childList:true,subtree:true});}catch(e){}
+  console.log('V58 mobile clean UI + camera flip patch loaded');
+})();
+/* ================= END V58 ================= */
+
+
+/* ================= V59 STABILITY + MOBILE CLEAN FINAL =================
+   Purpose: fix Time In/Time Out canMgr crash, keep barcode untouched,
+   provide clean attendance workflow with camera flip + gallery fallback,
+   and hide mobile bottom bar while keyboard is open.
+*/
+(function(){
+  const $59=(s,r=document)=>r.querySelector(s);
+  const $$59=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E59=(v)=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}catch(_){return String(v??'')}};
+  const mobile59=()=>window.matchMedia&&window.matchMedia('(max-width:820px)').matches;
+  const phDate59=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const phTime59=()=>new Date().toLocaleString('en-PH',{timeZone:'Asia/Manila',hour12:true});
+  const settings59=()=>S.v53Settings||{tabs:{},timeclock:true,ratings:true,customer_news:true};
+  function roleText59(){return String(S.profile?.role||'').toLowerCase().replace(/\s+/g,'_')}
+  function canRetail59(){
+    try{
+      const r=roleText59(),p=String(S.profile?.position||'').toLowerCase();
+      return (typeof isOwner==='function'&&isOwner())||['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(r)||/(retail|head office|admin|management|hr)/i.test(p);
+    }catch(_){return false}
+  }
+  function canManager59(){
+    try{return (typeof isManager==='function'&&isManager())||canRetail59()}catch(_){return canRetail59()}
+  }
+  window.canMgr=window.canMgr||canManager59;
+  window.canRetail=window.canRetail||canRetail59;
+  window.canMgr59=canManager59;
+  window.canRetail59=canRetail59;
+
+  function addStyle59(){
+    if(document.getElementById('v59-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v59-style">
+      .v59-clock-card{background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:22px;padding:16px;box-shadow:0 14px 34px rgba(15,23,42,.07);margin-bottom:14px}.v59-clock-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.v59-clock-time{font-size:30px;font-weight:1000;color:#991b1b}.v59-status-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.v59-att-card{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:22px;padding:16px;box-shadow:0 14px 34px rgba(15,23,42,.07)}.v59-reminder{background:#fffbeb;border-left:5px solid #facc15;border-radius:15px;padding:12px;color:#7c2d12;margin:10px 0}.v59-proof-box{border:2px dashed #f59e0b;background:#fff7ed;border-radius:18px;padding:14px;text-align:center;margin:12px 0}.v59-proof-preview{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px}.v59-proof-preview img{width:150px;height:112px;object-fit:cover;border-radius:15px;border:1px solid #f59e0b;background:#fff}.v59-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:1000;background:#e5e7eb;color:#334155}.v59-pill.ok{background:#dcfce7;color:#166534}.v59-pill.warn{background:#fef3c7;color:#92400e}.v59-pill.red{background:#fee2e2;color:#991b1b}.v59-pill.blue{background:#dbeafe;color:#1e40af}.v59-att-list{display:grid;gap:10px}.v59-att-item{border:1px solid #e5e7eb;border-radius:16px;background:#fff;padding:12px}.v59-att-item b{color:#7f1d1d}.v59-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.v59-mini-stat{border:1px solid #e5e7eb;border-radius:16px;padding:12px;background:#f8fafc}.v59-mini-stat b{font-size:24px;color:#991b1b}.v59-table-scroll{overflow:auto;max-height:480px}.v59-bottom-space{height:84px}.v59-file-note{font-size:12px;color:#64748b;margin-top:6px}.v59-hidden{display:none!important}
+      @media(max-width:820px){body.v59-keyboard #v58BottomNav,body.v59-keyboard #v58MoreSheet,body.v59-keyboard #v58MoreOverlay{display:none!important}.v59-clock-card,.v59-att-card{border-radius:17px!important;padding:13px!important}.v59-clock-time{font-size:24px}.v59-mini-grid{grid-template-columns:1fr}.v59-proof-preview img{width:118px;height:90px}.v59-att-card .split .btn,.v59-proof-box .split .btn{width:100%}.v59-bottom-space{height:74px}.v54-grid{grid-template-columns:1fr!important}.v54-card{border-radius:17px!important;padding:13px!important}.v55-camera-box{padding:12px!important}.v53-timebtn{font-size:18px!important;padding:14px!important}.academy-viewer,.training-viewer,#trainingViewer{padding-bottom:88px!important}}
+    </style>`);
+  }
+  function todayLogs59(){const d=phDate59();return (S.attendanceLogs||[]).filter(x=>String(x.employee_id)===String(S.profile?.id)&&String(x.work_date||'').slice(0,10)===d).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));}
+  function firstInOut59(logs){logs=(logs||[]).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));return {tin:logs.find(x=>x.event_type==='time_in'),tout:logs.find(x=>x.event_type==='time_out')}}
+  function media59(v){try{if(!v)return[];if(Array.isArray(v))return v;if(typeof v==='string'&&v.trim().startsWith('['))return JSON.parse(v);if(typeof v==='string'&&v.trim().startsWith('{'))return [JSON.parse(v)];if(typeof v==='string')return [{url:v}]}catch(_){}return[]}
+  function img59(v){return media59(v).map(x=>{let u=x.url||x.thumbnailUrl||x.directViewUrl||x.viewUrl||'';try{if(typeof v39DriveDisplayUrl==='function')u=v39DriveDisplayUrl(u)}catch(_){}return u?`<img src="${E59(u)}" class="thumb" onclick="zoom('${E59(u)}')">`:''}).join('')}
+  function hours59(a,b){const ms=new Date(b)-new Date(a);if(!isFinite(ms)||ms<0)return'';return (ms/36e5).toFixed(2)}
+  function groupRows59(logs){const g={};(logs||[]).forEach(x=>{const k=String(x.employee_id||'')+'|'+String(x.work_date||'').slice(0,10);g[k]=g[k]||{employee_id:x.employee_id,branch:x.branch||(typeof emp==='function'?emp(x.employee_id).branch:''),work_date:String(x.work_date||'').slice(0,10),tin:null,tout:null};if(x.event_type==='time_in'&&!g[k].tin)g[k].tin=x;if(x.event_type==='time_out'&&!g[k].tout)g[k].tout=x});return Object.values(g).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))||String((typeof emp==='function'?emp(a.employee_id).full_name:'')||'').localeCompare(String((typeof emp==='function'?emp(b.employee_id).full_name:'')||'')))}
+
+  function attendanceList59(rows){
+    return `<div class="v59-att-list">${(rows||[]).length?rows.map(r=>`<div class="v59-att-item"><b>${E59(typeof emp==='function'?emp(r.employee_id).full_name:'Employee')}</b><br><span class="small muted">${E59(r.branch||'')} · ${E59(r.work_date||'')}</span><div class="v59-status-row"><span class="v59-pill ${r.tin?'ok':'warn'}">Time In: ${r.tin?E59(typeof fmt==='function'?fmt(r.tin.created_at):r.tin.created_at):'Pending'}</span><span class="v59-pill ${r.tout?'ok':'warn'}">Time Out: ${r.tout?E59(typeof fmt==='function'?fmt(r.tout.created_at):r.tout.created_at):'Pending'}</span>${r.tin&&r.tout?`<span class="v59-pill blue">${hours59(r.tin.created_at,r.tout.created_at)} hrs</span>`:''}</div><div class="small muted">${E59((r.tin?.location_text||r.tout?.location_text||'').slice(0,150))}</div><div>${img59(r.tin?.photo_json||r.tin?.photo_url)} ${img59(r.tout?.photo_json||r.tout?.photo_url)}</div>${r.tin?.remarks||r.tout?.remarks?`<div class="small"><b>Remarks:</b> ${E59(r.tin?.remarks||r.tout?.remarks||'')}</div>`:''}</div>`).join(''):'<div class="empty">No attendance records yet.</div>'}</div>`;
+  }
+  function locPromise59(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error('Location is required but this browser does not support it. Use phone/HTTPS browser.'));navigator.geolocation.getCurrentPosition(p=>res(p),err=>rej(new Error('Location permission is required. Please tap Allow Location and try again.')),{enableHighAccuracy:true,timeout:25000,maximumAge:0});});}
+  function fileData59(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});}
+  async function stampPhoto59(file,type,loc){
+    const data=await fileData59(file);
+    return await new Promise((res,rej)=>{const im=new Image();im.onload=()=>{let max=1200,scale=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);const ctx=c.getContext('2d');ctx.drawImage(im,0,0,c.width,c.height);const h=Math.max(118,Math.round(c.height*.17));ctx.fillStyle='rgba(0,0,0,.70)';ctx.fillRect(0,c.height-h,c.width,h);ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(22,Math.round(c.width/40))}px Arial`;ctx.fillText((type==='time_in'?'TIME IN':'TIME OUT')+' · '+phTime59(),18,c.height-h+38);ctx.font=`${Math.max(16,Math.round(c.width/58))}px Arial`;ctx.fillText(String(S.profile?.full_name||'Employee'),18,c.height-h+70);ctx.fillText(String(loc||'Location captured').slice(0,92),18,c.height-h+100);res(c.toDataURL('image/jpeg',.76));};im.onerror=rej;im.src=data;});
+  }
+  function setPreview59(file,status='Ready to submit'){
+    const box=$59('#attPreview59')||$59('#attPreview55');if(!box)return;
+    if(!file){box.innerHTML='<span class="v59-pill warn">No photo yet</span>';return;}
+    const u=URL.createObjectURL(file);box.innerHTML=`<img src="${u}"><span class="v59-pill ok">${E59(status)}</span>`;
+  }
+  window.v59TakeAttendancePhoto=function(){
+    const input=$59('#attProof59')||$59('#attProof55');if(!input)return;
+    input.removeAttribute('capture');
+    if(typeof v58OpenCamera==='function')return v58OpenCamera(input,{prefix:'attendance_camera',facing:'environment',after:(file)=>setPreview59(file,'Ready to submit')});
+    input.click();
+  };
+  window.v55TakeAttendancePhoto=window.v59TakeAttendancePhoto;
+
+  function quickClockCard59(){
+    addStyle59();
+    const logs=todayLogs59();const {tin,tout}=firstInOut59(logs);
+    return `<div class="v59-clock-card"><div class="v59-clock-head"><div><div class="small muted">Today Attendance</div><div class="v59-clock-time">${E59(phTime59())}</div></div><button class="btn blue" type="button" onclick="v59OpenAttendance()">Open Time In / Out</button></div><div class="v59-status-row"><span class="v59-pill ${tin?'ok':'warn'}">${tin?'Time In recorded':'Waiting for Time In'}</span><span class="v59-pill ${tout?'ok':'warn'}">${tout?'Time Out recorded':'Waiting for Time Out'}</span></div></div>`;
+  }
+  window.v59QuickClockCard=quickClockCard59;
+
+  window.attendancePage54=window.attendancePage55=window.attendancePage59=function(){
+    addStyle59();
+    const set=settings59();if(set.timeclock===false&&!canRetail59())return '<div class="empty">Time In / Time Out is currently disabled by Retail Management.</div>';
+    const mine=todayLogs59();const {tin,tout}=firstInOut59(mine);const rows=groupRows59(mine);const allRows=canManager59()?groupRows59(S.attendanceLogs||[]):[];const todayRows=allRows.filter(r=>r.work_date===phDate59());
+    return `<div class="v54-grid"><div class="v59-att-card"><h3>Time In / Time Out</h3><div class="v59-reminder"><b>Before you submit:</b><br>✅ Complete uniform<br>✅ Inside the store/branch<br>✅ One timestamp photo + phone location required<br>✅ One Time In and one Time Out per day</div><div class="v59-clock-time">${E59(phTime59())}</div><div class="v59-status-row"><span class="v59-pill ${tin?'ok':'warn'}">${tin?'Time In recorded':'Waiting for Time In'}</span><span class="v59-pill ${tout?'ok':'warn'}">${tout?'Time Out recorded':'Waiting for Time Out'}</span></div><div class="v59-proof-box"><b>Timestamp Photo Proof</b><p class="small muted">Take photo opens camera with Flip Front/Back. Gallery is backup.</p><input id="attProof59" type="file" accept="image/*" style="display:none"><div class="split" style="justify-content:center"><button type="button" class="btn blue" onclick="v59TakeAttendancePhoto()">📷 Take Photo</button><button type="button" class="btn ghost" onclick="document.getElementById('attProof59').click()">🖼️ Gallery</button></div><div id="attPreview59" class="v59-proof-preview"><span class="v59-pill warn">No photo yet</span></div><div class="v59-file-note">Back camera is default. Use Flip if front camera is needed for testing.</div></div><label class="checkline"><input type="checkbox" id="attConfirm59"> <span>I confirm I am in complete uniform and currently inside the store/branch.</span></label><div class="field"><label>Remarks / reason if late, absent, or early out</label><textarea id="attRemarks59" placeholder="Optional remarks"></textarea></div><div class="split"><button class="btn green v53-timebtn" ${tin?'disabled':''} onclick="attendanceLog59('time_in',this)">Time In</button><button class="btn dark v53-timebtn" ${!tin||tout?'disabled':''} onclick="attendanceLog59('time_out',this)">Time Out</button></div><div class="v59-file-note">Location permission will pop up after pressing Time In/Out. Tap Allow.</div><h4>My logs today</h4>${attendanceList59(rows)}</div>${canManager59()?`<div class="v59-att-card"><div class="split" style="justify-content:space-between"><div><h3>Attendance Summary</h3><p class="muted">Manager view: staff Time In/Out with proof and location.</p></div><button class="btn blue" onclick="exportAttendance59()">Download CSV</button></div><div class="v59-mini-grid"><div class="v59-mini-stat"><span>Time In Today</span><br><b>${todayRows.filter(r=>r.tin).length}</b></div><div class="v59-mini-stat"><span>Time Out Today</span><br><b>${todayRows.filter(r=>r.tout).length}</b></div></div><br><div class="v59-table-scroll">${attendanceList59(allRows)}</div></div>`:''}</div><div class="v59-bottom-space"></div>`;
+  };
+  window.attendanceLog54=window.attendanceLog55=window.attendanceLog59=async function(type,btn){
+    const logs=todayLogs59();const {tin,tout}=firstInOut59(logs);if(type==='time_in'&&tin)return toast('Time In already recorded today.','error');if(type==='time_out'&&!tin)return toast('Time In required first.','error');if(type==='time_out'&&tout)return toast('Time Out already recorded today.','error');
+    if(!$59('#attConfirm59')?.checked&&!$59('#attConfirm55')?.checked)return toast('Please confirm uniform and in-store reminder first.','error');
+    const input=$59('#attProof59')||$59('#attProof55');const file=input?.files?.[0];if(!file)return toast('Timestamp photo is required. Tap Take Photo first.','error');
+    await act(btn,{busy:'Getting location...',success:'Saved ✓',reset:type==='time_in'?'Time In':'Time Out',toast:'Attendance saved.'},async()=>{
+      const pos=await locPromise59();const lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy;const loc=`Lat ${lat.toFixed(6)}, Lng ${lng.toFixed(6)} (±${Math.round(acc||0)}m) · ${phTime59()}`;
+      btn.textContent='Stamping photo...';const stamped=await stampPhoto59(file,type,loc);const sp=$59('#attPreview59 .v59-pill')||$59('#attPreview55 .v59-pill')||$59('#attPreview55 .v55-status-pill');if(sp){sp.className='v59-pill blue';sp.textContent='Uploading timestamp photo...'}
+      let photos=[];try{if(typeof v34DriveUploadDataUrl==='function'){const up=await v34DriveUploadDataUrl(stamped,{name:'attendance_'+type+'_'+Date.now()+'.jpg',type:'image/jpeg'},'10 Attendance Proof','attendance_'+type);const url=up.thumbnailUrl||up.directViewUrl||up.viewUrl||up.url||'';if(url)photos=[{url,name:'attendance_'+type+'.jpg',driveFileId:up.fileId||'',fileId:up.fileId||'',storage:'company-drive',stamp:loc,uploadedAt:new Date().toISOString()}];}}catch(e){console.warn('attendance drive upload skipped',e.message)}
+      if(!photos.length)photos=[{url:stamped,name:'attendance_'+type+'.jpg',stamp:loc,storage:'local-fallback'}];if(sp){sp.className='v59-pill ok';sp.textContent='Uploaded / ready'}
+      const remarks=$59('#attRemarks59')?.value||$59('#attRemarks55')?.value||'';const now=new Date().toISOString();
+      const full={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:phDate59(),remarks,photo_url:JSON.stringify(photos),photo_json:JSON.stringify(photos),location_text:loc,latitude:lat,longitude:lng,accuracy_meters:acc,device_info:(navigator.userAgent||'').slice(0,200),created_at:now};
+      const simple={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:phDate59(),remarks,photo_url:JSON.stringify(photos),location_text:loc,created_at:now};
+      const minimal={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:phDate59(),remarks,created_at:now};
+      let r=await sb.from('vscore_attendance_logs').insert(full).select().single();
+      if(r.error){console.warn('attendance full insert fallback',r.error.message);r=await sb.from('vscore_attendance_logs').insert(simple).select().single();}
+      if(r.error){console.warn('attendance simple insert fallback',r.error.message);r=await sb.from('vscore_attendance_logs').insert(minimal).select().single();}
+      if(r.error)throw r.error;
+      try{const rec=r.data||full;const managers=(S.employees||[]).filter(e=>String(e.branch)===String(S.profile.branch)&&String(e.id)!==String(S.profile.id)&&/(manager|team_leader|retail|head|admin|hr|management|owner)/i.test(String(e.role||e.position||''))).slice(0,20);if(managers.length&&sb.from){await sb.from('vscore_notifications').insert(managers.map(m=>({employee_id:m.id,title:`Attendance ${type==='time_in'?'Time In':'Time Out'}`,message:`${S.profile.full_name} submitted ${type==='time_in'?'Time In':'Time Out'} with timestamp photo and location.`,type:'attendance_log',source_type:'vscore_attendance_logs',source_id:rec.id||null,created_by:S.profile.id,is_active:true,created_at:now})));}}catch(e){console.warn('attendance manager notification skipped',e.message)}
+    },async()=>{await loadData();renderPage();});
+  };
+  window.exportAttendance54=window.exportAttendance55=window.exportAttendance59=function(){const rows=groupRows59(S.attendanceLogs||[]);const data=[['Name','Branch','Date','Time In','Time Out','Total Hours','Location','Remarks'],...rows.map(r=>[(typeof emp==='function'?emp(r.employee_id).full_name:''),r.branch||(typeof emp==='function'?emp(r.employee_id).branch:''),r.work_date,r.tin?new Date(r.tin.created_at).toLocaleString():'',r.tout?new Date(r.tout.created_at).toLocaleString():'',r.tin&&r.tout?hours59(r.tin.created_at,r.tout.created_at):'',r.tin?.location_text||r.tout?.location_text||'',r.tin?.remarks||r.tout?.remarks||''])];const csv=data.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='vscore_attendance_time_in_time_out.csv';a.click();};
+
+  function bindAttendance59(){const input=$59('#attProof59');if(input&&!input.__v59Bound){input.__v59Bound=true;input.addEventListener('change',()=>setPreview59(input.files?.[0],'Ready to submit'));}}
+  window.v59OpenAttendance=function(){try{S.tab='attendance';localStorage.setItem('vscore_last_tab','attendance');document.body.classList.remove('v58-more-open','v50-menu-open');renderPage();setTimeout(()=>{try{typeof v58RenderChrome==='function'&&v58RenderChrome()}catch(_){ }},80);if(typeof loadData==='function')loadData().then(()=>{if(S.tab==='attendance')renderPage();}).catch(console.warn)}catch(e){console.error(e);}}
+  window.openAttendanceTab56=window.v59OpenAttendance;
+
+  try{
+    const oldEmpDash59=window.empDash||empDash;
+    window.empDash=empDash=function(){addStyle59();let html='';try{html=oldEmpDash59.apply(this,arguments)}catch(e){html=`<div class="notice danger">Dashboard loading issue: ${E59(e.message||e)}</div>`}return quickClockCard59()+html;};
+  }catch(e){console.warn('v59 dashboard shortcut skipped',e.message)}
+
+  const oldRenderPage59=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle59();
+    if(S&&S.tab==='attendance'){
+      const page=document.getElementById('page');
+      if(!page)return oldRenderPage59.apply(this,arguments);
+      try{
+        page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Time In / Time Out</span><button class="btn sm ghost" id="pageRef">Refresh This Page</button></div>${window.attendancePage59()}`;
+        bindAttendance59();const pr=$59('#pageRef');if(pr)pr.onclick=async e=>act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'Refresh This Page'},loadData,renderPage);
+        setTimeout(()=>{bindAttendance59();try{typeof v58RenderChrome==='function'&&v58RenderChrome()}catch(_){ }},100);
+        return;
+      }catch(e){console.error('V59 attendance render failed',e);page.innerHTML=`<div class="card"><h3>Time In / Time Out</h3><div class="notice danger"><b>Attendance loading issue fixed guard:</b><br>${E59(e.message||e)}</div><button class="btn blue" onclick="location.reload()">Reload App</button></div>`;return;}
+    }
+    const out=oldRenderPage59.apply(this,arguments);
+    setTimeout(()=>{try{typeof v58RenderChrome==='function'&&v58RenderChrome()}catch(_){ }},120);
+    return out;
+  };
+
+  document.addEventListener('focusin',e=>{if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))document.body.classList.add('v59-keyboard')});
+  document.addEventListener('focusout',()=>setTimeout(()=>document.body.classList.remove('v59-keyboard'),250));
+  document.addEventListener('DOMContentLoaded',()=>{addStyle59();setTimeout(()=>{try{typeof v58RenderChrome==='function'&&v58RenderChrome()}catch(_){ }},900)});
+  console.log('V59 stability + final mobile attendance patch loaded');
+})();
+/* ================= END V59 ================= */
+
 init();
 </script></body></html>
