@@ -8792,5 +8792,279 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
 
 
 
+/* ================= V71 FINAL TASKLIST + RETAIL POINT CONTROL + MINIMAL PHOTO PREVIEW =================
+   Requested fixes:
+   1) Share My Task List uses checklist rows with ongoing/done percentage monitoring.
+   2) Staff and branch managers cannot edit merit/demerit points; Retail/Head Office decides.
+   3) Upload preview is minimal: show photos only, no annoying "no photo selected" lines.
+   Safe approach: overlay patch only. No database rebuild, no deletion, no barcode/attendance changes.
+*/
+(function(){
+  const V71_VERSION='V71_FINAL_TASKLIST_RETAIL_POINTS_MINIMAL_PREVIEW';
+  window.VSCORE_VERSION=(window.VSCORE_VERSION||'')+' + '+V71_VERSION;
+  const $71=(s,r=document)=>r.querySelector(s);
+  const $$71=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc71=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const fmt71=v=>{try{return (typeof fmt==='function')?fmt(v):(v?new Date(v).toLocaleString():'-')}catch(_){return v||'-'}};
+  const money71=n=>{try{return (typeof money==='function')?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n??'')}};
+  const emp71=id=>{try{return (typeof emp==='function'?emp(id):null)||{full_name:'-',branch:'-'}}catch(_){return {full_name:'-',branch:'-'}}};
+  const toast71=(m,t='ok')=>{try{typeof toast==='function'?toast(m,t):alert(m)}catch(_){alert(m)}};
+  const role71=()=>{try{return String(S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_')}catch(_){return 'employee'}};
+  const retail71=()=>{const r=role71();return ['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(r) || (typeof isOwner==='function'&&isOwner()&&!['manager','branch_manager','team_leader'].includes(r));};
+  const manager71=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return retail71()}};
+  const me71=()=>String(S?.profile?.id||'');
+
+  function addStyle71(){
+    if(document.getElementById('v71-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v71-style">
+      .v67-upload-wrap,.v68-progress-wrap,.v69-thumbline{display:none!important}.v71-preview{display:none;margin-top:8px}.v71-preview.show{display:grid;gap:7px}.v71-imggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:7px}.v71-imgbox{position:relative;border-radius:13px;overflow:hidden;background:#f8fafc;border:1px solid #e5e7eb;aspect-ratio:1/1}.v71-imgbox img{width:100%;height:100%;object-fit:cover;display:block}.v71-filechip{font-size:11px;border:1px solid #e5e7eb;border-radius:12px;padding:9px;background:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v71-loader{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.75)}.v71-loader span{display:block;height:100%;width:0%;background:#16a34a;transition:width .25s ease}.v71-checklist{display:grid;gap:9px}.v71-taskrow{border:1px solid #e5e7eb;border-radius:15px;padding:10px;background:#fff}.v71-tasktop{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}.v71-tasktop input[type=checkbox]{width:22px;height:22px;accent-color:#16a34a}.v71-taskcontrols{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center;margin-top:8px}.v71-range{width:100%;accent-color:#b91c1c}.v71-percent{font-size:13px;font-weight:1000;color:#7f1d1d;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;padding:6px 10px;min-width:66px;text-align:center}.v71-task-status{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:1000;background:#ffedd5;color:#9a3412}.v71-task-status.done{background:#dcfce7;color:#166534}.v71-overall{border:1px solid #fed7aa;border-radius:15px;padding:11px;background:#fffbeb;margin:10px 0}.v71-overallbar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}.v71-overallbar span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#f59e0b,#22c55e)}.v71-card{border:1px solid #e5e7eb;border-radius:17px;padding:12px;background:#fff;margin:0 0 10px;box-shadow:0 8px 24px rgba(15,23,42,.05);overflow-wrap:anywhere}.v71-taskline{border:1px solid #e5e7eb;border-radius:12px;padding:8px;margin:7px 0;background:#f8fafc}.v71-minibar{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:6px}.v71-minibar span{display:block;height:100%;background:#16a34a}.v71-point-note{background:#eff6ff;border-left:5px solid #2563eb;color:#1e3a8a;border-radius:14px;padding:10px;margin:8px 0;font-size:13px}.v71-point-field{display:none!important}.v71-retail-only{border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:10px;margin:8px 0}.v71-report-card .thumb,.v71-card .thumb{max-width:100%;height:auto}.v71-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.v71-actions .btn{flex:1 1 auto}.v71-hidden-field{display:none!important}
+      @media(max-width:820px){.v71-imggrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.v71-taskrow,.v71-card{border-radius:14px;padding:10px}.v71-taskcontrols{grid-template-columns:1fr}.v71-percent{width:max-content}.v71-actions{display:grid;grid-template-columns:1fr}.v71-actions .btn{width:100%}.v71-point-note{font-size:12px}}
+    </style>`);
+  }
+
+  function addPreview71(input){
+    if(!input || input.__v71Preview || input.id==='attProof59' || input.id==='attProof55')return;
+    input.__v71Preview=true;
+    const wrap=document.createElement('div'); wrap.className='v71-preview'; wrap.innerHTML='<div class="v71-imggrid"></div>';
+    input.insertAdjacentElement('afterend',wrap);
+    input.addEventListener('change',()=>showPreview71(input));
+    if(input.files&&input.files.length)showPreview71(input);
+  }
+  function showPreview71(input){
+    try{
+      addStyle71(); let wrap=input.nextElementSibling; if(!wrap||!wrap.classList.contains('v71-preview')){wrap=input.parentElement?.querySelector('.v71-preview');}
+      if(!wrap)return; const grid=wrap.querySelector('.v71-imggrid'); const files=Array.from(input.files||[]); grid.innerHTML='';
+      if(!files.length){wrap.classList.remove('show');return;}
+      files.slice(0,12).forEach(f=>{
+        if(/^image\//.test(f.type)){const box=document.createElement('div');box.className='v71-imgbox';box.innerHTML='<img alt="selected"><div class="v71-loader"><span></span></div>';grid.appendChild(box);const img=box.querySelector('img');const rd=new FileReader();rd.onload=e=>img.src=e.target.result;rd.readAsDataURL(f);}else{const chip=document.createElement('div');chip.className='v71-filechip';chip.textContent=f.name;grid.appendChild(chip);}
+      });
+      wrap.classList.add('show');
+    }catch(e){console.warn('V71 preview skipped',e)}
+  }
+  function setPreviewProgress71(input,pct){try{showPreview71(input); const wrap=input?.nextElementSibling?.classList?.contains('v71-preview')?input.nextElementSibling:input?.parentElement?.querySelector('.v71-preview'); wrap?.querySelectorAll('.v71-loader span').forEach(s=>s.style.width=Math.max(0,Math.min(100,pct||0))+'%')}catch(_){}}
+  function decorate71(root=document){addStyle71(); try{root.querySelectorAll('input[type=file]').forEach(addPreview71)}catch(_){} if(!retail71())hidePointFields71(root);}
+  function hidePointFields71(root=document){
+    try{
+      root.querySelectorAll('input[type=number]').forEach(inp=>{const label=(inp.closest('.field')?.querySelector('label')?.textContent||'')+' '+(inp.id||''); if(/merit|demerit|deduct|penalty|point/i.test(label)&&!/(current_points|starting_points|min_points)/i.test(label)){const f=inp.closest('.field'); if(f){f.classList.add('v71-hidden-field');} inp.disabled=true;}});
+      const concern=document.getElementById('concernForm'); if(concern&&!concern.querySelector('.v71-point-note')) concern.insertAdjacentHTML('beforeend','<div class="v71-point-note"><b>Points are Retail Control only.</b><br>Submit the report with evidence and VARDA ACT basis. Retail/Head Office will decide merit or demerit after validation.</div>');
+      const vio=document.getElementById('directViolationForm'); if(vio&&!vio.querySelector('.v71-point-note')) vio.insertAdjacentHTML('beforeend','<div class="v71-point-note"><b>Demerit is Retail Control only.</b><br>Manager/staff reports are reference-based. Final points are decided by Retail/Head Office after proof and validation.</div>');
+    }catch(e){console.warn('hidePointFields71 skipped',e)}
+  }
+
+  function polTitle71(p){return (p?.policy_code?`${p.policy_code} - `:'')+(p?.title||p?.policy_title||'Policy')}
+  function polPoints71(p){return Number(p?.deduction_points??p?.points??p?.point_deduction??0)||0}
+  function polOptions71(){return (S.policies||[]).map(p=>`<option value="${esc71(p.id)}">${esc71(polTitle71(p))}${polPoints71(p)?' · reference '+money71(polPoints71(p))+' pts':''}</option>`).join('')||'<option value="">Manual / No policy yet</option>'}
+  function polPreview71(){const p=(S.policies||[]).find(x=>String(x.id)===String($71('#repPolicy')?.value)); const box=$71('#repPolicyPreview'); if(box)box.innerHTML=p?`<div class="v71-point-note"><b>${esc71(polTitle71(p))}</b><br><b>Evidence:</b> ${esc71(p.evidence_required||'Photo/evidence required')}<br><b>Recommended action:</b> ${esc71(p.recommended_action||'Investigate, get explanation, validate evidence, and close with proof.')}<br><b>Reference points:</b> ${money71(polPoints71(p))} — Retail control only.</div>`:'<div class="v71-point-note">Choose VARDA ACT / Policy basis. Points are not editable by staff or branch managers.</div>';}
+
+  async function imageFiles71(input,max=5){const files=Array.from(input?.files||[]).slice(0,max); const out=[]; for(let i=0;i<files.length;i++){setPreviewProgress71(input,20+Math.round((i/files.length)*60)); out.push({url:await imageData(files[i],1000),name:files[i].name});} setPreviewProgress71(input,100); return out;}
+  async function safeInsert71(table,rows){let last=null; for(const row of rows){try{const r=await sb.from(table).insert(row); if(!r.error)return r; last=r.error}catch(e){last=e}} if(last)throw last;}
+  async function safeUpdate71(table,id,patches){let last=null; for(const p of patches){try{const r=await sb.from(table).update(p).eq('id',id); if(!r.error)return r; last=r.error}catch(e){last=e}} if(last)throw last;}
+
+  window.concernPage=function(){
+    const people=(S.employees||[]).filter(e=>String(e.id)!==me71());
+    const list=manager71()?(S.reports||[]):(S.reports||[]).filter(r=>String(r.reporter_employee_id)===me71());
+    return `<div class="grid two"><div class="card"><h3>Private Report Concern</h3><p class="muted">Submit report with evidence and VARDA ACT basis. No staff/manager merit or demerit editing.</p><form id="concernForm"><div class="field"><label>Reported Employee</label><select id="repEmp"><option value="">Manual / Not Listed</option>${people.map(e=>`<option value="${esc71(e.id)}">${esc71(e.full_name)} - ${esc71(e.branch)}</option>`).join('')}</select></div><div class="field"><label>Manual Name if not listed</label><input id="repManual" class="input"></div><div class="field"><label>VARDA ACT / Policy Basis</label><select id="repPolicy">${polOptions71()}</select></div><div id="repPolicyPreview"></div><div class="field"><label>Manager on Duty / Witness</label><input id="repManager" class="input" placeholder="Type witness or none"></div><div class="field"><label>Story / Description</label><textarea id="repStory" required placeholder="What happened? Date, time, location, persons involved."></textarea></div><div class="field"><label>Evidence Photo</label><input id="repFile" type="file" accept="image/*" capture="environment" class="input" multiple required></div><div class="v71-point-note"><b>Points are hidden.</b><br>Demerit if proven and merit if valid will be decided only by Retail / Head Office Management.</div><button class="btn orange full">Submit Private Report</button></form></div><div class="card"><h3>${manager71()?'Private Case Queue':'My Private Reports'}</h3>${typeof reportsTable==='function'?reportsTable(list,manager71()):''}</div></div>`;
+  };
+  window.submitConcern=submitConcern=async function(e){
+    e.preventDefault(); const b=e.submitter;
+    await act(b,{busy:'Submitting...',success:'Submitted',reset:'Submit Another Report',toast:'Private report sent.'},async()=>{
+      const p=(S.policies||[]).find(x=>String(x.id)===String($71('#repPolicy')?.value)); const input=$71('#repFile'); const imgs=await imageFiles71(input,5); if(!imgs.length)throw new Error('Evidence photo is required.');
+      const base={reporter_employee_id:S.profile.id,reported_employee_id:$71('#repEmp')?.value||null,reported_name_manual:$71('#repManual')?.value||'',manager_on_duty:$71('#repManager')?.value||'',branch:S.profile.branch,story:$71('#repStory')?.value||'',evidence_url:JSON.stringify(imgs),status:'new_private',happened_at:new Date().toISOString(),created_at:new Date().toISOString()};
+      const full={...base,policy_rule_id:p?.id||null,policy_code:p?.policy_code||'',policy_title:p?polTitle71(p):'',severity:p?.severity||'',department_owner:p?.department_owner||p?.category||'',evidence_required:p?.evidence_required||'',due_process_required:p?.due_process_required||'',recommended_action:p?.recommended_action||'',reference_points:polPoints71(p),retail_points_control:true};
+      await safeInsert71('investigation_reports',[full,base]); try{await auditEvent('Private report submitted','investigation_reports',String(base.story).slice(0,80))}catch(_){ }
+    },async()=>{await loadData();renderPage();});
+  };
+
+  function taskRowsHtml71(){
+    const rows=[1,2,3].map((n,i)=>taskRow71(i,'')).join('');
+    return `<div class="v71-checklist" id="v71TaskRows">${rows}</div><button type="button" class="btn sm ghost" id="v71AddTask">+ Add Task</button><div class="v71-overall"><b>Overall Progress</b><div class="v71-overallbar"><span id="v71OverallBar"></span></div><div class="small muted" id="v71OverallText">0% · Ongoing</div></div>`;
+  }
+  function taskRow71(i,val=''){return `<div class="v71-taskrow" data-row="${i}"><div class="v71-tasktop"><input type="checkbox" class="v71Done"><input class="input v71TaskText" placeholder="Task ${i+1}" value="${esc71(val)}"></div><div class="v71-taskcontrols"><input type="range" min="0" max="100" step="10" value="0" class="v71-range"><span class="v71-percent">0%</span></div><div style="margin-top:7px"><span class="v71-task-status">Ongoing</span></div></div>`}
+  function refreshTaskProgress71(root=document){
+    try{const rows=$$71('.v71-taskrow',root); let vals=[]; rows.forEach(r=>{const done=$71('.v71Done',r), range=$71('.v71-range',r), pct=$71('.v71-percent',r), chip=$71('.v71-task-status',r); if(done?.checked){range.value=100} const v=Number(range?.value||0); if(pct)pct.textContent=v+'%'; if(chip){chip.textContent=v>=100?'Done':'Ongoing'; chip.classList.toggle('done',v>=100)} if(($71('.v71TaskText',r)?.value||'').trim())vals.push(v);}); const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0; const bar=$71('#v71OverallBar',root), txt=$71('#v71OverallText',root); if(bar)bar.style.width=avg+'%'; if(txt)txt.textContent=avg+'% · '+(avg>=100?'Done':'Ongoing')}catch(e){}
+  }
+  window.v71RefreshTaskProgress=refreshTaskProgress71;
+  function parseTaskLines71(t){
+    const raw=String(t.task_items||''); const lines=raw.split(/\n/).map(x=>x.trim()).filter(Boolean); return lines.map(line=>{const m=line.match(/^\[(✓|○)\s*(\d+)%\s*([^\]]+)\]\s*(.*)$/); return m?{done:m[1]==='✓',pct:Number(m[2]),status:m[3],text:m[4]}:{done:/✓|done/i.test(line),pct:/100%/.test(line)?100:0,status:/done/i.test(line)?'Done':'Ongoing',text:line.replace(/^[-•]\s*/,'')}});
+  }
+  function taskOverall71(t){const arr=parseTaskLines71(t); if(!arr.length)return 0; return Math.round(arr.reduce((s,x)=>s+Number(x.pct||0),0)/arr.length)}
+  function tasklistCards71(arr,manage){
+    return (arr||[]).map(t=>{const tasks=parseTaskLines71(t); const pct=taskOverall71(t); return `<div class="v71-card"><h4>${esc71(t.title||'Shared Task List')}</h4><p class="small muted"><b>Employee:</b> ${esc71(emp71(t.assigned_to_employee_id).full_name)}<br><b>Branch:</b> ${esc71(t.branch||emp71(t.assigned_to_employee_id).branch||'-')}<br><b>Date:</b> ${fmt71(t.created_at||t.submitted_at)}</p><div class="v71-overall"><b>Overall: ${pct}% · ${pct>=100?'Done':'Ongoing'}</b><div class="v71-overallbar"><span style="width:${pct}%"></span></div></div>${tasks.map(x=>`<div class="v71-taskline"><b>${x.done||x.pct>=100?'✓':'○'} ${esc71(x.text)}</b><div class="small muted">${esc71(x.status||((x.pct>=100)?'Done':'Ongoing'))} · ${Number(x.pct||0)}%</div><div class="v71-minibar"><span style="width:${Math.max(0,Math.min(100,Number(x.pct||0)))}%"></span></div></div>`).join('')||`<div class="v71-taskline">${esc71(t.task_items||'')}</div>`}${typeof img==='function'?img(t.proof_url):''}<div class="v71-actions">${retail71()&&['pending_merit','submitted','done'].includes(String(t.status||'').toLowerCase())?`<button class="btn sm green approveTask" data-id="${esc71(t.id)}">Retail Approve Merit</button>`:''}${String(t.assigned_to_employee_id)===me71()?`<button class="btn sm blue proofTask" data-id="${esc71(t.id)}">Update Proof</button>`:''}</div></div>`}).join('')||'<div class="empty">No shared task list yet.</div>';
+  }
+  window.tasklistPage69=function(){
+    let rows=(S.tasks||[]).filter(t=>String(t.source_type||'')==='self_tasklist');
+    if(!manager71())rows=rows.filter(t=>String(t.assigned_to_employee_id||'')===me71());
+    else if(!retail71())rows=rows.filter(t=>String(t.branch||emp71(t.assigned_to_employee_id).branch||'')===String(S.profile?.branch||''));
+    return `<div class="grid two"><div class="card"><h3>Share My Task List</h3><p class="muted">Declare daily tasks with checkbox and percentage. 100% means Done; below 100% means Ongoing.</p><form id="v69TasklistForm"><div class="field"><label>Tasklist Title</label><input id="v69TaskTitle" class="input" value="Today's Task List" required></div>${taskRowsHtml71()}<div class="field"><label>Additional Notes</label><textarea id="v69TaskItems" class="input" placeholder="Optional notes only"></textarea></div><div class="field"><label>Share Scope</label><select id="v69TaskScope"><option value="branch">My Branch Only</option><option value="national">National / Management View</option></select></div><div class="field"><label>Main Proof Photo</label><input id="v69TaskPhoto" type="file" accept="image/*" capture="environment" class="input" required></div><button class="btn green full">Share My Task List</button></form></div><div class="card"><h3>${manager71()?'Task List Monitoring':'My Shared Task Lists'}</h3><p class="muted">Management can monitor ongoing/done percentage per staff.</p>${tasklistCards71(rows,manager71())}</div></div>`;
+  };
+  window.submitTasklist69=submitTasklist69=async function(e){
+    e.preventDefault(); const b=e.submitter; const input=$71('#v69TaskPhoto'); const file=input?.files?.[0]; if(!file)return toast71('Main proof photo is required.','error');
+    const rows=$$71('.v71-taskrow').map(r=>{const text=($71('.v71TaskText',r)?.value||'').trim(); const pct=Number($71('.v71-range',r)?.value||0); const done=($71('.v71Done',r)?.checked)||pct>=100; return {text,pct:done?100:pct,status:done?'Done':'Ongoing',done};}).filter(x=>x.text);
+    if(!rows.length)return toast71('Add at least one task.','error');
+    await act(b,{busy:'Sharing...',success:'Shared ✓',reset:'Share Again',toast:'Task list shared.'},async()=>{
+      setPreviewProgress71(input,35); const photo=await imageData(file,1000); setPreviewProgress71(input,85);
+      const now=new Date().toISOString(); const pct=Math.round(rows.reduce((s,x)=>s+x.pct,0)/rows.length); const status=pct>=100?'done':'ongoing';
+      const lines=rows.map(x=>`[${x.done?'✓':'○'} ${x.pct}% ${x.status}] ${x.text}`).join('\n'); const notes=($71('#v69TaskItems')?.value||'').trim();
+      const base={title:$71('#v69TaskTitle')?.value||'Shared Task List',task_items:lines+(notes?'\nNotes: '+notes:''),assigned_to_employee_id:S.profile.id,assigned_by_employee_id:S.profile.id,branch:S.profile.branch,source_type:'self_tasklist',target_scope:$71('#v69TaskScope')?.value||'branch',status,proof_url:photo,submitted_at:now,merit_points:0};
+      const full={...base,task_progress:pct,task_status:status,completion_details:JSON.stringify({overall:pct,items:rows,notes,submitted_at:now})};
+      await safeInsert71('vscore_tasks',[full,base]); try{await auditEvent('Tasklist shared with progress','vscore_tasks',base.title)}catch(_){ } setPreviewProgress71(input,100);
+    },async()=>{await loadData();renderPage();});
+  };
+
+  function closingModal71(kind,id,mode){
+    addStyle71(); const isReport=kind==='report'; const rec=(isReport?(S.reports||[]):(S.violations||[])).find(x=>String(x.id)===String(id)); if(!rec)return toast71('Record not found','error');
+    const retail=retail71(); const title=isReport?'Investigation / Report Closing':'Violation Closing'; const label=mode==='true'?'Close TRUE / Proven':mode==='false'?'Close FALSE / Unproven':mode==='validate'?'Validate Case':'Cancel / Close';
+    const employee=isReport?(rec.reported_employee_id?emp71(rec.reported_employee_id).full_name:(rec.reported_name_manual||'-')):emp71(rec.employee_id).full_name;
+    const pointHtml=retail?(mode==='true'?`<div class="grid two"><div class="field"><label>Retail Merit for Valid Reporter</label><input id="v71Reward" type="number" step="0.01" class="input" value="${esc71(rec.reward_points||1)}"></div><div class="field"><label>Retail Demerit to Reported Employee</label><input id="v71Demerit" type="number" step="0.01" class="input" value="${esc71(rec.reported_demerit_points||3)}"></div></div>`:mode==='false'?`<div class="field"><label>Retail False Report Penalty</label><input id="v71Penalty" type="number" step="0.01" class="input" value="${esc71(rec.false_report_penalty||0)}"></div>`:mode==='validate'?`<div class="field"><label>Retail Demerit Points</label><input id="v71Demerit" type="number" step="0.01" class="input" value="${esc71(rec.point_deduction??rec.points??1)}"></div>`:''):`<div class="v71-point-note"><b>Points locked.</b><br>This closing proof will be saved for Retail / Head Office validation. No merit/demerit will be applied by staff or branch manager.</div>`;
+    modal(`<div class="v69-safe-modal"><h2>${esc71(title)}</h2><h3>${esc71(label)}</h3><div class="v71-point-note"><b>Closing photo required.</b><br>Attach final proof of correction, validation, or closing action.</div><p><b>Employee / Reported:</b> ${esc71(employee)}<br><b>Status:</b> ${esc71(rec.status||'-')}</p><div class="v69-text">${esc71(rec.story||rec.description||rec.manager_remarks||rec.resolution||'')}</div><div class="field"><label>Closing Action / Final Remarks</label><textarea id="v71ClosingRemarks" class="v69-bigbox" placeholder="Type final action, coaching, correction, validation, or reason...">${mode==='true'?'Proven true after investigation.':mode==='false'?'Unproven / false after investigation.':mode==='validate'?'Validated after evidence review.':'Cancelled / closed by management.'}</textarea></div>${pointHtml}<div class="field"><label>Closing Photo Attachment</label><input id="v71ClosingFile" type="file" accept="image/*" capture="environment" class="input" required></div><div class="v71-actions"><button id="v71CloseSubmit" class="btn green">Submit Closing Action</button><button class="btn dark" onclick="closeModal()">Cancel</button></div></div>`);
+    setTimeout(()=>decorate71($71('.modal')||document),80);
+    $71('#v71CloseSubmit').onclick=async e=>{
+      const input=$71('#v71ClosingFile'); const file=input?.files?.[0]; if(!file)return toast71('Closing photo is required.','error');
+      await act(e.currentTarget,{busy:'Closing...',success:'Saved ✓',reset:'Submit Closing Action',toast:retail?'Case closed.':'Closing proof sent for Retail validation.'},async()=>{
+        setPreviewProgress71(input,35); const photo=await imageData(file,1000); setPreviewProgress71(input,85); const remarks=($71('#v71ClosingRemarks')?.value||'').trim(); const now=new Date().toISOString();
+        if(isReport){
+          let status=retail?(mode==='true'?'resolved_true':'resolved_false'):'for_retail_validation';
+          if(retail&&mode==='true'){const rw=Number($71('#v71Reward')?.value||0), dm=Number($71('#v71Demerit')?.value||0); if(rw)await addPoints(rec.reporter_employee_id,rw,'Valid private report','investigation',id); if(dm&&rec.reported_employee_id)await addPoints(rec.reported_employee_id,-Math.abs(dm),'Proven private report demerit','investigation',id)}
+          if(retail&&mode==='false'){const pen=Number($71('#v71Penalty')?.value||0); if(pen&&rec.reporter_employee_id)await addPoints(rec.reporter_employee_id,-Math.abs(pen),'False/unproven private report penalty','investigation',id)}
+          await safeUpdate71('investigation_reports',id,[{status,resolution:remarks,closing_action:remarks,closure_evidence_url:photo,resolved_by:S.profile.id,resolved_at:now,updated_at:now,retail_points_control:true},{status,resolution:remarks,closing_photo_url:photo,resolved_by:S.profile.id,resolved_at:now},{status,resolution:remarks,evidence_url:photo,resolved_by:S.profile.id,resolved_at:now}]);
+        }else{
+          let status=retail?(mode==='validate'?'validated':'cancelled'):'for_retail_validation';
+          if(retail&&mode==='validate'){const dm=Number($71('#v71Demerit')?.value||0); if(dm&&rec.employee_id)await addPoints(rec.employee_id,-Math.abs(dm),`Validated violation: ${rec.violation_type||rec.type_name||'Violation'}`,'violation',id)}
+          await safeUpdate71('violations',id,[{status,resolution:remarks,closing_action:remarks,closure_evidence_url:photo,validated_by:retail?S.profile.id:null,validated_at:retail?now:null,updated_at:now,retail_points_control:true},{status,manager_remarks:remarks,closing_photo_url:photo,validated_by:retail?S.profile.id:null,validated_at:retail?now:null},{status,manager_remarks:remarks,evidence_url:photo,validated_by:retail?S.profile.id:null,validated_at:retail?now:null}]);
+        }
+        try{await auditEvent('Closing action photo saved',isReport?'investigation_reports':'violations',id)}catch(_){ } setPreviewProgress71(input,100);
+      },async()=>{closeModal();await loadData();renderPage();});
+    };
+  }
+  window.v69OpenReportClose=function(id,truth){closingModal71('report',id,truth?'true':'false')};
+  window.v69OpenViolationClose=function(id,mode){closingModal71('violation',id,mode||'validate')};
+  window.resolveReport=resolveReport=function(id,truth,btn){return window.v69OpenReportClose(id,!!truth)};
+  window.validateDirectVio=validateDirectVio=function(id,btn){return window.v69OpenViolationClose(id,'validate')};
+  window.cancelDirectVio=cancelDirectVio=function(id,btn){return window.v69OpenViolationClose(id,'cancel')};
+
+  const oldRenderPage71=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){const out=oldRenderPage71.apply(this,arguments); setTimeout(()=>{decorate71($71('#page')||document); if(S?.tab==='tasklist'){refreshTaskProgress71(document)} if(S?.tab==='concern'){polPreview71(); $71('#repPolicy')?.addEventListener('change',polPreview71)}},160); return out};
+  const oldBind71=window.bind||bind;
+  window.bind=bind=function(){try{oldBind71.apply(this,arguments)}catch(e){console.warn(e)} decorate71($71('#page')||document); $71('#v69TasklistForm')?.addEventListener('submit',window.submitTasklist69); $71('#concernForm')?.addEventListener('submit',window.submitConcern); $71('#repPolicy')?.addEventListener('change',polPreview71); $71('#v71AddTask')?.addEventListener('click',()=>{const rows=$71('#v71TaskRows'); if(rows){const i=$$71('.v71-taskrow',rows).length; rows.insertAdjacentHTML('beforeend',taskRow71(i,'')); refreshTaskProgress71(document); decorate71(rows)}}); $$71('.v71-taskrow input,.v71-taskrow .v71-range').forEach(el=>el.addEventListener('input',()=>refreshTaskProgress71(document))); $$71('.v71-taskrow .v71Done').forEach(el=>el.addEventListener('change',()=>refreshTaskProgress71(document))); };
+  document.addEventListener('change',ev=>{if(ev.target&&ev.target.matches&&ev.target.matches('input[type=file]'))showPreview71(ev.target); if(ev.target&&ev.target.closest&&ev.target.closest('.v71-taskrow'))refreshTaskProgress71(document);},true);
+  document.addEventListener('input',ev=>{if(ev.target&&ev.target.closest&&ev.target.closest('.v71-taskrow'))refreshTaskProgress71(document);},true);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle71(); setTimeout(()=>decorate71(document),600); setTimeout(()=>decorate71(document),1600)});
+  console.log('V71 tasklist progress + retail-only point control + minimal photo preview loaded');
+})();
+/* ================= END V71 ================= */
+
+
+
+
+/* ================= V72 CUSTOMER QR VALIDITY + NO SELF-RATING =================
+   Staff/manager cannot rate themselves from the app. They only see QR + rating monitoring.
+   Public/customer form asks optional name and student/ID number for validity.
+*/
+(function(){
+  const $72=(s,r=document)=>r.querySelector(s);
+  const $$72=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc72=(v)=>{try{return esc(String(v??''));}catch(_){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}};
+  const role72=(r)=>String(r||'').toLowerCase();
+  const retail72=()=>{try{return isOwner()||['retail_head','head_office_admin','head_office','hr','admin','management','master'].includes(role72(S.profile?.role));}catch(_){return false}};
+  const manager72=()=>{try{return isManager()||retail72()}catch(_){return retail72()}};
+  const base72=()=>{
+    try{
+      const set=S.v53Settings||{}; const u=(set.public_app_url||localStorage.getItem('vscore_public_app_url')||'').trim();
+      if(u) return u.replace(/[#?].*$/,'').replace(/\/$/,'/');
+    }catch(_){ }
+    return location.href.split('#')[0].split('?')[0];
+  };
+  const ratingUrl72=(id)=>base72()+`?rate=${encodeURIComponent(id)}`;
+  window.v72RatingUrl=ratingUrl72;
+
+  function style72(){ if($72('#v72style'))return; document.head.insertAdjacentHTML('beforeend',`<style id="v72style">
+    .v72-card{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:16px;box-shadow:0 12px 28px rgba(15,23,42,.06);overflow:hidden}.v72-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.v72-kpi{font-size:32px;font-weight:1000;color:#991b1b}.v72-qrbox{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:14px;text-align:center;max-width:330px;margin:auto}.v72-qrbox img{width:220px;height:220px;max-width:100%;border-radius:14px}.v72-note{border-left:5px solid #facc15;background:#fffbeb;border-radius:14px;padding:12px;margin:10px 0;color:#78350f}.v72-rating{border:1px solid #e5e7eb;border-radius:16px;padding:12px;margin:8px 0;background:#fff}.v72-public{min-height:100vh;background:linear-gradient(135deg,#fff7ed,#fff,#eef2ff);display:flex;align-items:center;justify-content:center;padding:18px}.v72-public-card{max-width:640px;width:100%;background:#fff;border-radius:28px;padding:24px;box-shadow:0 20px 55px rgba(15,23,42,.14);border:1px solid #fde68a}.v72-public-card h1{color:#7f1d1d;margin:0 0 8px}.v72-stars{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.v72-star{font-size:25px;border:1px solid #fde68a;background:#fff7ed;border-radius:16px;padding:10px 12px;cursor:pointer;flex:1;min-width:92px}.v72-star.active{background:#facc15;color:#7f1d1d;box-shadow:0 8px 18px rgba(250,204,21,.30)}.v72-thank{font-size:28px;text-align:center;color:#166534;font-weight:1000}.v72-mini{font-size:12px;color:#64748b}.v72-cards-table{display:grid;gap:10px}.v72-rating-row{display:grid;grid-template-columns:1.3fr .8fr .7fr .7fr .8fr;gap:10px;align-items:center;border:1px solid #e5e7eb;border-radius:16px;padding:12px;background:#fff}.v72-profile-clean .btn-preview{display:none!important}
+    @media(max-width:720px){.v72-public-card{padding:16px;border-radius:22px}.v72-stars{display:grid;grid-template-columns:1fr}.v72-star{text-align:left;font-size:22px}.v72-rating-row{grid-template-columns:1fr}.v72-card{padding:14px;border-radius:18px}.v72-qrbox img{width:190px;height:190px}}
+  </style>`); }
+
+  async function resolveEmployee72(raw){
+    const clean=decodeURIComponent(String(raw||'')).trim().replace(/[^a-zA-Z0-9_@.\-]/g,'');
+    if(!clean)return null;
+    let r=await sb.from('employees').select('*').eq('id',clean).maybeSingle();
+    if(!r.error&&r.data)return r.data;
+    if(clean.includes('@')){r=await sb.from('employees').select('*').or(`email.eq.${clean},account_email.eq.${clean}`).maybeSingle(); if(!r.error&&r.data)return r.data;}
+    return null;
+  }
+
+  function sessionIsSelf72(em){
+    try{const s=readSession&&readSession(); if(!s||!em)return false; return String(s.id||s.employee_id||'')===String(em.id)||String(s.email||'').toLowerCase()===String(em.email||em.account_email||'').toLowerCase();}catch(_){return false}
+  }
+
+  async function renderCustomerRating72(rateId){
+    style72();
+    document.getElementById('root').innerHTML=`<div class="v72-public"><div class="v72-public-card"><h1>Loading rating page...</h1><p>Please wait.</p></div></div>`;
+    let em=null; try{em=await resolveEmployee72(rateId)}catch(e){console.warn('rating lookup failed',e)}
+    if(!em){document.getElementById('root').innerHTML=`<div class="v72-public"><div class="v72-public-card"><h1>Rating link not found</h1><p>This QR is not connected to an active employee record.</p></div></div>`;return;}
+    if(sessionIsSelf72(em)){
+      const link=ratingUrl72(em.id);
+      document.getElementById('root').innerHTML=`<div class="v72-public"><div class="v72-public-card"><h1>Customer Rating QR</h1><div class="v72-note"><b>Staff/manager self-rating is disabled.</b><br>This page is for customers only. Show this QR to the customer and let them scan using their own phone.</div><div class="v72-qrbox"><img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(link)}"><h3>${esc72(em.full_name)}</h3><p>${esc72(em.branch||'')}</p><button class="btn ghost" onclick="window.print()">Print QR</button></div></div></div>`;
+      return;
+    }
+    const deviceKey='vscore_rate_'+em.id+'_'+new Date().toISOString().slice(0,10);
+    const already=localStorage.getItem(deviceKey);
+    document.getElementById('root').innerHTML=`<div class="v72-public"><div class="v72-public-card"><div style="text-align:center;margin-bottom:12px">${(typeof logo==='function'&&logo())?`<img src="${esc72(logo())}" style="width:74px;border-radius:16px">`:''}</div><h1>How was my service today?</h1><p class="muted">Your feedback helps us recognize excellent Ka-Varda service and improve customer experience.</p><div class="v72-note"><b>You are rating:</b><br><span style="font-size:24px;font-weight:1000;color:#7f1d1d">${esc72(em.full_name)}</span><br>${esc72(em.position||'Varda Group Staff')} · ${esc72(em.branch||'')}</div>${already?`<div class="v72-thank">Thank you!</div><p style="text-align:center">You already submitted feedback for this employee today.</p>`:`<form id="custRateForm72"><input type="hidden" id="custStars72" value="5"><div class="grid two"><div class="field"><label>Your name <span class="v72-mini">optional / validity only</span></label><input id="custName72" class="input" placeholder="Customer name"></div><div class="field"><label>Student no. / ID <span class="v72-mini">optional</span></label><input id="custStudent72" class="input" placeholder="Student number / ID"></div></div><div class="v72-stars">${[1,2,3,4,5].map(i=>`<button type="button" class="v72-star ${i===5?'active':''}" data-star="${i}">${'⭐'.repeat(i)}<br><small>${['Needs improvement','Fair','Good','Very Good','Excellent'][i-1]}</small></button>`).join('')}</div><div class="field"><label>Comment <span class="v72-mini">optional</span></label><textarea id="custComment72" placeholder="Tell us what you appreciated or what we can improve."></textarea></div><button class="btn green full" style="font-size:20px;padding:16px">Submit Feedback</button></form>`}<p class="small muted" style="text-align:center">No login required. Name and student/ID number are optional and used only for feedback validity.</p></div></div>`;
+    $$72('.v72-star').forEach(b=>b.onclick=()=>{const val=b.dataset.star; $72('#custStars72').value=val; $$72('.v72-star').forEach(x=>x.classList.toggle('active',Number(x.dataset.star)<=Number(val)));});
+    const form=$72('#custRateForm72');
+    if(form)form.onsubmit=async ev=>{ev.preventDefault(); const btn=ev.submitter; try{btn.disabled=true;btn.textContent='Submitting...'; const stars=Number($72('#custStars72').value||5); const customerName=($72('#custName72').value||'').trim().slice(0,120); const studentNo=($72('#custStudent72').value||'').trim().slice(0,80); const comment=($72('#custComment72').value||'').trim().slice(0,500); const csPts=stars>=5?(comment?2:1):0; const baseComment=comment; const backupComment=[baseComment,customerName?`Customer name: ${customerName}`:'',studentNo?`Student/ID: ${studentNo}`:''].filter(Boolean).join('\n'); const payload={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment:baseComment,customer_name:customerName,student_number:studentNo,customer_identifier:studentNo,customer_service_points:csPts,source:'qr_public',rating_date:new Date().toISOString().slice(0,10),device_token:(navigator.userAgent||'web').slice(0,120),is_public:stars>=5,created_at:new Date().toISOString()}; let r=await sb.from('vscore_customer_ratings').insert(payload); if(r.error){const fallback={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment:backupComment,customer_service_points:csPts,source:'qr_public',rating_date:new Date().toISOString().slice(0,10),device_token:(navigator.userAgent||'web').slice(0,120),is_public:stars>=5,created_at:new Date().toISOString()}; r=await sb.from('vscore_customer_ratings').insert(fallback); if(r.error)throw r.error;} if(csPts){try{await sb.from('employees').update({customer_service_points:Number(em.customer_service_points||0)+csPts}).eq('id',em.id)}catch(_){}} if(stars>=5){try{await sb.from('vscore_social_posts').insert({post_type:'news',caption:`🌟 Customer Service Recognition\n\nKa-Varda ${em.full_name} received a 5-star customer service rating!${comment?`\n\nCustomer comment:\n“${comment}”`:''}\n\nKeep up the excellent service!`,photos_json:'[]',created_by:em.id,branch:em.branch,share_scope:'all',comments_enabled:true,expires_at:new Date(Date.now()+86400000).toISOString(),is_active:true});}catch(_){}} localStorage.setItem(deviceKey,'1'); document.querySelector('.v72-public-card').innerHTML=`<div class="v72-thank">Thank you for your feedback!</div><p style="text-align:center">Your rating has been received. We appreciate your support.</p><div style="text-align:center"><button class="btn dark" onclick="window.close()">Close</button></div>`;}catch(e){btn.disabled=false;btn.textContent='Submit Feedback'; alert(e.message||e);} };
+  }
+
+  function ratingMeta72(r){
+    const n=r.customer_name||r.customerName||''; const sn=r.student_number||r.student_no||r.studentNo||r.customer_identifier||'';
+    return [n?`Name: ${n}`:'',sn?`Student/ID: ${sn}`:''].filter(Boolean).join(' · ');
+  }
+  function stars72(n){return '⭐'.repeat(Math.max(1,Math.min(5,Number(n||0))))}
+  function qrCard72(e){const link=ratingUrl72(e.id); return `<div class="v72-qrbox"><img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(link)}"><h3>${esc72(e.full_name)}</h3><p>${esc72(e.branch||'')}</p><div class="v72-mini">Customer-only QR. Staff/manager cannot self-rate.</div><button class="btn ghost" onclick="window.print()">Print QR</button></div>`;}
+  function serviceRatingsPage72(){
+    style72(); const ratings=S.customerRatings||[]; const profile=S.profile||{};
+    const visibleIds=new Set((S.employees||[]).map(e=>String(e.id)));
+    let scoped=ratings;
+    if(!retail72()&&manager72()) scoped=ratings.filter(r=>visibleIds.has(String(r.employee_id))||String(emp(r.employee_id).branch)===String(profile.branch));
+    if(!manager72()){
+      const mine=ratings.filter(r=>String(r.employee_id)===String(profile.id)); const avg=mine.length?(mine.reduce((a,b)=>a+Number(b.stars||0),0)/mine.length):0;
+      return `<div class="v72-grid"><div class="v72-card"><h3>My Customer Service Rating</h3><div class="v72-kpi">${avg?avg.toFixed(1):'0.0'} ⭐</div><p>Total ratings: <b>${mine.length}</b><br>Customer service points: <b>${Number(profile.customer_service_points||0)}</b></p><div class="v72-note"><b>Reminder:</b> This QR is for customers only. Staff cannot rate themselves.</div>${qrCard72(profile)}</div><div class="v72-card"><h3>Customer Feedback Monitoring</h3>${mine.slice(0,30).map(r=>`<div class="v72-rating"><b>${stars72(r.stars)}</b><br>${esc72(r.comment||'No comment')}<br><span class="v72-mini">${esc72(ratingMeta72(r))}${ratingMeta72(r)?' · ':''}${fmt(r.created_at)}</span></div>`).join('')||'<div class="empty">No customer ratings yet.</div>'}</div></div>`;
+    }
+    const by={}; scoped.forEach(r=>{const id=String(r.employee_id||'none'); (by[id]||(by[id]=[])).push(r);});
+    const rows=Object.entries(by).map(([id,rs])=>{const em=emp(id); const avg=rs.reduce((a,b)=>a+Number(b.stars||0),0)/rs.length; return {id,em,avg,count:rs.length,pts:rs.reduce((a,b)=>a+Number(b.customer_service_points||0),0),last:rs[0]?.created_at};}).sort((a,b)=>b.avg-a.avg||b.count-a.count);
+    return `<div class="v72-card"><div class="split" style="justify-content:space-between"><div><h3>Customer Service Ratings Monitoring</h3><p class="muted">Customer feedback is for appreciation, coaching, and service monitoring. Staff/manager self-rating is disabled.</p></div><button class="btn blue" onclick="exportRatings72()">Export CSV</button></div><div class="v72-cards-table">${rows.map(x=>`<div class="v72-rating-row"><div><b>${esc72(x.em.full_name)}</b><br><span class="v72-mini">${esc72(x.em.branch||'')}</span></div><div><b>${x.avg.toFixed(2)} ⭐</b><br><span class="v72-mini">Average</span></div><div><b>${x.count}</b><br><span class="v72-mini">Ratings</span></div><div><b>${x.pts}</b><br><span class="v72-mini">CS points</span></div><div><button class="btn sm ghost" onclick="showRatingQR53('${esc72(x.id)}')">Show QR</button></div></div>`).join('')||'<div class="empty">No customer ratings yet.</div>'}</div><h3>Recent Customer Feedback</h3>${scoped.slice(0,50).map(r=>`<div class="v72-rating"><b>${esc72(emp(r.employee_id).full_name)}</b> · ${stars72(r.stars)}<br>${esc72(r.comment||'No comment')}<br><span class="v72-mini">${esc72(ratingMeta72(r))}${ratingMeta72(r)?' · ':''}${fmt(r.created_at)}</span></div>`).join('')||'<div class="empty">No feedback yet.</div>'}</div>`;
+  }
+  window.exportRatings72=function(){
+    const rows=[['Employee','Branch','Stars','Comment','Customer Name','Student/ID','CS Points','Created At'],...(S.customerRatings||[]).map(r=>[emp(r.employee_id).full_name,emp(r.employee_id).branch,r.stars,r.comment||'',r.customer_name||'',r.student_number||r.customer_identifier||'',r.customer_service_points||0,r.created_at])];
+    const csv=rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='vscore_customer_service_ratings.csv'; a.click();
+  };
+  window.showRatingQR53=function(id){const em=emp(id); modal(`<div class="split" style="justify-content:space-between"><h2>Customer Service QR</h2><button class="btn dark" onclick="closeModal()">Close</button></div><div class="v72-note"><b>Customer-only rating.</b><br>Staff and manager should show/print this QR only. They cannot rate themselves.</div>${qrCard72(em)}`); cleanPreviewButtons72();};
+
+  function cleanPreviewButtons72(){
+    setTimeout(()=>{
+      $$72('button,a').forEach(el=>{const t=(el.textContent||'').trim().toLowerCase(); const onclick=String(el.getAttribute('onclick')||''); const inQR=!!el.closest('.v53-qr,.v54-qrhelp,.v72-qrbox'); if(inQR&&(t==='preview'||t.includes('preview rating'))){el.remove(); return;} if(onclick.includes('?rate=')&&t.includes('preview'))el.remove();});
+      $$72('.v53-qr,.v54-qrhelp,.v72-qrbox').forEach(card=>{if(/customer|rate my service|service qr/i.test(card.textContent||'')&&!card.querySelector('.v72-selfnote'))card.insertAdjacentHTML('beforeend','<div class="v72-mini v72-selfnote">Customer-only QR. No self-rating.</div>');});
+    },120);
+  }
+
+  const prevInit72=window.init||init;
+  window.init=init=async function(){
+    const params=new URLSearchParams(location.search); const rate=params.get('rate')||params.get('employee')||params.get('emp');
+    if(rate){try{if(typeof loadPublicSettings==='function')await loadPublicSettings();}catch(_){ } return renderCustomerRating72(rate);}
+    return prevInit72.apply(this,arguments);
+  };
+  const prevRender72=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){
+    if(S&&S.tab==='ratings'){
+      document.getElementById('page').innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">${manager72()?'Service Ratings':'My Service Rating'}</span><button class="btn sm ghost" id="pageRef">Refresh This Page</button></div>${serviceRatingsPage72()}`;
+      try{bind()}catch(e){console.warn(e)} const pr=$72('#pageRef'); if(pr)pr.onclick=async e=>act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'Refresh This Page'},loadData,renderPage); cleanPreviewButtons72(); return;
+    }
+    const out=prevRender72.apply(this,arguments); cleanPreviewButtons72(); return out;
+  };
+  const prevBind72=window.bind||bind;
+  window.bind=bind=function(){try{prevBind72.apply(this,arguments)}catch(e){console.warn(e)} cleanPreviewButtons72();};
+  document.addEventListener('DOMContentLoaded',()=>{style72(); cleanPreviewButtons72(); setTimeout(cleanPreviewButtons72,1000);});
+  console.log('V72 customer QR validity + no self-rating loaded');
+})();
+/* ================= END V72 ================= */
+
 init();
 </script></body></html>
