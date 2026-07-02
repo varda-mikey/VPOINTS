@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<title>V-SCORE V65 | Mobile Case Text + Logout + Merit Popups</title>
+<title>V-SCORE V79 | Final Logout + Multi-Branch</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b91c1c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -9320,4 +9320,688 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
 /* ================= END V74 ================= */
 
 init();
+
+/* ================= V75 ROLE-SAFE ACTIONS + ROBUST PROOF + CLEAN TASKLIST + MEMO ACK FIX =================
+   Fixes from mobile launch testing:
+   - Staff/manager/retail action buttons are role-safe.
+   - Only assigned employee can Accept / Submit Proof.
+   - Retail/other managers are spectators/reviewers, not actors.
+   - Memo acknowledgment no longer loses memo ID in My Actions.
+   - Ignore Today appears reliably on attendance action cards.
+   - Mission proof no longer uses canvas contact-sheet compression that may trigger insecure operation on mobile.
+   - Old encoded tasklist JSON/markers are decoded into clean cards.
+*/
+(function(){
+  const $75=(s,r=document)=>r.querySelector(s);
+  const $$75=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc75=(v)=>{try{return esc(String(v??''));}catch(_){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}};
+  const me75=()=>String(S?.profile?.id||'');
+  const role75=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
+  const retail75=()=>{try{return isOwner()||['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(role75())}catch(_){return false}};
+  const manager75=()=>{try{return isManager()}catch(_){return false}};
+  const emp75=(id)=>{try{return emp(id)}catch(_){return (S.employees||[]).find(e=>String(e.id)===String(id))||{full_name:'-',branch:'-'}}};
+  const fmt75=(d)=>{try{return fmt(d)}catch(_){return d?new Date(d).toLocaleString():'-'}};
+  const toast75=(m,t='ok')=>{try{return toast(m,t)}catch(_){alert(m)}};
+  function today75(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+  function addStyle75(){
+    if(document.getElementById('v75style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v75style">
+      .v75-spectator{background:#eef2ff;color:#3730a3;border-radius:14px;padding:10px;font-weight:900;text-align:center}.v75-review{background:#ecfdf5;color:#166534;border-radius:14px;padding:10px;font-weight:900;text-align:center}.v75-warn{background:#fff7ed;border-left:5px solid #f59e0b;color:#78350f;border-radius:14px;padding:10px;margin:8px 0}.v75-proof-card{border:1px solid #e5e7eb;background:#f8fafc;border-radius:16px;padding:12px;margin:10px 0}.v75-proof-top{display:flex;gap:10px;align-items:flex-start}.v75-proof-top input[type=checkbox]{width:22px;height:22px;flex:0 0 auto}.v75-file-row{margin-top:10px}.v75-thumb{width:72px;height:72px;border-radius:14px;object-fit:cover;border:1px solid #e5e7eb;margin-top:8px}.v75-file-name{font-size:12px;color:#64748b;margin-top:5px;overflow-wrap:anywhere}.v75-tasks{display:grid;gap:10px}.v75-task-card{border:1px solid #e5e7eb;border-radius:16px;padding:12px;background:#fff;overflow-wrap:anywhere}.v75-task-card h4{margin:0 0 5px;color:#111827}.v75-task-meta{font-size:13px;color:#64748b}.v75-bar{height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin:8px 0}.v75-bar span{display:block;height:100%;background:#16a34a}.v75-chip{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:1000;margin:2px;background:#e5e7eb;color:#334155}.v75-chip.green{background:#dcfce7;color:#166534}.v75-chip.yellow{background:#fef3c7;color:#92400e}.v75-chip.blue{background:#dbeafe;color:#1e40af}.v75-actions{display:grid;gap:8px;margin-top:10px}.v75-actions .btn{width:100%}@media(min-width:800px){.v75-actions{display:flex;flex-wrap:wrap}.v75-actions .btn{width:auto}}
+    </style>`);
+  }
+  function dataUrl75(file){return new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=e=>resolve(String(e.target.result||''));rd.onerror=reject;rd.readAsDataURL(file);});}
+  function safeUpdate75(table,id,patches){return (async()=>{let last=null;for(const p of patches){try{const r=await sb.from(table).update(p).eq('id',id);if(!r.error)return r;last=r.error}catch(e){last=e}}if(last)throw last;})();}
+  function memoIdFromCase75(c){
+    if(!c)return '';
+    if(c.source_id)return c.source_id;
+    if(c.record&&c.record.id)return c.record.id;
+    const k=String(c.key||'');
+    if(k.startsWith('memo:'))return k.slice(5);
+    const m=k.match(/memo[:|\-](.+)$/i); return m?m[1]:'';
+  }
+  const oldAck75=window.ackMemo||ackMemo;
+  window.ackMemo=ackMemo=async function(id,btn){
+    id=String(id||'').trim();
+    if(!id||id==='undefined'||id==='null'){
+      try{await loadData()}catch(_){ }
+      return toast75('Memo ID missing. Please refresh once, then open the memo from Memo Hub.','error');
+    }
+    await act(btn,{busy:'Acknowledging...',success:'Acknowledged',reset:'Acknowledged',toast:'Memo acknowledged.'},async()=>{
+      const row={memo_id:id,employee_id:S.profile.id,acknowledged_at:new Date().toISOString()};
+      let r=await sb.from('memo_acknowledgments').upsert(row,{onConflict:'memo_id,employee_id'});
+      if(r.error){r=await sb.from('memo_acknowledgments').insert(row); if(r.error && !String(r.error.message||'').toLowerCase().includes('duplicate'))throw r.error;}
+    },async()=>{document.getElementById('memoLock')?.remove();await loadData();renderPage();});
+  };
+  window.v62AckMemo=async function(id,btn){return ackMemo(id,btn)};
+
+  // Final role-safe action renderer. Only assigned person acts; management views/validates.
+  window.caseActions62=caseActions62=function(c,compact){
+    addStyle75();
+    const b=[]; const isMine=String(c.employee_id||c.owner_id||'')===me75(); const raw=String(c.raw_status||'').toLowerCase();
+    if(c.type==='memo'){
+      const mid=memoIdFromCase75(c);
+      if(!manager75() || isMine) b.push(`<button class="btn sm yellow" onclick="v62AckMemo('${esc75(mid)}',this)">Acknowledge</button>`);
+      else b.push(`<span class="v75-spectator">Memo monitoring only</span>`);
+    }else if(c.type==='attendance'){
+      if(isMine && !manager75()) b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
+      else b.push(`<span class="v75-spectator">Attendance monitoring only</span>`);
+    }else if(c.type==='task'){
+      const t=(S.tasks||[]).find(x=>String(x.id)===String(c.source_id));
+      const assigned=String((t&&t.assigned_to_employee_id)||c.employee_id||'')===me75();
+      const submitted=['submitted','pending_merit','for_validation'].includes(raw);
+      if(assigned){
+        if(raw==='assigned') b.push(`<button class="btn sm green" onclick="acceptTask('${esc75(c.source_id)}',this)">Accept</button>`);
+        if(!['submitted','approved','cancelled','closed'].includes(raw)) b.push(`<button class="btn sm blue" onclick="proofTask('${esc75(c.source_id)}')">Submit Proof</button>`);
+      }else{
+        b.push(`<span class="v75-spectator">Spectator only — assigned staff must act</span>`);
+      }
+      if(retail75()&&submitted) b.push(`<button class="btn sm green" onclick="approveTask('${esc75(c.source_id)}',this)">Review / Approve Evidence</button>`);
+      else if(manager75()&&submitted) b.push(`<span class="v75-review">Waiting for Retail validation</span>`);
+    }else{
+      if(!manager75() && c.status==='explain') b.push(`<button class="btn sm orange" onclick="v62EmployeeExplain('${esc75(c.key)}',this)">Submit Explanation</button>`);
+      if(manager75() && c.status!=='closed'){
+        if(c.status==='open') b.push(`<button class="btn sm orange" onclick="v62RequestExplanation('${esc75(c.key)}',this)">Request Explanation</button>`);
+        if(c.status==='explain'||c.status==='open') b.push(`<button class="btn sm blue" onclick="v62SetCorrectiveAction('${esc75(c.key)}',this)">Set Action</button>`);
+        if(c.status==='action') b.push(`<button class="btn sm yellow" onclick="v62MoveValidation('${esc75(c.key)}',this)">For Validation</button>`);
+        if(retail75()) b.push(`<button class="btn sm green" onclick="v62CloseCase('${esc75(c.key)}',this)">Close Case</button>`);
+        else b.push(`<span class="v75-review">For Retail closing approval</span>`);
+      }
+    }
+    const key=String(c.key||'');
+    if((key.startsWith('attendance:')||c.type==='attendance')&&manager75()) b.unshift(`<button class="btn sm ghost v75-ignore" onclick="v75IgnoreCase('${esc75(key)}')">Ignore Today</button>`);
+    b.push(`<button class="btn sm ghost" onclick="v62ViewCase('${esc75(c.key)}')">Details</button>`);
+    return b.join(' ');
+  };
+
+  function missionItems75(t){
+    const raw=String(t?.task_items||t?.description||t?.title||'Completed mission');
+    return raw.split(/\n+/).map(x=>x.replace(/^\d+[.)]\s*/,'').replace(/^[-•\[\]✓○0-9%\s]+/,'').trim()).filter(Boolean).slice(0,20) || ['Completed mission'];
+  }
+  window.proofTask=proofTask=function(id){
+    addStyle75();
+    const t=(S.tasks||[]).find(x=>String(x.id)===String(id));
+    if(!t)return toast75('Mission/task not found. Please refresh and try again.','error');
+    if(String(t.assigned_to_employee_id||'')!==me75())return toast75('Only the assigned employee can submit proof. Management can monitor only.','error');
+    const items=missionItems75(t); 
+    const rows=items.map((it,i)=>`<div class="v75-proof-card"><div class="v75-proof-top"><input type="checkbox" id="v75Chk${i}"><label for="v75Chk${i}"><b>${esc75(it)}</b></label></div><div class="v75-file-row"><input id="v75File${i}" type="file" accept="image/*" capture="environment" class="input" required><div id="v75Prev${i}"></div></div></div>`).join('');
+    modal(`<div class="v74-modal"><h2>Submit Mission Checklist Proof</h2><h3>${esc75(t.title||'Mission')}</h3><div class="v75-warn"><b>Checklist proof required.</b><br>Check the completed task and attach a real camera photo per item.</div>${rows}<div class="v75-actions"><button id="v75SubmitProof" class="btn green">Submit Checklist Proof</button><button class="btn dark" onclick="closeModal()">Close</button></div><div id="v75Status" class="small muted"></div></div>`);
+    items.forEach((_,i)=>{$75('#v75File'+i)?.addEventListener('change',ev=>{const f=ev.target.files?.[0], box=$75('#v75Prev'+i); if(!box)return; if(!f){box.innerHTML='';return;} const url=URL.createObjectURL(f); box.innerHTML=`<img class="v75-thumb" src="${url}"><div class="v75-file-name">${esc75(f.name)}</div>`;});});
+    $75('#v75SubmitProof').onclick=async ev=>{
+      const files=[]; for(let i=0;i<items.length;i++){if(!$75('#v75Chk'+i)?.checked)return toast75('Please check item '+(i+1)+' first.','error'); const f=$75('#v75File'+i)?.files?.[0]; if(!f)return toast75('Please attach photo for item '+(i+1)+'.','error'); files.push(f)}
+      await act(ev.currentTarget,{busy:'Uploading proof...',success:'Submitted ✓',reset:'Submit Checklist Proof',toast:'Mission proof submitted.'},async()=>{
+        const st=$75('#v75Status'); if(st)st.textContent='Uploading checklist photos...';
+        const firstPhoto=await dataUrl75(files[0]);
+        const now=new Date().toISOString();
+        const details=JSON.stringify({items:items.map((it,i)=>({item:it,checked:true,photo_name:files[i]?.name||'',photo_attached:true})),submitted_at:now,mode:'stable_checklist_photo_v75'});
+        await safeUpdate75('vscore_tasks',id,[{proof_url:firstPhoto,status:'submitted',submitted_at:now,completion_details:details},{proof_url:firstPhoto,status:'submitted',completion_details:details},{proof_url:firstPhoto,status:'submitted'},{proof_url:firstPhoto}]);
+        try{await auditEvent('Mission checklist proof submitted','vscore_tasks',id)}catch(_){ }
+        if(st)st.textContent='Saved successfully.';
+      },async()=>{closeModal();await loadData();renderPage();});
+    };
+  };
+
+  const oldAccept75=window.acceptTask||acceptTask;
+  window.acceptTask=acceptTask=async function(id,btn){
+    const t=(S.tasks||[]).find(x=>String(x.id)===String(id));
+    if(t&&String(t.assigned_to_employee_id||'')!==me75())return toast75('Only the assigned employee can accept this mission.','error');
+    return oldAccept75(id,btn);
+  };
+
+  function ignored75(){try{return JSON.parse(localStorage.getItem('v75_ignored_cases')||localStorage.getItem('v74_ignored_cases')||'{}')||{}}catch(_){return {}}}
+  window.v75IgnoreCase=function(key){const m=ignored75(); m[key]={by:me75(),at:new Date().toISOString()}; localStorage.setItem('v75_ignored_cases',JSON.stringify(m)); localStorage.setItem('v74_ignored_cases',JSON.stringify(m)); toast75('Ignored on your interface only.','ok'); try{renderPage()}catch(_){ }};
+  const oldIgnore74=window.v74IgnoreCase;
+  window.v74IgnoreCase=window.v75IgnoreCase;
+  function decorate75(root=document){
+    addStyle75(); const ig=ignored75();
+    $$75('.v62-case',root).forEach(card=>{
+      const key=card.getAttribute('data-case')||''; if(ig[key]){card.remove(); return;}
+      const actions=$75('.v62-case-actions',card); if(!actions)return;
+      const isAttendance=key.startsWith('attendance:')||/attendance action/i.test(card.textContent||'');
+      if(isAttendance&&manager75()&&!actions.querySelector('.v75-ignore'))actions.insertAdjacentHTML('afterbegin',`<button class="btn sm ghost v75-ignore" onclick="v75IgnoreCase('${esc75(key)}')">Ignore Today</button>`);
+      // remove actor buttons from non-assigned mission cards
+      const title=(card.querySelector('.v62-case-title')?.textContent||'');
+      if(/mission|task/i.test(card.textContent||'')){
+        actions.querySelectorAll('button').forEach(b=>{
+          const txt=(b.textContent||'').toLowerCase(); const on=b.getAttribute('onclick')||'';
+          if((txt.includes('accept')||txt.includes('submit proof')||on.includes('acceptTask')||on.includes('proofTask'))&&manager75()){
+            const mt=on.match(/['"]([^'"]+)['"]/); const id=mt&&mt[1]; const t=(S.tasks||[]).find(x=>String(x.id)===String(id));
+            if(!t||String(t.assigned_to_employee_id||'')!==me75())b.remove();
+          }
+        });
+      }
+    });
+  }
+
+  function decodeMarker75(raw){
+    raw=String(raw||'');
+    const m=raw.match(/\[VSCORE_TASK_DETAILS:(.*?)\]/);
+    if(m){try{const arr=JSON.parse(decodeURIComponent(m[1])); if(Array.isArray(arr))return arr.map(x=>({text:x.task||x.text||'',pct:Number(x.progress??x.pct??0),done:!!x.done||Number(x.progress??x.pct??0)>=100,status:x.status||'',remarks:x.remarks||''})).filter(x=>x.text)}catch(_){}}
+    const encoded=raw.match(/%5B%7B.*?%7D%5D/i);
+    if(encoded){try{const arr=JSON.parse(decodeURIComponent(encoded[0])); if(Array.isArray(arr))return arr.map(x=>({text:x.task||x.text||'',pct:Number(x.progress??x.pct??0),done:!!x.done||Number(x.progress??x.pct??0)>=100,status:x.status||'',remarks:x.remarks||''})).filter(x=>x.text)}catch(_){}}
+    return null;
+  }
+  function rows75(t){
+    const d=typeof t?.completion_details==='string'?(()=>{try{return JSON.parse(t.completion_details)}catch(_){return null}})():(t?.completion_details||null);
+    if(d&&Array.isArray(d.items)&&d.items.length)return d.items.map(x=>({text:x.text||x.item||x.task||'',pct:Number(x.pct??x.percent??(x.done?100:0)),done:!!x.done||Number(x.pct??x.percent??0)>=100,remarks:x.remarks||'',status:x.status||''})).filter(x=>x.text);
+    const mark=decodeMarker75(t?.task_items); if(mark&&mark.length)return mark;
+    return String(t?.task_items||'').replace(/\[VSCORE_TASK_DETAILS:.*?\]/g,'').split(/\n+/).map(line=>line.trim()).filter(Boolean).map(line=>{const m=line.match(/^\[(✓|○)\s*(\d+)%\s*([^\]]+)\]\s*(.*)$/); if(m)return {done:m[1]==='✓',pct:Number(m[2]),status:m[3],text:m[4]}; const pct=(line.match(/(\d{1,3})%/)||[])[1]; const done=/✓|done|completed/i.test(line); return {text:line.replace(/^[-•○✓\s]+/,''),pct:done?100:Number(pct||0),done,status:done?'Done':'Ongoing'};}).filter(x=>x.text&&!/^notes:/i.test(x.text));
+  }
+  function pct75(t){const r=rows75(t);return r.length?Math.round(r.reduce((s,x)=>s+Number(x.pct||0),0)/r.length):0}
+  function date75(t){return String(t.submitted_at||t.created_at||'').slice(0,10)||today75()}
+  function taskCard75(t){
+    const r=rows75(t), p=pct75(t), owner=emp75(t.assigned_to_employee_id||t.assigned_by_employee_id), filed=date75(t)<today75()&&p>=100, carry=date75(t)<today75()&&p<100;
+    return `<div class="v75-task-card"><h4>${esc75(t.title||'Shared Task List')}</h4><div><span class="v75-chip ${p>=100?'green':'yellow'}">${p}% · ${p>=100?'Done':'Ongoing'}</span><span class="v75-chip blue">${esc75(date75(t))}</span>${filed?'<span class="v75-chip green">Filed</span>':''}${carry?'<span class="v75-chip yellow">Carry-over</span>':''}</div><div class="v75-task-meta"><b>Employee:</b> ${esc75(owner.full_name)}<br><b>Branch:</b> ${esc75(t.branch||owner.branch||'-')}</div><div class="v75-bar"><span style="width:${Math.max(0,Math.min(100,p))}%"></span></div>${r.map(x=>`<div class="v74-taskline"><b>${x.done||Number(x.pct)>=100?'✓':'○'} ${esc75(x.text)}</b><div class="v75-task-meta">${Number(x.pct||0)}% · ${Number(x.pct||0)>=100?'Done':'Ongoing'}${x.remarks?` · Remarks: ${esc75(x.remarks)}`:''}</div><div class="v75-bar"><span style="width:${Math.max(0,Math.min(100,Number(x.pct||0)))}%"></span></div></div>`).join('')}${t.proof_url&&typeof img==='function'?img(t.proof_url):''}</div>`;
+  }
+  const oldTasklistPage75=window.tasklistPage74;
+  window.tasklistPage74=function(){
+    addStyle75();
+    let list=(S.tasks||[]).filter(t=>String(t.source_type||'')==='self_tasklist');
+    if(!manager75())list=list.filter(t=>String(t.assigned_to_employee_id||'')===me75());
+    const today=today75(), todayRows=list.filter(t=>date75(t)===today), ongoing=list.filter(t=>date75(t)<today&&pct75(t)<100), filed=list.filter(t=>date75(t)<today&&pct75(t)>=100).slice(0,20);
+    const form=oldTasklistPage75?String(oldTasklistPage75()).split('<div class="card"><h3>')[0]:'<div class="card"><h3>Share My Task List</h3></div>';
+    return `<div class="v74-grid">${form}<div class="card"><h3>${manager75()?'Task List Monitoring':'My Task List Monitor'}</h3><p class="muted">Clean view: today is active, unfinished old tasks stay ongoing, completed old tasks are filed.</p><h4>Today</h4><div class="v75-tasks">${todayRows.map(taskCard75).join('')||'<div class="empty">No task list today yet.</div>'}</div><h4>Ongoing Carry-over</h4><div class="v75-tasks">${ongoing.map(taskCard75).join('')||'<div class="empty">No unfinished previous task.</div>'}</div><h4>Filed Previous Task Lists</h4><div class="v75-tasks">${filed.map(taskCard75).join('')||'<div class="empty">No filed task list yet.</div>'}</div></div></div>`;
+  };
+
+  const oldRender75=window.renderPage||renderPage;
+  window.renderPage=renderPage=function(){const r=oldRender75.apply(this,arguments); setTimeout(()=>decorate75($75('#page')||document),80); return r;};
+  const oldBind75=window.bind||bind;
+  window.bind=bind=function(){try{oldBind75.apply(this,arguments)}catch(e){console.warn(e)} setTimeout(()=>decorate75(document),50);};
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>decorate75(document),700));
+  console.log('V75 role-safe actions + stable proof + clean tasklist loaded');
+})();
+/* ================= END V75 ================= */
+
+
+/* ================= V76 ROLE LOGIC + DASHBOARD STABILITY FIX =================
+   Purpose: stop endless role confusion before launch.
+   - Retail/National/Executive = summary + approval + validation, no memo self-ack.
+   - Branch managers/leaders = branch representative: can assign/monitor, still acknowledge memo/training and submit own actions.
+   - Staff = execute time-in, tasklist, reports, memo/training, mission proof.
+   - Assigned person only acts on missions; giver/reviewer only monitors/approves.
+*/
+(function(){
+  const $76=(s,r=document)=>r.querySelector(s);
+  const $$76=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const safe76=v=>{try{return (typeof esc==='function')?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}catch(_){return String(v??'')}};
+  const fmt76=d=>{try{return typeof fmt==='function'?fmt(d):(d?new Date(d).toLocaleString():'-')}catch(_){return d||'-'}};
+  const money76=n=>{try{return typeof money==='function'?money(n):Number(n||0).toFixed(0)}catch(_){return String(n||0)}};
+  const role76=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
+  const exec76=()=>['retail_head','national_retail_head','head_office_admin','head_office','admin','management','master','hr','executive'].includes(role76());
+  const branchMgr76=()=>['manager','branch_manager','team_leader','fsqa_officer','branch_leader'].includes(role76());
+  const managerAny76=()=>exec76()||branchMgr76()||/manager|leader|fsqa|retail|head|admin|hr|executive/i.test(String(S?.profile?.position||''));
+  const me76=()=>String(S?.profile?.id||'');
+  const myName76=()=>String(S?.profile?.full_name||'').trim().toLowerCase();
+  const branch76=()=>String(S?.profile?.branch||'');
+  function toast76(msg,type='ok'){try{if(typeof toast==='function')toast(msg,type);else alert(msg)}catch(_){alert(msg)}}
+  function addStyle76(){if($76('#v76-style'))return;document.head.insertAdjacentHTML('beforeend',`<style id="v76-style">
+    .v76-dash{display:grid;gap:14px}.v76-hero{background:linear-gradient(135deg,#7f1d1d,#b91c1c);color:#fff;border-radius:24px;padding:18px;box-shadow:0 18px 44px rgba(127,29,29,.20);position:relative;overflow:hidden}.v76-hero:after{content:'';position:absolute;right:-44px;top:-54px;width:150px;height:150px;border-radius:999px;background:rgba(250,204,21,.24)}.v76-hero h2{margin:0 0 5px;font-size:28px;line-height:1.05}.v76-hero p{margin:0;color:#fee2e2}.v76-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.v76-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.05)}.v76-kpi span{display:block;color:#64748b;font-size:12px;font-weight:1000;text-transform:uppercase;letter-spacing:.04em}.v76-kpi b{display:block;color:#7f1d1d;font-size:30px;margin-top:5px}.v76-panel{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.05)}.v76-panel h3{margin:0 0 10px;color:#7f1d1d}.v76-list{display:grid;gap:9px}.v76-row{border:1px solid #e5e7eb;border-radius:16px;background:#f8fafc;padding:12px;display:grid;gap:6px}.v76-row b{color:#0f172a}.v76-meta{font-size:13px;color:#64748b;line-height:1.35}.v76-actions{display:flex;gap:7px;flex-wrap:wrap}.v76-actions .btn{flex:1 1 auto}.v76-note{border-left:5px solid #facc15;background:#fffbeb;color:#713f12;border-radius:14px;padding:10px;font-size:13px}.v76-spectator{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;padding:9px 10px;background:#f1f5f9;color:#475569;font-weight:1000;font-size:12px}.v76-review{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;padding:9px 10px;background:#dbeafe;color:#1e40af;font-weight:1000;font-size:12px}.v76-print-box{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;line-height:1.45}.v76-menu-pill{background:rgba(250,204,21,.12)!important;border:1px solid rgba(250,204,21,.22)!important}.v62-case-actions .v76-ignore{order:-5}
+    @media(max-width:820px){.v76-hero{border-radius:18px;padding:15px}.v76-hero h2{font-size:23px}.v76-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v76-kpi{border-radius:16px;padding:12px}.v76-kpi b{font-size:26px}.v76-panel{border-radius:18px;padding:13px}.v76-actions .btn,.v62-case-actions .btn{width:100%;min-height:42px}.v76-spectator,.v76-review{width:100%}.modal-card{max-width:calc(100vw - 20px)!important}}
+    @media print{.sidebar,.topbar,.btn,.v76-actions{display:none!important}.v76-print-box{border:0!important}.modal{position:static!important;background:#fff!important}.modal-card{box-shadow:none!important;max-height:none!important}}
+  </style>`)}
+  function forceLogout76(){try{localStorage.removeItem('VSCORE_SESSION');localStorage.removeItem('sb-auth-token');sessionStorage.clear();if(window.sb?.auth?.signOut)window.sb.auth.signOut().catch(()=>{});}catch(_){ }try{S.user=null;S.profile=null;S.tab='dashboard'}catch(_){ }try{document.body.classList.remove('v50-menu-open','v58-more-open','v64-menu-open')}catch(_){ }try{renderAuth()}catch(_){location.reload()}}
+  window.logout=function(){forceLogout76()};
+  window.v64Logout=forceLogout76;
+  document.addEventListener('click',function(e){const el=e.target.closest&&e.target.closest('#logout,#v64LogoutBtn,.v64-logout-btn,[data-v76-logout]');if(el){e.preventDefault();e.stopPropagation();forceLogout76();}},true);
+  function emp76(id){try{return (S.allEmployees||S.employees||[]).find(e=>String(e.id)===String(id))||{full_name:'-',branch:'-',role:'-'}}catch(_){return {full_name:'-',branch:'-',role:'-'}}}
+  function tasks76(){return (S.tasks||[])}
+  function reports76(){return (S.reports||[])}
+  function violations76(){return (S.violations||[])}
+  function risky76(){return [...(S.employees||[])].filter(e=>Number(e.current_points||100)<95).sort((a,b)=>Number(a.current_points||100)-Number(b.current_points||100)).slice(0,8)}
+  function pendingTasks76(){return tasks76().filter(t=>!['approved','closed','cancelled'].includes(String(t.status||'').toLowerCase()))}
+  function submittedTasks76(){return tasks76().filter(t=>['submitted','pending_merit','for_validation'].includes(String(t.status||'').toLowerCase()))}
+  function ackPercent76(){try{const mem=(S.memos||[]).filter(m=>m.is_active!==false); const total=(S.employees||[]).length*mem.length; if(!total)return 100; return Math.round(((S.allAcks||[]).length/total)*100)}catch(_){return 0}}
+  function trainingSummary76(){try{const total=(S.employees||[]).length; const done=(S.tasks||[]).filter(t=>/training/i.test(String(t.source_type||t.title||''))&&['approved','completed','submitted'].includes(String(t.status||'').toLowerCase())).length; return {total,done}}catch(_){return {total:0,done:0}}}
+  function retailDashboard76(){addStyle76();const active=(typeof allCases62==='function'?allCases62():([])).filter(c=>c.status!=='closed');const risky=risky76();const sub=submittedTasks76();const tr=trainingSummary76();const branchSet=[...new Set((S.employees||[]).map(e=>e.branch).filter(Boolean))];return `<div class="v76-dash"><div class="v76-hero"><h2>Executive Monitoring</h2><p>Summary, approvals, validation, branch folders, and final V-POINTS decision. No self-acknowledgment required.</p></div><div class="v76-kpis"><div class="v76-kpi"><span>Active cases</span><b>${active.length}</b></div><div class="v76-kpi"><span>Need approval</span><b>${sub.length}</b></div><div class="v76-kpi"><span>Memo ack</span><b>${ackPercent76()}%</b></div><div class="v76-kpi"><span>Branches</span><b>${branchSet.length}</b></div></div><div class="grid two"><div class="v76-panel"><h3>Needs Retail Decision</h3><div class="v76-list">${sub.slice(0,6).map(t=>`<div class="v76-row"><b>${safe76(t.title||'Mission proof')}</b><div class="v76-meta">Assigned to: ${safe76(emp76(t.assigned_to_employee_id).full_name)}<br>Given by: ${safe76(emp76(t.assigned_by_employee_id).full_name)}<br>Status: ${safe76(t.status||'-')}</div><div class="v76-actions"><button class="btn sm blue" onclick="v76ReviewMission('${safe76(t.id)}')">Review Evidence</button></div></div>`).join('')||'<div class="empty">No pending proof for approval.</div>'}</div></div><div class="v76-panel"><h3>Staff / Branch Attention</h3><div class="v76-list">${risky.map(e=>`<div class="v76-row"><b>${safe76(e.full_name)}</b><div class="v76-meta">${safe76(e.branch)} · ${money76(e.current_points||100)} V-Points</div></div>`).join('')||'<div class="empty">No low-point staff.</div>'}</div></div></div><div class="v76-panel"><h3>Branch Folders</h3><div class="v76-list">${branchSet.map(b=>`<div class="v76-row"><b>${safe76(b)}</b><div class="v76-meta">Employees: ${(S.employees||[]).filter(e=>e.branch===b).length} · Active cases: ${active.filter(c=>c.branch===b).length}</div><div class="v76-actions"><button class="btn sm ghost" onclick="S.tab='attendance';renderPage()">Open Attendance</button><button class="btn sm blue" onclick="S.tab='case_center';renderPage()">Open Cases</button></div></div>`).join('')||'<div class="empty">No branches.</div>'}</div></div><div class="v76-panel"><h3>Memo / Training Monitoring</h3><div class="v76-note">Retail view is monitoring only. Branch managers and staff still acknowledge assigned memos and complete training.</div><br><div class="v76-actions"><button class="btn blue" onclick="S.tab='memos';renderPage()">Memo Acknowledgment Summary</button><button class="btn green" onclick="S.tab='training';renderPage()">Training Summary</button></div></div></div>`}
+  function managerDashboard76(){addStyle76();const active=(typeof allCases62==='function'?allCases62():([])).filter(c=>c.status!=='closed');const sub=submittedTasks76();const myGiven=tasks76().filter(t=>String(t.assigned_by_employee_id)===me76());return `<div class="v76-dash"><div class="v76-hero"><h2>Branch Manager Dashboard</h2><p>You represent Retail for your branch: assign, follow up, validate completion, then request Retail point approval.</p></div><div class="v76-kpis"><div class="v76-kpi"><span>Branch cases</span><b>${active.length}</b></div><div class="v76-kpi"><span>Mission proofs</span><b>${sub.length}</b></div><div class="v76-kpi"><span>My assigned</span><b>${tasks76().filter(t=>String(t.assigned_to_employee_id)===me76()&&!['approved','closed','cancelled'].includes(String(t.status||'').toLowerCase())).length}</b></div><div class="v76-kpi"><span>Staff</span><b>${(S.employees||[]).length}</b></div></div><div class="grid two"><div class="v76-panel"><h3>Missions I Gave</h3><div class="v76-list">${myGiven.slice(0,6).map(t=>`<div class="v76-row"><b>${safe76(t.title||'Mission')}</b><div class="v76-meta">To: ${safe76(emp76(t.assigned_to_employee_id).full_name)} · Status: ${safe76(t.status||'-')}</div><div class="v76-actions"><button class="btn sm ghost" onclick="v76ReviewMission('${safe76(t.id)}')">View Status</button>${['submitted','pending_merit','for_validation'].includes(String(t.status||'').toLowerCase())?`<button class="btn sm blue" onclick="v76BranchValidateMission('${safe76(t.id)}',this)">Validate Completion</button>`:''}</div></div>`).join('')||'<div class="empty">No missions given yet.</div>'}</div></div><div class="v76-panel"><h3>My Required Actions</h3><div class="v76-note">Branch managers still acknowledge memo/training and submit proof when personally assigned.</div><br><button class="btn green full" onclick="S.tab='my_actions';renderPage()">Open My Actions</button></div></div></div>`}
+  const oldOwnerDash76=window.ownerDash;
+  const oldEmpDash76=window.empDash;
+  window.ownerDash=ownerDash=function(){if(exec76())return retailDashboard76(); if(branchMgr76())return managerDashboard76(); return oldOwnerDash76?oldOwnerDash76():''};
+  window.empDash=empDash=function(){if(exec76())return retailDashboard76(); if(branchMgr76())return managerDashboard76(); return oldEmpDash76?oldEmpDash76():''};
+  const oldNav76=window.nav;
+  window.nav=nav=function(){let n=oldNav76?oldNav76():[]; if(exec76()){n=n.filter(x=>!['my_actions'].includes(x[0])); if(!n.some(x=>x[0]==='training'))n.splice(Math.min(9,n.length),0,['training','Training Summary']);} if(branchMgr76()){if(!n.some(x=>x[0]==='training'))n.splice(Math.min(9,n.length),0,['training','My Training']); if(!n.some(x=>x[0]==='taskmonitor'))n.splice(Math.min(5,n.length),0,['taskmonitor','Tasklist Monitor']);} return n;};
+  function mineCardText76(card){return (card.querySelector('.v62-case-meta')?.textContent||card.textContent||'').toLowerCase().includes(myName76())}
+  function key76(card){return card.getAttribute('data-case')||''}
+  function memoIdFromCard76(card){const k=key76(card);if(k.startsWith('memo:'))return k.split(':').slice(1).join(':');const btn=card.querySelector('button[onclick*="v62AckMemo"],button[onclick*="showMemoAcks"]');const m=(btn?.getAttribute('onclick')||'').match(/['"]([^'"]+)['"]/);return m?m[1]:''}
+  function addIgnore76(card){if(!managerAny76())return;const k=key76(card);if(!k.startsWith('attendance:')&&!/attendance action|no time in|missing time out/i.test(card.textContent||''))return;const actions=card.querySelector('.v62-case-actions');if(actions&&!actions.querySelector('.v76-ignore'))actions.insertAdjacentHTML('afterbegin',`<button class="btn sm ghost v76-ignore" onclick="v76IgnoreCase('${safe76(k||'attendance_manual')}')">Ignore Today</button>`)}
+  window.v76IgnoreCase=function(k){try{const m=JSON.parse(localStorage.getItem('v76_ignored_cases')||'{}');m[k]={by:me76(),at:new Date().toISOString()};localStorage.setItem('v76_ignored_cases',JSON.stringify(m));localStorage.setItem('v75_ignored_cases',JSON.stringify(m));localStorage.setItem('v74_ignored_cases',JSON.stringify(m));}catch(_){ }toast76('Hidden from your dashboard only.','ok');try{renderPage()}catch(_){ }};
+  function ignored76(k){try{return !!JSON.parse(localStorage.getItem('v76_ignored_cases')||localStorage.getItem('v75_ignored_cases')||'{}')[k]}catch(_){return false}}
+  function decorate76(root=document){addStyle76();
+    $$76('.sidebar .nav button').forEach(b=>{if(['case_center','memos','training','attendance','missions'].includes(b.dataset.tab))b.classList.add('v76-menu-pill')});
+    $$76('.v62-case',root).forEach(card=>{const k=key76(card);if(k&&ignored76(k)){card.remove();return;}addIgnore76(card);
+      const actions=card.querySelector('.v62-case-actions'); if(!actions)return; const txt=(card.textContent||'');
+      if(/memo acknowledgment/i.test(txt)){
+        if(exec76()){
+          const mid=memoIdFromCard76(card); actions.querySelectorAll('button').forEach(b=>{if(/acknowledge/i.test(b.textContent||'')||/v62AckMemo|ackMemo/i.test(b.getAttribute('onclick')||''))b.remove()});
+          if(mid&&!actions.querySelector('.v76-memo-acks'))actions.insertAdjacentHTML('afterbegin',`<button class="btn sm blue v76-memo-acks" onclick="showMemoAcks('${safe76(mid)}')">See Who Acknowledged</button>`);
+        }
+      }
+      if(/mission|task/i.test(txt)){
+        const isMine=mineCardText76(card); const raw=txt.toLowerCase();
+        actions.querySelectorAll('button').forEach(b=>{const t=(b.textContent||'').toLowerCase(); const on=b.getAttribute('onclick')||''; if((t.includes('accept')||t.includes('submit proof')||on.includes('acceptTask')||on.includes('proofTask'))&&!isMine)b.remove(); if((t.includes('accept')||t.includes('submit proof'))&&exec76())b.remove();});
+        if(!actions.querySelector('.v76-giver')){let given=''; const id=((actions.querySelector('[onclick*="approveTask"],[onclick*="proofTask"],[onclick*="acceptTask"]')?.getAttribute('onclick')||'').match(/['"]([^'"]+)['"]/)||[])[1]; const task=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(task)given=emp76(task.assigned_by_employee_id).full_name; if(given)actions.insertAdjacentHTML('afterbegin',`<span class="v76-spectator v76-giver">Given by: ${safe76(given)}</span>`)}
+        if((exec76()||branchMgr76())&&!isMine&&!actions.querySelector('.v76-spectator'))actions.insertAdjacentHTML('afterbegin','<span class="v76-spectator">Spectator / follow-up only</span>');
+      }
+    });
+  }
+  const oldAck76=window.ackMemo;
+  window.ackMemo=ackMemo=async function(id,btn){if(exec76()){try{if(id&&typeof showMemoAcks==='function')showMemoAcks(id);else toast76('Open Memo Hub to view acknowledgment summary.','ok')}catch(_){toast76('Retail view is monitoring only.','ok')}return;} if(!id||String(id)==='undefined'||String(id)==='null')return toast76('Memo ID missing. Open Memo Hub and refresh once.','error'); return oldAck76?oldAck76(id,btn):toast76('Memo acknowledgment function not ready.','error')};
+  window.v62AckMemo=async function(id,btn){return ackMemo(id,btn)};
+  const oldAccept76=window.acceptTask;
+  window.acceptTask=acceptTask=async function(id,btn){const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast76('Mission not found. Please refresh once.','error'); if(exec76())return toast76('Retail is reviewer only. Assigned person must accept this mission.','error'); if(String(t.assigned_to_employee_id)!==me76())return toast76('Only the assigned person can accept this mission.','error'); return oldAccept76?oldAccept76(id,btn):toast76('Accept function not ready.','error')};
+  const oldProof76=window.proofTask;
+  window.proofTask=proofTask=function(id){const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast76('Mission not found. Please refresh once.','error'); if(String(t.assigned_to_employee_id)!==me76())return toast76('Only the assigned person can submit proof.','error'); if(exec76())return toast76('Retail is reviewer only. Assigned person must submit proof.','error'); return oldProof76?oldProof76(id):toast76('Proof function not ready.','error')};
+  const oldApprove76=window.approveTask;
+  window.approveTask=approveTask=async function(id,btn){const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast76('Mission not found.','error'); if(!exec76())return v76BranchValidateMission(id,btn); return oldApprove76?oldApprove76(id,btn):toast76('Approve function not ready.','error')};
+  window.v76BranchValidateMission=async function(id,btn){const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast76('Mission not found.','error'); if(String(t.assigned_by_employee_id)!==me76()&&!branchMgr76())return toast76('Only the mission creator/branch manager can validate branch completion.','error'); await act(btn||document.createElement('button'),{busy:'Sending to Retail...',success:'Sent to Retail',reset:'Validate Completion',toast:'Completion validated. Retail will decide points.'},async()=>{const patch={status:'for_validation',manager_remarks:'Branch validation complete. Forwarded to Retail for points/final approval.',updated_at:new Date().toISOString()};let r=await sb.from('vscore_tasks').update(patch).eq('id',id); if(r.error){r=await sb.from('vscore_tasks').update({status:'for_validation'}).eq('id',id); if(r.error)throw r.error;} try{await auditEvent('Mission validated by branch','vscore_tasks',id)}catch(_){ }},async()=>{await loadData();renderPage();});};
+  window.v76ReviewMission=function(id){const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast76('Mission not found.','error'); const assigned=emp76(t.assigned_to_employee_id), giver=emp76(t.assigned_by_employee_id); const html=`<h2>${safe76(t.title||'Mission')}</h2><div class="v76-print-box"><b>Assigned to:</b> ${safe76(assigned.full_name)}<br><b>Given by:</b> ${safe76(giver.full_name)}<br><b>Branch:</b> ${safe76(t.branch||assigned.branch||'-')}<br><b>Status:</b> ${safe76(t.status||'-')}<br><b>Due:</b> ${fmt76(t.due_at)}<hr><b>Checklist / Task:</b><div style="white-space:pre-wrap">${safe76(t.task_items||'-')}</div>${t.proof_url?`<hr><b>Proof:</b><br>${typeof img==='function'?img(t.proof_url):''}`:''}</div><br><div class="v76-actions">${branchMgr76()&&!exec76()&&['submitted','pending_merit','for_validation'].includes(String(t.status||'').toLowerCase())?`<button class="btn blue" onclick="v76BranchValidateMission('${safe76(id)}',this)">Validate Completion / Send to Retail</button>`:''}${exec76()&&['submitted','pending_merit','for_validation'].includes(String(t.status||'').toLowerCase())?`<button class="btn green" onclick="approveTask('${safe76(id)}',this)">Retail Approve / Decide Points</button>`:''}<button class="btn ghost" onclick="window.print()">Print Summary</button><button class="btn dark" onclick="closeModal()">Close</button></div>`; try{modal(html)}catch(_){alert(t.title||'Mission')}};
+  const oldClose76=window.v62CloseCase;
+  window.v62CloseCase=async function(key,btn){if(!exec76())return toast76('Final closing is for Retail / Head Office only. Branch managers may set action and forward for validation.','error'); const c=typeof caseByKey62==='function'?caseByKey62(key):null; if(!c)return toast76('Case not found.','error'); const html=`<h2>Final Closing Summary</h2><div class="v76-print-box"><b>Case:</b> ${safe76(c.title)}<br><b>Type:</b> ${safe76(c.kind)}<br><b>Involved:</b> ${safe76(c.employee_name||'-')}<br><b>Branch:</b> ${safe76(c.branch||'-')}<br><b>Status:</b> ${safe76(c.status)}<hr><b>Story / Summary:</b><div style="white-space:pre-wrap">${safe76(c.description||'No details')}</div>${c.evidence?`<hr><b>Evidence:</b><br>${typeof img==='function'?img(c.evidence):''}`:''}</div><div class="field"><label>Final closing action / decision</label><textarea id="v76CloseNote" class="input" placeholder="Write final summary before closing...">Closed with Retail validation.</textarea></div><div class="v76-actions"><button class="btn ghost" onclick="window.print()">Print Summary</button><button class="btn green" id="v76FinalCloseBtn">Approve Close Case</button><button class="btn dark" onclick="closeModal()">Cancel</button></div>`; modal(html); const b=$76('#v76FinalCloseBtn'); if(b)b.onclick=async()=>{const note=$76('#v76CloseNote')?.value||'Closed with Retail validation.'; if(oldClose76){closeModal(); return oldClose76(key,btn||b)} return toast76('Close function not ready.','error')};};
+  const oldMyActions76=window.myActionsPage62;
+  window.myActionsPage62=function(){if(exec76())return retailDashboard76(); return oldMyActions76?oldMyActions76():''};
+  const oldRender76=window.renderPage;
+  window.renderPage=renderPage=function(){const out=oldRender76?oldRender76.apply(this,arguments):undefined; try{if(S.tab==='dashboard'){const page=$76('#page'); if(page){if(exec76())page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Executive Dashboard</span></div>${retailDashboard76()}`; else if(branchMgr76())page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Branch Manager Dashboard</span></div>${managerDashboard76()}`; }} if(S.tab==='my_actions'&&exec76()){const page=$76('#page'); if(page)page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Executive Monitoring</span></div>${retailDashboard76()}`;}}catch(e){console.warn('v76 dashboard patch',e)} setTimeout(()=>decorate76($76('#page')||document),80);setTimeout(()=>decorate76(document),400);return out};
+  document.addEventListener('DOMContentLoaded',()=>{addStyle76();setTimeout(()=>decorate76(document),600);});
+  const mo=new MutationObserver(()=>{if(window.__v76q)return;window.__v76q=true;setTimeout(()=>{window.__v76q=false;decorate76(document)},120)});try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(_){ }
+  console.log('V76 role logic + logout + dashboard stability loaded');
+})();
+/* ================= END V76 ================= */
+
+
+/* ================= V77 MAGIC CLEANUP: CLEAN SUMMARY + MULTI-BRANCH + ROLE QA ================= */
+(function(){
+  'use strict';
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const low=x=>String(x??'').toLowerCase();
+  const role77=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
+  const pos77=()=>String(S?.profile?.position||'').toUpperCase();
+  const me77=()=>String(S?.profile?.id||'');
+  const exec77=()=>['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(role77()) || pos77().includes('RETAIL') || pos77().includes('HEAD OFFICE') || String(S?.profile?.branch||'').toUpperCase()==='NATIONAL BRANCH';
+  const branchMgr77=()=>exec77() || ['manager','branch_manager','team_leader'].includes(role77()) || /FSQA|TEAM LEADER|BRANCH LEADER|BRANCH MANAGER|MANAGER/.test(pos77());
+  const toast77=(m,t='ok')=>{try{toast(m,t)}catch(_){alert(m)}};
+  const fmt77=d=>{try{return d?new Date(d).toLocaleString():'-'}catch(_){return '-'}};
+  const emp77=id=>{try{return (S.allEmployees||S.employees||[]).find(e=>String(e.id)===String(id))||{full_name:'-',branch:'-'}}catch(_){return {full_name:'-',branch:'-'}}};
+  function addStyle77(){ if(QS('#v77Style'))return; document.head.insertAdjacentHTML('beforeend',`<style id="v77Style">
+    .v77-box{background:#fff;border:1px solid var(--line,#e5e7eb);border-radius:18px;padding:14px;margin:10px 0;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+    .v77-clean-list{display:grid;gap:8px;margin:10px 0}.v77-task-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:flex-start;border:1px solid #e5e7eb;border-radius:14px;padding:10px;background:#fff}.v77-check{width:26px;height:26px;border-radius:8px;background:#e5e7eb;display:grid;place-items:center;font-weight:1000;color:#475569}.v77-check.done{background:#dcfce7;color:#166534}.v77-task-name{font-weight:1000;color:#0f172a;overflow-wrap:anywhere}.v77-pct{font-weight:1000;color:#991b1b;white-space:nowrap}.v77-status{font-size:12px;color:#64748b;margin-top:3px}.v77-remark{font-size:12px;background:#f8fafc;border-radius:10px;padding:6px;margin-top:6px;color:#334155}.v77-proof{max-width:90px;max-height:70px;border-radius:10px;border:1px solid #e5e7eb;object-fit:cover}.v77-summary-head{background:linear-gradient(135deg,#fff7ed,#fff);border-left:5px solid #facc15;border-radius:16px;padding:12px;margin:10px 0}.v77-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.v77-multi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}.v77-branch-pill{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #e5e7eb;border-radius:12px;background:#f8fafc}.v77-scope-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;background:#dbeafe;color:#1e40af;font-weight:900;font-size:12px;margin:4px 4px 0 0}.v77-hide{display:none!important}.v77-photo-picker input[type=file]{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}.v77-photo-label{display:flex;align-items:center;justify-content:center;min-height:74px;border:2px dashed #cbd5e1;border-radius:16px;background:#fff;font-weight:1000;color:#475569}.v77-photo-label.has{border-style:solid;background:#f8fafc}.v77-preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.v77-preview img{width:84px;height:66px;object-fit:cover;border-radius:12px;border:1px solid #e5e7eb}.v77-print-page{font-family:Arial,sans-serif;color:#111827;max-width:880px;margin:0 auto;padding:24px}.v77-print-page h1{color:#991b1b}.v77-print-page table{width:100%;border-collapse:collapse}.v77-print-page th,.v77-print-page td{border:1px solid #d1d5db;padding:8px;text-align:left}.v77-print-page .small{font-size:12px;color:#64748b}
+    @media(max-width:760px){.v77-task-row{grid-template-columns:28px 1fr}.v77-pct{grid-column:2}.v77-actions .btn{width:100%}.v77-summary-head{font-size:14px}.modal-card{max-width:96vw!important}.v77-clean-list{font-size:14px}.v77-branch-pill{font-size:14px}}
+    @media print{body>*:not(.v77-printing){display:none!important}.v77-printing{display:block!important}.v77-print-page{padding:0}.v77-actions,.btn{display:none!important}}
+  </style>`); }
+
+  function allBranches77(){
+    const b=[...(typeof defaultBranches!=='undefined'?defaultBranches:[]),...((S.branches||[]).map(x=>x.branch_name||x.branch||x.name).filter(Boolean)),...((S.allEmployees||S.employees||[]).map(e=>e.branch).filter(Boolean))];
+    return [...new Set(b.filter(Boolean))].sort();
+  }
+  function branchKey77(id){return 'branch_access_'+String(id||'')}
+  function parseBranches77(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.filter(Boolean);
+    try{const j=JSON.parse(v); if(Array.isArray(j))return j.filter(Boolean); if(j&&Array.isArray(j.branches))return j.branches.filter(Boolean)}catch(_){ }
+    return String(v).split('|').map(x=>x.trim()).filter(Boolean);
+  }
+  function getBranchAccess77(id){
+    const e=emp77(id); let arr=[];
+    try{arr=parseBranches77(S.settings?.[branchKey77(id)]||S.settings?.['manager_branches_'+id]||localStorage.getItem('v77_'+branchKey77(id)));}catch(_){ }
+    if(!arr.length)arr=parseBranches77(e.assigned_branches||e.managed_branches||e.access_branches||e.branch_access||e.branch_scope);
+    if(e.branch&&!arr.includes(e.branch))arr.unshift(e.branch);
+    return [...new Set(arr.filter(Boolean))];
+  }
+  async function saveAppSetting77(key,value){
+    const payload={setting_key:key,setting_value:value};
+    let r=await sb.from('app_settings').upsert(payload,{onConflict:'setting_key'});
+    if(r.error){r=await sb.from('app_settings').insert(payload); if(r.error&&!String(r.error.message||'').toLowerCase().includes('duplicate'))throw r.error;}
+  }
+  window.v77OpenBranchAccess=function(id){
+    addStyle77(); const e=emp77(id); if(!e||!e.id)return toast77('Account not found.','error');
+    const current=new Set(getBranchAccess77(id)); const opts=allBranches77().map((b,i)=>`<label class="v77-branch-pill"><input type="checkbox" class="v77BranchBox" value="${esc(b)}" ${current.has(b)?'checked':''}> <span>${esc(b)}</span></label>`).join('');
+    modal(`<h2>Branch Access</h2><div class="v77-summary-head"><b>${esc(e.full_name||'-')}</b><br><span class="muted small">Assign 1, 2, 3, or more stores/branches. This is for managers, team leaders, branch leaders, and FSQA officers.</span></div><div class="v77-multi-grid">${opts}</div><div class="v77-actions"><button class="btn green" id="v77SaveBranches">Save Branch Access</button><button class="btn ghost" onclick="v77SelectAllBranches()">Select All</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+    QS('#v77SaveBranches').onclick=async ev=>{
+      const arr=QSA('.v77BranchBox').filter(x=>x.checked).map(x=>x.value);
+      if(!arr.length)return toast77('Select at least one branch.','error');
+      await act(ev.currentTarget,{busy:'Saving...',success:'Saved',reset:'Save Branch Access',toast:'Branch access saved.'},async()=>{
+        localStorage.setItem('v77_'+branchKey77(id),JSON.stringify(arr));
+        try{await saveAppSetting77(branchKey77(id),JSON.stringify(arr));}catch(e){console.warn('app_settings branch save fallback',e)}
+        try{await sb.from('employees').update({assigned_branches:arr}).eq('id',id);}catch(_){ }
+        if(S.settings)S.settings[branchKey77(id)]=JSON.stringify(arr);
+      },async()=>{closeModal(); await loadData(); renderPage();});
+    };
+  };
+  window.v77SelectAllBranches=function(){QSA('.v77BranchBox').forEach(x=>x.checked=true)};
+
+  async function mergeRows77(table,query,arrName){
+    try{const r=await query; if(r.error)throw r.error; const old=S[arrName]||[]; const map=new Map(old.map(x=>[String(x.id),x])); (r.data||[]).forEach(x=>map.set(String(x.id),x)); S[arrName]=Array.from(map.values());}catch(e){console.warn('v77 merge '+table,e.message||e)}
+  }
+  const oldLoad77=window.loadData||loadData;
+  window.loadData=loadData=async function(){
+    await oldLoad77.apply(this,arguments);
+    try{
+      if(!exec77()&&branchMgr77()){
+        const branches=getBranchAccess77(S.profile?.id).filter(Boolean);
+        if(branches.length>1){
+          await mergeRows77('employees',sb.from('employees').select('*').in('branch',branches).order('full_name'),'employees');
+          await mergeRows77('employees',sb.from('employees').select('*').in('branch',branches).order('full_name'),'allEmployees');
+          await mergeRows77('vscore_tasks',sb.from('vscore_tasks').select('*').in('branch',branches).order('created_at',{ascending:false}),'tasks');
+          await mergeRows77('investigation_reports',sb.from('investigation_reports').select('*').in('branch',branches).order('created_at',{ascending:false}),'reports');
+          await mergeRows77('fsqa_audits',sb.from('fsqa_audits').select('*').in('branch',branches).order('created_at',{ascending:false}),'fsqa');
+          await mergeRows77('violations',sb.from('violations').select('*').order('created_at',{ascending:false}),'violations');
+          const allowed=new Set((S.employees||[]).map(e=>String(e.id)));
+          S.employees=(S.employees||[]).filter(e=>branches.includes(e.branch)||String(e.id)===me77());
+          S.allEmployees=(S.allEmployees||[]).filter(e=>branches.includes(e.branch)||String(e.id)===me77());
+          S.tasks=(S.tasks||[]).filter(t=>branches.includes(t.branch)||allowed.has(String(t.assigned_to_employee_id))||String(t.assigned_by_employee_id)===me77());
+        }
+      }
+    }catch(e){console.warn('v77 expanded scope',e)}
+  };
+
+  function decodeTaskRows77(raw){
+    raw=String(raw||'');
+    const rows=[];
+    const add=x=>{const text=String(x?.task||x?.text||x?.item||x||'').trim(); if(text)rows.push({text,pct:Number(x?.progress??x?.pct??x?.percentage??(x?.done?100:0))||0,status:String(x?.status||'').trim(),remarks:String(x?.remarks||'').trim(),done:!!x?.done||Number(x?.progress??x?.pct??0)>=100});};
+    const markers=[...raw.matchAll(/\[VSCORE_TASK_DETAILS:([^\]]+)\]/ig)].map(m=>m[1]);
+    markers.forEach(m=>{try{const j=JSON.parse(decodeURIComponent(m)); if(Array.isArray(j))j.forEach(add)}catch(_){ }});
+    const enc=[...raw.matchAll(/%5B%7B[\s\S]*?%7D%5D/ig)].map(m=>m[0]);
+    enc.forEach(m=>{try{const j=JSON.parse(decodeURIComponent(m)); if(Array.isArray(j))j.forEach(add)}catch(_){ }});
+    let clean=raw.replace(/\[VSCORE_TASK_DETAILS:[^\]]+\]/ig,'').replace(/%5B%7B[\s\S]*?%7D%5D/ig,'');
+    clean.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(line=>{
+      line=line.replace(/^[-•✓✔\d.)\s]+/,'').trim(); if(!line)return;
+      const m=line.match(/^(.*?)\s*[—-]\s*(\d{1,3})%\s*(.*)$/); if(m)rows.push({text:m[1].trim(),pct:Number(m[2]),status:m[3].trim(),remarks:'',done:Number(m[2])>=100}); else rows.push({text:line,pct:0,status:'Not started',remarks:'',done:false});
+    });
+    const seen=new Set();
+    return rows.filter(r=>{const k=r.text+'|'+r.pct+'|'+r.remarks; if(seen.has(k))return false; seen.add(k); return true;});
+  }
+  function taskRows77(t){
+    let rows=[];
+    try{const d=typeof t?.completion_details==='string'?JSON.parse(t.completion_details):(t?.completion_details||null); if(d&&Array.isArray(d.items))rows=d.items.map(x=>({text:x.item||x.task||x.text||'',pct:Number(x.progress??x.pct??(x.checked?100:0))||0,status:x.status||'',remarks:x.remarks||'',done:!!x.checked||!!x.done||Number(x.progress??x.pct??0)>=100})).filter(x=>x.text);}catch(_){ }
+    if(!rows.length)rows=decodeTaskRows77(t?.task_items||t?.description||'');
+    if(!rows.length&&t?.title)rows=[{text:t.title,pct:t.status==='approved'?100:0,status:t.status||'',remarks:'',done:t.status==='approved'}];
+    return rows.slice(0,40);
+  }
+  function rowsHtml77(t){
+    const rows=taskRows77(t);
+    return `<div class="v77-clean-list">${rows.map((r,i)=>`<div class="v77-task-row"><div class="v77-check ${r.done||r.pct>=100?'done':''}">${r.done||r.pct>=100?'✓':i+1}</div><div><div class="v77-task-name">${esc(r.text)}</div><div class="v77-status">${esc((r.status||'').replace(/_/g,' ')||((r.pct>=100)?'Done':'Not started'))}</div>${r.remarks?`<div class="v77-remark">Remarks: ${esc(r.remarks)}</div>`:''}</div><div class="v77-pct">${Math.max(0,Math.min(100,Number(r.pct)||0))}%</div></div>`).join('')||'<div class="empty">No checklist details.</div>'}</div>`;
+  }
+  function plainSummary77(t){
+    const assigned=emp77(t.assigned_to_employee_id), giver=emp77(t.assigned_by_employee_id);
+    const rows=taskRows77(t);
+    return `V-SCORE Mission Summary\n\nTask: ${t.title||'-'}\nAssigned To: ${assigned.full_name||'-'}\nGiven By: ${giver.full_name||'-'}\nBranch: ${t.branch||assigned.branch||'-'}\nStatus: ${t.status||'-'}\nCreated: ${fmt77(t.created_at)}\nDue: ${fmt77(t.due_at)}\nSubmitted: ${fmt77(t.submitted_at)}\n\nChecklist Result\n${rows.map((r,i)=>`${i+1}. ${r.text} — ${Math.max(0,Math.min(100,Number(r.pct)||0))}% ${r.done||r.pct>=100?'Done':'Not started'}${r.remarks?' | Remarks: '+r.remarks:''}`).join('\n')}\n\nProof Attached: ${t.proof_url?'Yes':'No'}\nFinal Review: ${t.status==='approved'?'Approved':'For review'}\n`;
+  }
+  function printHtml77(t){
+    const assigned=emp77(t.assigned_to_employee_id), giver=emp77(t.assigned_by_employee_id);
+    const rows=taskRows77(t);
+    return `<!doctype html><html><head><meta charset="utf-8"><title>V-SCORE Mission Summary</title><style>body{font-family:Arial,sans-serif;color:#111827;padding:24px}h1{color:#991b1b}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}.meta{background:#fff7ed;border-left:5px solid #facc15;padding:12px;border-radius:10px}.proof{max-width:160px;border-radius:10px;border:1px solid #ddd}.small{color:#64748b;font-size:12px}@media print{button{display:none}}</style></head><body><h1>V-SCORE Mission Summary</h1><div class="meta"><b>Task:</b> ${esc(t.title||'-')}<br><b>Assigned To:</b> ${esc(assigned.full_name||'-')}<br><b>Given By:</b> ${esc(giver.full_name||'-')}<br><b>Branch:</b> ${esc(t.branch||assigned.branch||'-')}<br><b>Status:</b> ${esc(t.status||'-')}<br><b>Created:</b> ${esc(fmt77(t.created_at))}<br><b>Due:</b> ${esc(fmt77(t.due_at))}<br><b>Submitted:</b> ${esc(fmt77(t.submitted_at))}</div><h2>Checklist Result</h2><table><thead><tr><th>#</th><th>Task</th><th>Progress</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.text)}</td><td>${Math.max(0,Math.min(100,Number(r.pct)||0))}%</td><td>${esc(r.done||r.pct>=100?'Done':(r.status||'Not started'))}</td><td>${esc(r.remarks||'')}</td></tr>`).join('')}</tbody></table><h2>Proof</h2>${t.proof_url?`<img class="proof" src="${esc(t.proof_url)}">`:'No proof attached yet.'}<p class="small">Generated from V-SCORE. Keep as management record.</p><button onclick="window.print()">Print</button></body></html>`;
+  }
+  window.v77SaveSummary=function(id){
+    const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast77('Mission not found.','error');
+    const blob=new Blob([printHtml77(t)],{type:'text/html'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`V-SCORE_Summary_${(t.title||'mission').replace(/[^a-z0-9]+/ig,'_').slice(0,40)}.html`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  };
+  window.v77PrintSummary=function(id){
+    const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast77('Mission not found.','error');
+    const w=window.open('','_blank'); if(!w){v77SaveSummary(id); return toast77('Popup blocked. Saved summary instead.','ok')}
+    w.document.write(printHtml77(t)); w.document.close(); setTimeout(()=>{try{w.print()}catch(_){ }},300);
+  };
+  window.v76ReviewMission=window.v77ReviewMission=function(id){
+    addStyle77(); const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast77('Mission not found.','error');
+    const assigned=emp77(t.assigned_to_employee_id), giver=emp77(t.assigned_by_employee_id); const st=low(t.status);
+    const canBranchValidate=branchMgr77()&&!exec77()&&String(t.assigned_by_employee_id)===me77()&&['submitted','pending_merit','for_validation'].includes(st);
+    const canRetailApprove=exec77()&&['submitted','pending_merit','for_validation'].includes(st);
+    modal(`<h2>Clean Mission Summary</h2><div class="v77-summary-head"><b>${esc(t.title||'Mission')}</b><br><span class="v77-scope-chip">Assigned: ${esc(assigned.full_name||'-')}</span><span class="v77-scope-chip">Given by: ${esc(giver.full_name||'-')}</span><span class="v77-scope-chip">Status: ${esc(t.status||'-')}</span><br><span class="small muted">${esc(t.branch||assigned.branch||'-')} · Due: ${esc(fmt77(t.due_at))}</span></div><h3>Checklist Result</h3>${rowsHtml77(t)}${t.proof_url?`<h3>Proof Attached</h3>${typeof img==='function'?img(t.proof_url):`<img class="v77-proof" src="${esc(t.proof_url)}">`}`:''}<div class="v77-actions">${canBranchValidate?`<button class="btn blue" onclick="v76BranchValidateMission('${esc(id)}',this)">Validate Completion / Send to Retail</button>`:''}${canRetailApprove?`<button class="btn green" onclick="approveTask('${esc(id)}',this)">Retail Approve / Decide Points</button>`:''}<button class="btn ghost" onclick="v77SaveSummary('${esc(id)}')">Save Summary</button><button class="btn ghost" onclick="v77PrintSummary('${esc(id)}')">Print / Download Summary</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+  };
+
+  const oldTaskTable77=window.taskTable;
+  window.taskTable=taskTable=function(arr,manage){
+    addStyle77(); arr=Array.isArray(arr)?arr:[];
+    if(!arr.length)return '<div class="empty">No missions/tasklists.</div>';
+    return `<div class="v77-clean-list">${arr.map(t=>{const assigned=emp77(t.assigned_to_employee_id), giver=emp77(t.assigned_by_employee_id); const mine=String(t.assigned_to_employee_id)===me77(); const st=low(t.status); let act=''; if(mine&&!['submitted','approved','cancelled','closed'].includes(st)){if(st==='assigned')act+=`<button class="btn sm green" onclick="acceptTask('${esc(t.id)}',this)">Accept</button> `; act+=`<button class="btn sm blue" onclick="proofTask('${esc(t.id)}')">Submit Proof</button> `;} if((branchMgr77()||exec77())&&!mine)act+=`<button class="btn sm ghost" onclick="v77ReviewMission('${esc(t.id)}')">Review Summary</button> `; if(exec77()&&['submitted','pending_merit','for_validation'].includes(st))act+=`<button class="btn sm green" onclick="approveTask('${esc(t.id)}',this)">Approve Evidence</button>`; if(!act)act=`<button class="btn sm ghost" onclick="v77ReviewMission('${esc(t.id)}')">Details</button>`; return `<div class="v77-box"><h3 style="margin:0 0 6px">${esc(t.title||'Mission')}</h3><div class="small muted"><b>Assigned to:</b> ${esc(assigned.full_name||'-')} · <b>Given by:</b> ${esc(giver.full_name||'-')}<br>${esc(t.branch||assigned.branch||'-')} · Status: ${esc(t.status||'-')} · Due: ${esc(fmt77(t.due_at))}</div>${rowsHtml77(t)}${t.proof_url?`<div>${typeof img==='function'?img(t.proof_url):''}</div>`:''}<div class="v77-actions">${act}</div></div>`}).join('')}</div>`;
+  };
+
+  const oldEmployeesPage77=window.employeesPage;
+  window.employeesPage=employeesPage=function(){
+    let html=oldEmployeesPage77?oldEmployeesPage77.apply(this,arguments):'';
+    if(exec77()){
+      const mgrs=(S.allEmployees||S.employees||[]).filter(e=>/manager|leader|fsqa|head|retail/i.test(String(e.role+' '+e.position)) && e.is_active!==false);
+      html += `<br><div class="card"><h3>Multi-Branch Assignment</h3><p class="muted">Assign unlimited stores/branches to team leaders, FSQA officers, branch leaders, and managers. This controls what they can monitor.</p><div class="grid two"><div class="field"><label>Select Manager / Team Leader</label><select id="v77ManagerSelect">${mgrs.map(e=>`<option value="${esc(e.id)}">${esc(e.full_name)} — ${esc(e.position||e.role||'')}</option>`).join('')}</select></div><div class="field"><label>Current Access</label><div id="v77AccessPreview" class="small muted"></div></div></div><button class="btn green" onclick="v77OpenBranchAccess(document.getElementById('v77ManagerSelect').value)">Open Branch Access Setup</button></div>`;
+    }
+    return html;
+  };
+  function updateAccessPreview77(){const sel=QS('#v77ManagerSelect'); const box=QS('#v77AccessPreview'); if(sel&&box){box.innerHTML=getBranchAccess77(sel.value).map(b=>`<span class="v77-scope-chip">${esc(b)}</span>`).join('')||'No branch access yet.'}}
+
+  const oldBind77=window.bind;
+  window.bind=bind=function(){const r=oldBind77?oldBind77.apply(this,arguments):undefined; setTimeout(()=>{updateAccessPreview77(); const s=QS('#v77ManagerSelect'); if(s)s.onchange=updateAccessPreview77; decorate77(document)},50); return r;};
+
+  const oldLogout77=window.logout||logout;
+  window.logout=logout=function(){
+    try{localStorage.removeItem('VSCORE_SESSION');localStorage.removeItem('sb-'+(SUPABASE_URL||'')+'-auth-token');}catch(_){ }
+    try{clearSession&&clearSession()}catch(_){ }
+    try{if(sb?.auth?.signOut)sb.auth.signOut()}catch(_){ }
+    try{S.user=null;S.profile=null;}catch(_){ }
+    try{document.body.classList.remove('menu-open')}catch(_){ }
+    try{renderAuth&&renderAuth()}catch(_){location.reload()}
+  };
+
+  const oldAck77=window.ackMemo;
+  function memoFromCard77(btn){
+    const card=btn?.closest('.v62-case,.card,.v77-box,div'); const text=(card?.textContent||'').replace(/Acknowledge|Details|Open/g,'').trim();
+    const title=(card?.querySelector('h3,h4,.v62-case-title,b')?.textContent||text.split('\n')[0]||'').trim().toLowerCase();
+    return (S.memos||[]).find(m=>String(m.id)===String(btn?.dataset?.memoId)) || (S.memos||[]).find(m=>low(m.title||m.subject||m.memo_title).trim()===title) || (S.memos||[]).find(m=>title&&low(m.title||m.subject||m.memo_title).includes(title));
+  }
+  window.v77AckMemoFromCard=async function(btn){ const m=memoFromCard77(btn); if(!m)return toast77('Memo not found. Open Memo Hub and refresh once.','error'); if(exec77())return (typeof showMemoAcks==='function'?showMemoAcks(m.id):toast77('Retail view is monitoring only.','ok')); return oldAck77?oldAck77(m.id,btn):toast77('Memo acknowledgment not ready.','error'); };
+  window.ackMemo=ackMemo=async function(id,btn){ if(exec77()){ if(id&&typeof showMemoAcks==='function')return showMemoAcks(id); return toast77('Retail view is monitoring only.','ok'); } if(!id||String(id)==='undefined'||String(id)==='null')return v77AckMemoFromCard(btn); return oldAck77?oldAck77(id,btn):toast77('Memo acknowledgment not ready.','error'); };
+  window.v62AckMemo=async function(id,btn){return ackMemo(id,btn)};
+
+  function decorate77(root=document){
+    addStyle77();
+    QSA('button',root).forEach(b=>{
+      const txt=low(b.textContent); const on=b.getAttribute('onclick')||'';
+      if(txt.includes('print summary')){b.textContent='Save Summary'; if(on.includes('v76ReviewMission')||on.includes('window.print'))b.classList.add('v77-save');}
+      if(txt.includes('acknowledge')&&exec77()){b.textContent='See Who Acknowledged'; b.onclick=function(ev){ev.preventDefault(); const m=memoFromCard77(b); if(m&&typeof showMemoAcks==='function')showMemoAcks(m.id); else toast77('Open Memo Hub to view acknowledgment summary.','ok');};}
+      if((txt.includes('accept')||txt.includes('submit proof'))&&(exec77()||branchMgr77())){
+        const call=(on.match(/['"]([^'"]+)['"]/)||[])[1]; const t=(S.tasks||[]).find(x=>String(x.id)===String(call));
+        if(!t || String(t.assigned_to_employee_id)!==me77()){ if(!b.closest('.v77-actions')) b.remove(); }
+      }
+    });
+    QSA('.v62-case,.v77-box',root).forEach(card=>{
+      const actions=card.querySelector('.v62-case-actions,.v77-actions'); if(!actions)return;
+      const text=card.textContent||'';
+      if(/mission|task/i.test(text) && !/Given by:/i.test(text)){
+        const id=((actions.querySelector('[onclick*="proofTask"],[onclick*="acceptTask"],[onclick*="approveTask"],[onclick*="v77ReviewMission"]')?.getAttribute('onclick')||'').match(/['"]([^'"]+)['"]/)||[])[1];
+        const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(t)card.insertAdjacentHTML('afterbegin',`<div class="small muted"><b>Given by:</b> ${esc(emp77(t.assigned_by_employee_id).full_name||'-')}</div>`);
+      }
+    });
+  }
+
+  const oldRender77=window.renderPage;
+  window.renderPage=renderPage=function(){ const r=oldRender77?oldRender77.apply(this,arguments):undefined; setTimeout(()=>{decorate77(document); updateAccessPreview77();},120); return r; };
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>decorate77(document),600));
+  const mo=new MutationObserver(()=>{ if(window.__v77m)return; window.__v77m=true; setTimeout(()=>{window.__v77m=false; decorate77(document); updateAccessPreview77();},180); });
+  try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(_){ }
+  console.log('V77 magic cleanup loaded: clean summary, multi-branch access, role-safe QA');
+})();
+/* ================= END V77 ================= */
+
+
+/* ================= V78 CLEAR MULTI-BRANCH CREATE ACCOUNT FIX ================= */
+(function(){
+  'use strict';
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const role78=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
+  const pos78=()=>String(S?.profile?.position||'').toUpperCase();
+  const exec78=()=>['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(role78()) || pos78().includes('RETAIL') || pos78().includes('HEAD OFFICE') || String(S?.profile?.branch||'').toUpperCase()==='NATIONAL BRANCH';
+  const toast78=(m,t='ok')=>{try{toast(m,t)}catch(_){alert(m)}};
+  function addStyle78(){ if(QS('#v78-style'))return; document.head.insertAdjacentHTML('beforeend',`<style id="v78-style">
+    .v78-access-box{border:1px solid #fde68a;background:#fffbeb;border-radius:18px;padding:14px;margin:10px 0}.v78-access-box h4{margin:0 0 6px;color:#7f1d1d}.v78-branch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:10px}.v78-branch-check{display:flex;align-items:flex-start;gap:9px;border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px;font-weight:800;color:#334155}.v78-branch-check input{width:auto;margin-top:3px}.v78-chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.v78-chip{display:inline-flex;border-radius:999px;padding:6px 10px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:1000}.v78-home{background:#dcfce7;color:#166534}.v78-muted{font-size:12px;color:#64748b}.v78-hidden{display:none!important}@media(max-width:760px){.v78-branch-grid{grid-template-columns:1fr}.v78-access-box{padding:12px}}
+  </style>`); }
+  function allBranches78(){
+    const b=[...(typeof defaultBranches!=='undefined'?defaultBranches:[]),...((S.branches||[]).map(x=>x.branch_name||x.branch||x.name).filter(Boolean)),...((S.allEmployees||S.employees||[]).map(e=>e.branch).filter(Boolean))];
+    return [...new Set(b.filter(Boolean))].sort();
+  }
+  function isManagerPosition78(p){p=String(p||'').toUpperCase(); return /TEAM LEADER|BRANCH MANAGER|MANAGER|FSQA|BRANCH LEADER|RETAIL|HEAD OFFICE|HR/.test(p);}
+  function branchKey78(id){return 'branch_access_'+String(id||'')}
+  function accessHtml78(){
+    const branches=allBranches78();
+    const checks=branches.map(b=>`<label class="v78-branch-check"><input type="checkbox" class="v78BranchCreate" value="${esc(b)}"><span>${esc(b)}</span></label>`).join('');
+    return `<div id="v78AccessBlock" class="v78-access-box"><h4>Additional Branch Access</h4><div class="v78-muted"><b>Main Branch</b> is the home store. Check more branches here when this account is Team Leader, Branch Manager, FSQA Officer, or Branch Leader. This allows more than 2 stores.</div><div id="v78SelectedAccess" class="v78-chiprow"></div><div class="v78-branch-grid">${checks}</div><div class="split" style="margin-top:10px"><button type="button" class="btn sm ghost" id="v78SelectHomeOnly">Home Branch Only</button><button type="button" class="btn sm blue" id="v78SelectAll">Select All Branches</button></div></div>`;
+  }
+  function selectedHome78(){return QS('#staffBranch')?.value || S?.profile?.branch || ''}
+  function selectedAccess78(){const home=selectedHome78(); const arr=QSA('.v78BranchCreate').filter(x=>x.checked).map(x=>x.value); if(home&&!arr.includes(home))arr.unshift(home); return [...new Set(arr.filter(Boolean))];}
+  function refreshAccessUi78(){
+    addStyle78(); const block=QS('#v78AccessBlock'); if(!block)return;
+    const pos=QS('#staffPosition')?.value||''; const shouldShow=exec78() && isManagerPosition78(pos);
+    block.classList.toggle('v78-hidden',!shouldShow);
+    const home=selectedHome78();
+    QSA('.v78BranchCreate').forEach(cb=>{ if(cb.value===home){cb.checked=true; cb.closest('label')?.classList.add('v78-home');} else cb.closest('label')?.classList.remove('v78-home'); });
+    const chip=QS('#v78SelectedAccess'); if(chip){
+      chip.innerHTML=selectedAccess78().map((b,i)=>`<span class="v78-chip ${b===home?'v78-home':''}">${i===0?'Home: ':'Access: '}${esc(b)}</span>`).join('');
+    }
+  }
+  function setupStaffAccess78(){
+    addStyle78(); if(!QS('#staffForm')||!QS('#v78AccessBlock'))return;
+    QS('#staffPosition')?.addEventListener('change',refreshAccessUi78);
+    QS('#staffBranch')?.addEventListener('change',refreshAccessUi78);
+    QSA('.v78BranchCreate').forEach(cb=>cb.addEventListener('change',refreshAccessUi78));
+    const homeBtn=QS('#v78SelectHomeOnly'); if(homeBtn)homeBtn.onclick=()=>{const home=selectedHome78(); QSA('.v78BranchCreate').forEach(cb=>cb.checked=(cb.value===home)); refreshAccessUi78();};
+    const allBtn=QS('#v78SelectAll'); if(allBtn)allBtn.onclick=()=>{QSA('.v78BranchCreate').forEach(cb=>cb.checked=true); refreshAccessUi78();};
+    refreshAccessUi78();
+  }
+  async function saveSetting78(key,value){
+    const payload={setting_key:key,setting_value:value};
+    let r=await sb.from('app_settings').upsert(payload,{onConflict:'setting_key'});
+    if(r.error){r=await sb.from('app_settings').insert(payload); if(r.error&&!String(r.error.message||'').toLowerCase().includes('duplicate'))throw r.error;}
+  }
+  const oldEmployeesPage78=window.employeesPage;
+  window.employeesPage=employeesPage=function(){
+    let html=oldEmployeesPage78?oldEmployeesPage78.apply(this,arguments):'';
+    if(exec78() && html && !html.includes('v78AccessBlock')){
+      html=html.replace('<label>Branch</label>','<label>Main / Home Branch</label>');
+      const access=accessHtml78();
+      const marker='<div class="field"><label>Position</label>';
+      if(html.includes(marker)) html=html.replace(marker,access+marker);
+      else html=html.replace('</form>',access+'</form>');
+    }
+    return html;
+  };
+  window.createStaff=createStaff=async function(e){
+    e.preventDefault(); const b=e.submitter;
+    await act(b,{busy:'Creating...',success:'Created ✓',reset:'Create Another Staff',toast:'Staff created with branch access.'},async()=>{
+      const pos=QS('#staffPosition').value, role=posToRole(pos);
+      if(!canHigh()&&['retail_head','head_office_admin','hr'].includes(role))throw new Error('Branch leaders cannot create high-power accounts.');
+      const home=(isOwner()||national())?QS('#staffBranch').value:S.profile.branch;
+      let access=[home];
+      if(exec78() && isManagerPosition78(pos)) access=selectedAccess78();
+      const rec={full_name:QS('#staffName').value.trim(),email:QS('#staffEmail').value.trim().toLowerCase(),branch:home,position:pos,role,temp_password:QS('#staffPass').value.trim(),login_password_backup:QS('#staffPass').value.trim(),activation_status:'not_activated',is_active:true,profile_completed:false,starting_points:100,current_points:100,account_created_by:S.profile.id,account_created_at:new Date().toISOString()};
+      const r=await sb.from('employees').insert(rec).select().single(); if(r.error)throw r.error;
+      const emp=r.data;
+      if(emp?.id){
+        try{localStorage.setItem('v77_'+branchKey78(emp.id),JSON.stringify(access));}catch(_){ }
+        try{await saveSetting78(branchKey78(emp.id),JSON.stringify(access));}catch(err){console.warn('v78 app_settings access save fallback',err)}
+        try{const u=await sb.from('employees').update({assigned_branches:access}).eq('id',emp.id); if(u.error)console.warn('assigned_branches column not available, using app_settings fallback');}catch(_){ }
+        if(S.settings)S.settings[branchKey78(emp.id)]=JSON.stringify(access);
+      }
+      return {...emp,assigned_branches:access};
+    },async emp=>{await loadData();renderPage(); try{credential(emp)}catch(_){toast78('Account created.','ok')} });
+  };
+  const oldBind78=window.bind;
+  window.bind=bind=function(){const r=oldBind78?oldBind78.apply(this,arguments):undefined; setTimeout(setupStaffAccess78,80); return r;};
+  const oldRender78=window.renderPage;
+  window.renderPage=renderPage=function(){const r=oldRender78?oldRender78.apply(this,arguments):undefined; setTimeout(setupStaffAccess78,150); return r;};
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(setupStaffAccess78,700));
+  console.log('V78 loaded: clear multi-branch assignment at account creation + no two-store limit.');
+})();
+/* ================= END V78 ================= */
+
+
+/* ================= V79 FINAL HARD LOGOUT FIX =================
+   - Captures every Logout button from sidebar/top/menu, even if older patches override it.
+   - Clears saved V-SCORE session and Supabase auth tokens.
+   - Returns to login screen immediately without deleting branch access/settings.
+*/
+(function(){
+  'use strict';
+  function isLogoutElement79(el){
+    try{
+      if(!el) return false;
+      const txt=String(el.textContent||el.value||el.getAttribute('aria-label')||'').trim().toLowerCase();
+      const id=String(el.id||'').toLowerCase();
+      const cls=String(el.className||'').toLowerCase();
+      const data=String(el.getAttribute('data-v76-logout')||el.getAttribute('data-logout')||'').toLowerCase();
+      return id==='logout' || id.includes('logout') || cls.includes('logout') || data==='true' || txt==='logout' || txt.includes('logout');
+    }catch(_){return false;}
+  }
+  function clearSavedLogin79(){
+    try{ localStorage.removeItem('VSCORE_SESSION'); }catch(_){ }
+    try{ sessionStorage.clear(); }catch(_){ }
+    try{
+      const remove=[];
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i)||'';
+        const kl=k.toLowerCase();
+        if(kl.includes('auth-token') || kl.startsWith('sb-') || kl.includes('supabase.auth')) remove.push(k);
+      }
+      remove.forEach(k=>{try{localStorage.removeItem(k)}catch(_){ }});
+    }catch(_){ }
+  }
+  function hardLogout79(ev){
+    try{ if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); } }catch(_){ }
+    clearSavedLogin79();
+    try{ if(window.sb && sb.auth && sb.auth.signOut) sb.auth.signOut().catch(()=>{}); }catch(_){ }
+    try{
+      if(typeof S==='object' && S){
+        S.user=null; S.profile=null; S.tab='dashboard';
+        S.employees=[]; S.allEmployees=[]; S.acks=[]; S.achievements=[]; S.violations=[]; S.ledger=[]; S.reports=[]; S.tasks=[];
+      }
+    }catch(_){ }
+    try{ document.body.classList.remove('v50-menu-open','v58-more-open','v64-menu-open','menu-open','drawer-open'); }catch(_){ }
+    try{
+      if(typeof renderAuth==='function'){
+        renderAuth('login');
+        try{ if(typeof toast==='function') toast('Logged out.','ok'); }catch(_){ }
+        return false;
+      }
+    }catch(err){ console.warn('V79 renderAuth logout fallback',err); }
+    try{ location.reload(); }catch(_){ }
+    return false;
+  }
+  window.v79HardLogout=hardLogout79;
+  try{ window.logout=hardLogout79; logout=hardLogout79; }catch(_){ window.logout=hardLogout79; }
+  try{ window.v64Logout=hardLogout79; }catch(_){ }
+  function bindLogoutButtons79(root=document){
+    try{
+      Array.from(root.querySelectorAll('button,a,[role="button"],input[type="button"],input[type="submit"]')).forEach(el=>{
+        if(isLogoutElement79(el)){
+          try{ el.setAttribute('type','button'); }catch(_){ }
+          try{ el.setAttribute('data-v79-logout','true'); }catch(_){ }
+          el.onclick=hardLogout79;
+          el.onpointerup=hardLogout79;
+        }
+      });
+    }catch(_){ }
+  }
+  document.addEventListener('click',function(ev){
+    const el=ev.target && ev.target.closest ? ev.target.closest('button,a,[role="button"],input') : null;
+    if(isLogoutElement79(el)) hardLogout79(ev);
+  },true);
+  document.addEventListener('pointerup',function(ev){
+    const el=ev.target && ev.target.closest ? ev.target.closest('button,a,[role="button"],input') : null;
+    if(isLogoutElement79(el)) hardLogout79(ev);
+  },true);
+  try{
+    const oldRenderApp79=window.renderApp||renderApp;
+    window.renderApp=renderApp=function(){ const r=oldRenderApp79.apply(this,arguments); setTimeout(()=>bindLogoutButtons79(document),50); return r; };
+  }catch(_){ }
+  try{
+    const oldRenderPage79=window.renderPage||renderPage;
+    window.renderPage=renderPage=function(){ const r=oldRenderPage79.apply(this,arguments); setTimeout(()=>bindLogoutButtons79(document),80); return r; };
+  }catch(_){ }
+  try{
+    const mo=new MutationObserver(()=>{ if(window.__v79LogoutBind)return; window.__v79LogoutBind=true; setTimeout(()=>{window.__v79LogoutBind=false; bindLogoutButtons79(document);},80); });
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }catch(_){ }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>bindLogoutButtons79(document),200));
+  else setTimeout(()=>bindLogoutButtons79(document),200);
+  console.log('V79 final hard logout fix loaded.');
+})();
+/* ================= END V79 ================= */
+
 </script></body></html>
