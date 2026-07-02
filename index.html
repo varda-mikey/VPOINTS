@@ -6793,5 +6793,64 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
 })();
 /* ================= END V56 ================= */
 
+
+/* ================= V57 MOBILE LOGIN FLOATING NAV FIX =================
+   Hide/remove the mobile bottom navigation, overlay, chat bubble, and phone hint while on login/auth pages.
+   Bottom navigation only appears after the user is inside the app/dashboard.
+*/
+(function(){
+  function inAuth(){
+    try{
+      const root=document.getElementById('root');
+      return !!(root && root.querySelector('.auth')) || !(root && root.querySelector('.app')) || !(window.S && S.profile);
+    }catch(e){return true;}
+  }
+  function cleanAuthChrome(){
+    try{
+      if(!inAuth()) return;
+      document.body.classList.remove('v50-menu-open');
+      ['v50BottomNav','v50Overlay'].forEach(id=>{const el=document.getElementById(id); if(el) el.remove();});
+      document.querySelectorAll('.v50-bottom-nav,.v50-overlay,.v50-install-hint').forEach(el=>el.remove());
+      document.querySelectorAll('.chat-bubble,.chat-panel,#chatPanel').forEach(el=>{ if(inAuth()) el.remove(); });
+    }catch(e){}
+  }
+  function addStyle(){
+    if(document.getElementById('v57-login-nav-style')) return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v57-login-nav-style">
+      body.v57-auth-mode .v50-bottom-nav,
+      body.v57-auth-mode .v50-overlay,
+      body.v57-auth-mode .chat-bubble,
+      body.v57-auth-mode .chat-panel,
+      body.v57-auth-mode #chatPanel,
+      body.v57-auth-mode .v50-install-hint{display:none!important;visibility:hidden!important;pointer-events:none!important}
+      @media(max-width:820px){body.v57-auth-mode .auth{padding-bottom:18px!important}.auth-card{margin-bottom:0!important}}
+    </style>`);
+  }
+  function syncMode(){
+    addStyle();
+    if(inAuth()){document.body.classList.add('v57-auth-mode');cleanAuthChrome();}
+    else document.body.classList.remove('v57-auth-mode');
+  }
+  // Patch renderAuth so every login screen cleans mobile chrome.
+  if(typeof renderAuth==='function' && !window.__v57RenderAuthPatched){
+    window.__v57RenderAuthPatched=true;
+    const old=renderAuth;
+    window.renderAuth=renderAuth=function(){const r=old.apply(this,arguments);setTimeout(syncMode,20);setTimeout(syncMode,250);return r;};
+  }
+  // Patch renderApp so bottom nav may appear only after login.
+  if(typeof renderApp==='function' && !window.__v57RenderAppPatched){
+    window.__v57RenderAppPatched=true;
+    const old=renderApp;
+    window.renderApp=renderApp=function(){const r=old.apply(this,arguments);setTimeout(syncMode,80);return r;};
+  }
+  // Guard against older V50 DOMContent function recreating the bar on auth.
+  const mo=new MutationObserver(()=>syncMode());
+  try{mo.observe(document.documentElement,{childList:true,subtree:true});}catch(e){}
+  document.addEventListener('DOMContentLoaded',()=>{syncMode();setTimeout(syncMode,500);});
+  window.v57CleanMobileAuthChrome=syncMode;
+  console.log('V57 mobile login nav fix loaded');
+})();
+/* ================= END V57 ================= */
+
 init();
 </script></body></html>
