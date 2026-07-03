@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<title>V-SCORE V84 | Stable No Refresh Button</title>
+<title>V-SCORE V81 | End-of-Shift Output Phone Fix</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b91c1c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -127,94 +127,176 @@ function printUrl(url){if(!url)return toast('No file to print','error');const w=
 @media(max-width:900px){.launch-hero,.launch-card{border-radius:16px;padding:13px}.claim-card{padding:12px}}
 
 </style></head><body><img src="${url}"><script>window.onload=function(){window.print()}<\/script>
+
+<!-- V82.2 CLEAN REPLACE PATCH: removes fighting duplicate buttons/menu logic; no new refresh behavior -->
 <script>
-/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
 (function(){
-  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const $84=(s,r=document)=>r.querySelector(s);
-  function addStyle84(){
-    if(document.getElementById('v84-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
-      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-      .topbar .split:empty{display:none!important;}
-      .nav button.v84-dupe{display:none!important;}
-      .sidebar .nav{padding-bottom:18px!important;}
-      @media(max-width:900px){
-        .topbar{padding:12px 14px!important;gap:6px!important;}
-        .topbar .split{display:none!important;}
-        .sidebar{overscroll-behavior:contain!important;}
-        body{overscroll-behavior-y:auto!important;}
+  'use strict';
+  if(window.__VSCORE_V82_2_CLEAN_REPLACE__) return;
+  window.__VSCORE_V82_2_CLEAN_REPLACE__=true;
+
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=(el)=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const isMgr=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return false}};
+  const me=()=>{try{return S?.profile?.id||'me'}catch(_){return 'me'}};
+  const toastOk=(m)=>{try{toast(m,'ok')}catch(_){console.log(m)}};
+
+  // Stop old patches from printing many repeated "loaded" logs.
+  const oldLog=console.log.bind(console);
+  console.log=function(){
+    try{
+      const m=Array.from(arguments).join(' ');
+      if(/V7\d|V8\d|loaded|patch/i.test(m) && /loaded/i.test(m)) return;
+    }catch(_){ }
+    return oldLog.apply(console,arguments);
+  };
+
+  function ignoreStore(){
+    try{return JSON.parse(localStorage.getItem('vscore_ignored_today_clean')||'{}')||{}}catch(_){return {}}
+  }
+  function saveIgnoreStore(m){
+    localStorage.setItem('vscore_ignored_today_clean',JSON.stringify(m));
+    // keep compatibility with older patches so they do not re-show the same card
+    localStorage.setItem('v76_ignored_cases',JSON.stringify(m));
+    localStorage.setItem('v75_ignored_cases',JSON.stringify(m));
+    localStorage.setItem('v74_ignored_cases',JSON.stringify(m));
+  }
+  function caseKey(card){
+    if(!card) return '';
+    let k=card.getAttribute('data-case')||card.dataset.case||card.dataset.id||card.getAttribute('data-id')||'';
+    if(!k){
+      const t=TXT(card).toLowerCase();
+      if(/no time in|missing time|attendance/.test(t)){
+        const name=(t.match(/([a-z][a-z\s.]{2,40})(?: no time in| missing| attendance)/i)||[])[1]||t.slice(0,60);
+        k='attendance:'+name.replace(/[^a-z0-9]+/g,'_')+':'+new Date().toISOString().slice(0,10);
       }
-    </style>`);
+    }
+    return k||('case:'+TXT(card).toLowerCase().slice(0,80).replace(/[^a-z0-9]+/g,'_'));
   }
-  function menuOpen84(){
-    const sb=$84('.sidebar');
-    if(!sb)return false;
-    const cs=getComputedStyle(sb);
-    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+
+  window.vscoreCleanIgnoreToday=function(key){
+    const m=ignoreStore();
+    m[key||('manual:'+Date.now())]={by:me(),at:new Date().toISOString()};
+    saveIgnoreStore(m);
+    toastOk('Ignored on your interface only.');
+    setTimeout(()=>{try{renderPage()}catch(_){cleanInterface();}},20);
+  };
+  // Replace old ignore functions so old buttons all do only one stable action.
+  window.v74IgnoreCase=window.v75IgnoreCase=window.v76IgnoreCase=window.vscoreCleanIgnoreToday;
+
+  function normalizeIgnoreButtons(card){
+    if(!card || !isMgr()) return;
+    const t=TXT(card).toLowerCase();
+    const isAttendance=/no time in|missing time|attendance action|attendance/.test(t);
+    if(!isAttendance) return;
+    const key=caseKey(card);
+    const ignored=ignoreStore();
+    if(ignored[key]){ card.remove(); return; }
+
+    let actionBox=card.querySelector('.v62-case-actions,.v76-actions,.v74-actions,.split');
+    if(!actionBox){
+      actionBox=document.createElement('div');
+      actionBox.className='split vscore-clean-actions';
+      card.appendChild(actionBox);
+    }
+    // Remove every old ignore button then add one clean button.
+    $$('button',card).filter(b=>TXT(b)==='Ignore Today').forEach(b=>b.remove());
+    const btn=document.createElement('button');
+    btn.className='btn sm ghost vscore-ignore-one';
+    btn.type='button';
+    btn.textContent='Ignore Today';
+    btn.onclick=function(ev){ev.preventDefault();ev.stopPropagation();window.vscoreCleanIgnoreToday(key)};
+    actionBox.insertBefore(btn, actionBox.firstChild);
   }
-  function cleanMenu84(){
-    addStyle84();
+
+  function dedupeButtonsWithin(box){
     const seen=new Set();
-    $$84('.nav button').forEach(btn=>{
-      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
-      if(!key)return;
-      if(seen.has(key))btn.classList.add('v84-dupe');
-      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    $$('button',box).forEach(btn=>{
+      const txt=TXT(btn);
+      // Keep buttons that are supposed to repeat only when they are in different cards.
+      const scope = btn.closest('.v62-case,.v76-row,.v74-card,.card,tr') || box;
+      const key = txt+'@@'+(scope.__vscoreScopeId || (scope.__vscoreScopeId=Math.random().toString(36).slice(2)));
+      if((txt==='Ignore Today'||txt==='Attendance Monitor') && seen.has(key)) btn.remove();
+      else seen.add(key);
     });
-    $$84('button').forEach(btn=>{
-      const txt=(btn.textContent||'').trim().toLowerCase();
-      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+  }
+
+  function cleanMenu(){
+    const nav=$('.nav'); if(!nav) return;
+    const seen=new Set();
+    $$('button',nav).forEach(btn=>{
+      const tab=btn.getAttribute('data-tab')||'';
+      const label=TXT(btn).toLowerCase();
+      const key=(tab||label).replace(/\s+/g,'_');
+      if(!key) return;
+      if(seen.has(key)){ btn.remove(); return; }
+      seen.add(key);
     });
-    const p=$84('#v83-pull'); if(p)p.remove();
+    // Force only one Attendance Monitor by label, even if data-tab differs from old patch.
+    const att=$$('button',nav).filter(b=>/attendance monitor/i.test(TXT(b)));
+    att.slice(1).forEach(b=>b.remove());
   }
-  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
-  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
-  let blockPull=false,sy=0;
-  document.addEventListener('touchstart',function(e){
-    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
-    blockPull = (window.scrollY<=3) || menuOpen84();
-    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchmove',function(e){
-    if(!blockPull)return;
-    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
-    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchend',function(e){
-    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
-  }, true);
-  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
-  const oldRenderApp84=window.renderApp;
-  if(typeof oldRenderApp84==='function'){
-    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+
+  function cleanInterface(){
+    cleanMenu();
+    // no refresh buttons from newer unstable attempts
+    $$('button').forEach(b=>{
+      const t=TXT(b);
+      if(/^Refresh Data$|^Refresh This Page$|^Pull to refresh$/i.test(t)) b.remove();
+    });
+    // remove duplicate attendance navs/cards and normalize ignore buttons.
+    $$('.v62-case,.v76-row,.v74-card,.card').forEach(card=>normalizeIgnoreButtons(card));
+    dedupeButtonsWithin(document.body);
   }
-  const oldRenderPage84=window.renderPage;
-  if(typeof oldRenderPage84==='function'){
-    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  window.vscoreCleanInterface=cleanInterface;
+
+  function wrap(name){
+    const old=window[name];
+    if(typeof old!=='function' || old.__vscoreCleanWrapped) return;
+    const neu=function(){
+      const res=old.apply(this,arguments);
+      setTimeout(cleanInterface,0);
+      setTimeout(cleanInterface,120);
+      return res;
+    };
+    neu.__vscoreCleanWrapped=true;
+    window[name]=neu;
   }
-  const oldBind84=window.bind;
-  if(typeof oldBind84==='function'){
-    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
-  }
-  // Final stable logout fallback.
-  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  wrap('renderApp');
+  wrap('renderPage');
+
   document.addEventListener('click',function(e){
-    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
-    const txt=(b.textContent||'').trim().toLowerCase();
-    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
-  }, true);
-  setInterval(cleanMenu84,3000);
-  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+    const btn=e.target.closest('button');
+    if(!btn) return;
+    if(TXT(btn)==='Ignore Today'){
+      const card=btn.closest('.v62-case,.v76-row,.v74-card,.card');
+      if(card){
+        e.preventDefault(); e.stopPropagation();
+        window.vscoreCleanIgnoreToday(caseKey(card));
+      }
+    }
+  },true);
+
+  let timer=null;
+  const mo=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(cleanInterface,80);
+  });
+  try{mo.observe(document.body,{childList:true,subtree:true});}catch(_){ }
+
+  window.addEventListener('load',()=>setTimeout(cleanInterface,300));
+  setTimeout(cleanInterface,500);
 })();
-/* ================= END V84 ================= */
 </script>
+
 </body></html>`);w.document.close()}
 function safeName(id){return emp(id)?.full_name||'Unknown / Removed'}
 
 async function init(){await loadPublicSettings();const s=readSession();if(s){S.user={id:'direct-'+s.id,email:s.email,employee_id:s.id};renderAuth()}else renderAuth()}
 async function loadPublicSettings(){S.settings={};const data=await q(sb.from('app_settings').select('*'),[]);data.forEach(x=>S.settings[x.setting_key]=x.setting_value);if(S.settings.app_logo_url)localStorage.setItem('VSCORE_APP_LOGO',S.settings.app_logo_url)}
-function renderAuth(active='login'){const l=logo();const saved=readSession();$('#root').innerHTML=`<div class="auth"><div class="auth-card"><div class="hero">${l?`<img class="logo" src="${esc(l)}">`:'<div class="logo">V</div>'}<h1>Welcome to<br>V-POINTS!</h1><h2>Welcome, Ka-Varda!</h2><p class="muted">Official Varda Group employee integration, mission, memo, rewards, and evidence-first ledger.</p><div class="notice"><b>No Proof, No Point.</b><br>Every win needs evidence. Every mistake needs validation.</div></div><div class="auth-panel">${saved?`<div class="notice success"><b>Saved session found:</b><br>${esc(saved.email)}<br><br><button id="continue" class="btn green full">Continue to V-SCORE</button><br><br><button id="clear" class="btn ghost full">Logout / Use Different Account</button></div><br>`:''}<div class="notice success"><b>V-POINTS Access Portal</b><br>Official Varda Group performance, mission, FSQA, memo, policy, and evidence ledger.</div><div class="tabs"><button class="tab ${active==='login'?'active':''}" data-a="login">Sign In</button><button class="tab ${active==='activate'?'active':''}" data-a="activate">First Time Activate</button></div><div id="authbox">${active==='activate'?activateForm():loginForm()}</div></div></div></div>`;$$('[data-a]').forEach(b=>b.onclick=()=>renderAuth(b.dataset.a));$('#loginForm')?.addEventListener('submit',signIn);$('#activateForm')?.addEventListener('submit',activate);$('#continue')?.addEventListener('click',boot);$('#clear')?.addEventListener('click',()=>{clearSession();S.user=null;S.profile=null;renderAuth()})}
+function renderAuth(active='login'){const l=logo();const saved=readSession();$('#root').innerHTML=`<div class="auth"><div class="auth-card"><div class="hero">${l?`<img class="logo" src="${esc(l)}">`:'<div class="logo">V</div>'}<h1>Welcome to<br>V-POINTS!</h1><h2>Welcome, Ka-Varda!</h2><p class="muted">Official Varda Group employee integration, mission, memo, rewards, and evidence-first ledger.</p><div class="notice"><b>No Proof, No Point.</b><br>Every win needs evidence. Every mistake needs validation.</div></div><div class="auth-panel"><div class="notice success"><b>V-POINTS Access Portal</b><br>Login first. Saved session is optional only.</div><div class="tabs"><button class="tab ${active==='login'?'active':''}" data-a="login">Sign In</button><button class="tab ${active==='activate'?'active':''}" data-a="activate">First Time Activate</button></div><div id="authbox">${active==='activate'?activateForm():loginForm()}</div>${saved?`<br><div class="notice"><b>Previous session:</b> ${esc(saved.email)}<br><br><div class="split"><button id="continue" class="btn green">Continue Previous Session</button><button id="clear" class="btn ghost">Clear Session</button></div></div>`:''}</div></div></div>`;$$('[data-a]').forEach(b=>b.onclick=()=>renderAuth(b.dataset.a));$('#loginForm')?.addEventListener('submit',signIn);$('#activateForm')?.addEventListener('submit',activate);$('#continue')?.addEventListener('click',boot);$('#clear')?.addEventListener('click',()=>{clearSession();S.user=null;S.profile=null;renderAuth()})}
 function loginForm(){return `<form id="loginForm"><div class="field"><label>Email</label><input id="loginEmail" type="email" class="input" placeholder="Enter your V-POINTS email" required></div><div class="field"><label>Password</label><input id="loginPass" type="password" class="input" placeholder="Enter password" required></div><button class="btn full">Sign In</button></form>`}
 function activateForm(){return `<form id="activateForm"><div class="field"><label>Email</label><input id="actEmail" type="email" class="input" required></div><div class="field"><label>Temporary Password</label><input id="actTemp" class="input" required></div><div class="field"><label>New Password</label><input id="actPass" class="input" required></div><button class="btn green full">Activate Account</button></form>`}
 async function signIn(e){e.preventDefault();const b=e.submitter;await act(b,{busy:'Checking...',success:'Login Accepted',reset:'Sign In Again'},async()=>{const email=$('#loginEmail').value.trim().toLowerCase(),pass=$('#loginPass').value;const emp=await q(sb.from('employees').select('*').ilike('email',email).maybeSingle(),null);if(!emp)throw new Error('No employee account found. Run SQL V10.6 or create account.');if(emp.is_active===false||String(emp.activation_status).toLowerCase()==='deleted')throw new Error('This account is inactive/deleted.');if(String(emp.login_password_backup||'')!==pass&&String(emp.temp_password||'')!==pass)throw new Error('Incorrect password.');await sb.from('employees').update({activation_status:'activated',is_active:true,last_login_at:new Date().toISOString(),activated_at:emp.activated_at||new Date().toISOString()}).eq('id',emp.id);S.user={id:'direct-'+emp.id,email,employee_id:emp.id};S.profile={...emp,activation_status:'activated',is_active:true};saveSession(S.profile);},boot)}
@@ -8515,90 +8597,7 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   window.v68DownloadAttendanceExcel=function(branch='__ALL__'){
     const logs=visibleAttendanceLogs68(); const rows=groupedAttendance68(logs).filter(r=>branch==='__ALL__'||String(r.branch||'')===String(branch)); const {from,to}=dateRange68();
     const htmlRows=rows.map(r=>{const e=emp68(r.employee_id);return `<tr><td>${esc68(e.full_name)}</td><td>${esc68(r.branch||e.branch||'')}</td><td>${esc68(r.work_date)}</td><td>${esc68(r.tin?new Date(r.tin.created_at).toLocaleString():'')}</td><td>${esc68(r.tout?new Date(r.tout.created_at).toLocaleString():'')}</td><td>${esc68(hours68(r.tin?.created_at,r.tout?.created_at)||'')}</td><td>${esc68(loc68(r.tin)||'')}</td><td>${esc68(loc68(r.tout)||'')}</td><td>${esc68(r.tin?.remarks||r.tout?.remarks||'')}</td></tr>`}).join('');
-    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table>
-<script>
-/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
-(function(){
-  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const $84=(s,r=document)=>r.querySelector(s);
-  function addStyle84(){
-    if(document.getElementById('v84-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
-      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-      .topbar .split:empty{display:none!important;}
-      .nav button.v84-dupe{display:none!important;}
-      .sidebar .nav{padding-bottom:18px!important;}
-      @media(max-width:900px){
-        .topbar{padding:12px 14px!important;gap:6px!important;}
-        .topbar .split{display:none!important;}
-        .sidebar{overscroll-behavior:contain!important;}
-        body{overscroll-behavior-y:auto!important;}
-      }
-    </style>`);
-  }
-  function menuOpen84(){
-    const sb=$84('.sidebar');
-    if(!sb)return false;
-    const cs=getComputedStyle(sb);
-    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
-  }
-  function cleanMenu84(){
-    addStyle84();
-    const seen=new Set();
-    $$84('.nav button').forEach(btn=>{
-      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
-      if(!key)return;
-      if(seen.has(key))btn.classList.add('v84-dupe');
-      else {seen.add(key);btn.classList.remove('v84-dupe');}
-    });
-    $$84('button').forEach(btn=>{
-      const txt=(btn.textContent||'').trim().toLowerCase();
-      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
-    });
-    const p=$84('#v83-pull'); if(p)p.remove();
-  }
-  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
-  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
-  let blockPull=false,sy=0;
-  document.addEventListener('touchstart',function(e){
-    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
-    blockPull = (window.scrollY<=3) || menuOpen84();
-    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchmove',function(e){
-    if(!blockPull)return;
-    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
-    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchend',function(e){
-    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
-  }, true);
-  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
-  const oldRenderApp84=window.renderApp;
-  if(typeof oldRenderApp84==='function'){
-    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldRenderPage84=window.renderPage;
-  if(typeof oldRenderPage84==='function'){
-    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldBind84=window.bind;
-  if(typeof oldBind84==='function'){
-    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
-  }
-  // Final stable logout fallback.
-  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
-  document.addEventListener('click',function(e){
-    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
-    const txt=(b.textContent||'').trim().toLowerCase();
-    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
-  }, true);
-  setInterval(cleanMenu84,3000);
-  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
-})();
-/* ================= END V84 ================= */
-</script>
-</body></html>`;
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
     const safeBranch=String(branch==='__ALL__'?'ALL_BRANCHES':branch).replace(/[^a-z0-9_-]+/gi,'_'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'})); a.download=`V-SCORE_ATTENDANCE_${safeBranch}_${from}_to_${to}.xls`; document.body.appendChild(a); a.click(); a.remove();
   };
 
@@ -9325,90 +9324,7 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   try{window.validateDirectVio=validateDirectVio=function(id,btn){return v73OpenViolationClose(id,'validate')}}catch(_){window.validateDirectVio=function(id){return v73OpenViolationClose(id,'validate')}}
   try{window.cancelDirectVio=cancelDirectVio=function(id,btn){return v73OpenViolationClose(id,'cancel')}}catch(_){window.cancelDirectVio=function(id){return v73OpenViolationClose(id,'cancel')}}
 
-  window.v73PrintHtml=function(html,title='V-SCORE Summary'){const w=window.open('','_blank');if(!w)return toast73('Allow pop-up to print.','error');w.document.write(`<html><head><title>${esc73(title)}</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1,h2{color:#7f1d1d}table{width:100%;border-collapse:collapse}td,th{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}.v73-print{max-width:900px;margin:auto}</style></head><body>${html}<script>window.onload=function(){window.print()}<\/script>
-<script>
-/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
-(function(){
-  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const $84=(s,r=document)=>r.querySelector(s);
-  function addStyle84(){
-    if(document.getElementById('v84-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
-      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-      .topbar .split:empty{display:none!important;}
-      .nav button.v84-dupe{display:none!important;}
-      .sidebar .nav{padding-bottom:18px!important;}
-      @media(max-width:900px){
-        .topbar{padding:12px 14px!important;gap:6px!important;}
-        .topbar .split{display:none!important;}
-        .sidebar{overscroll-behavior:contain!important;}
-        body{overscroll-behavior-y:auto!important;}
-      }
-    </style>`);
-  }
-  function menuOpen84(){
-    const sb=$84('.sidebar');
-    if(!sb)return false;
-    const cs=getComputedStyle(sb);
-    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
-  }
-  function cleanMenu84(){
-    addStyle84();
-    const seen=new Set();
-    $$84('.nav button').forEach(btn=>{
-      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
-      if(!key)return;
-      if(seen.has(key))btn.classList.add('v84-dupe');
-      else {seen.add(key);btn.classList.remove('v84-dupe');}
-    });
-    $$84('button').forEach(btn=>{
-      const txt=(btn.textContent||'').trim().toLowerCase();
-      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
-    });
-    const p=$84('#v83-pull'); if(p)p.remove();
-  }
-  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
-  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
-  let blockPull=false,sy=0;
-  document.addEventListener('touchstart',function(e){
-    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
-    blockPull = (window.scrollY<=3) || menuOpen84();
-    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchmove',function(e){
-    if(!blockPull)return;
-    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
-    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchend',function(e){
-    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
-  }, true);
-  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
-  const oldRenderApp84=window.renderApp;
-  if(typeof oldRenderApp84==='function'){
-    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldRenderPage84=window.renderPage;
-  if(typeof oldRenderPage84==='function'){
-    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldBind84=window.bind;
-  if(typeof oldBind84==='function'){
-    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
-  }
-  // Final stable logout fallback.
-  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
-  document.addEventListener('click',function(e){
-    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
-    const txt=(b.textContent||'').trim().toLowerCase();
-    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
-  }, true);
-  setInterval(cleanMenu84,3000);
-  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
-})();
-/* ================= END V84 ================= */
-</script>
-</body></html>`);w.document.close()};
+  window.v73PrintHtml=function(html,title='V-SCORE Summary'){const w=window.open('','_blank');if(!w)return toast73('Allow pop-up to print.','error');w.document.write(`<html><head><title>${esc73(title)}</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1,h2{color:#7f1d1d}table{width:100%;border-collapse:collapse}td,th{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}.v73-print{max-width:900px;margin:auto}</style></head><body>${html}<script>window.onload=function(){window.print()}<\/script></body></html>`);w.document.close()};
   window.v73PrintById=function(id,title='V-SCORE Summary'){const el=document.getElementById(id);if(!el)return toast73('Summary not found.','error');v73PrintHtml(`<div class="v73-print"><h1>${esc73(title)}</h1>${el.outerHTML}</div>`,title)};
 
   const oldRenderPage73=window.renderPage||renderPage;
@@ -9978,90 +9894,7 @@ init();
   function printHtml77(t){
     const assigned=emp77(t.assigned_to_employee_id), giver=emp77(t.assigned_by_employee_id);
     const rows=taskRows77(t);
-    return `<!doctype html><html><head><meta charset="utf-8"><title>V-SCORE Mission Summary</title><style>body{font-family:Arial,sans-serif;color:#111827;padding:24px}h1{color:#991b1b}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}.meta{background:#fff7ed;border-left:5px solid #facc15;padding:12px;border-radius:10px}.proof{max-width:160px;border-radius:10px;border:1px solid #ddd}.small{color:#64748b;font-size:12px}@media print{button{display:none}}</style></head><body><h1>V-SCORE Mission Summary</h1><div class="meta"><b>Task:</b> ${esc(t.title||'-')}<br><b>Assigned To:</b> ${esc(assigned.full_name||'-')}<br><b>Given By:</b> ${esc(giver.full_name||'-')}<br><b>Branch:</b> ${esc(t.branch||assigned.branch||'-')}<br><b>Status:</b> ${esc(t.status||'-')}<br><b>Created:</b> ${esc(fmt77(t.created_at))}<br><b>Due:</b> ${esc(fmt77(t.due_at))}<br><b>Submitted:</b> ${esc(fmt77(t.submitted_at))}</div><h2>Checklist Result</h2><table><thead><tr><th>#</th><th>Task</th><th>Progress</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.text)}</td><td>${Math.max(0,Math.min(100,Number(r.pct)||0))}%</td><td>${esc(r.done||r.pct>=100?'Done':(r.status||'Not started'))}</td><td>${esc(r.remarks||'')}</td></tr>`).join('')}</tbody></table><h2>Proof</h2>${t.proof_url?`<img class="proof" src="${esc(t.proof_url)}">`:'No proof attached yet.'}<p class="small">Generated from V-SCORE. Keep as management record.</p><button onclick="window.print()">Print</button>
-<script>
-/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
-(function(){
-  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const $84=(s,r=document)=>r.querySelector(s);
-  function addStyle84(){
-    if(document.getElementById('v84-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
-      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-      .topbar .split:empty{display:none!important;}
-      .nav button.v84-dupe{display:none!important;}
-      .sidebar .nav{padding-bottom:18px!important;}
-      @media(max-width:900px){
-        .topbar{padding:12px 14px!important;gap:6px!important;}
-        .topbar .split{display:none!important;}
-        .sidebar{overscroll-behavior:contain!important;}
-        body{overscroll-behavior-y:auto!important;}
-      }
-    </style>`);
-  }
-  function menuOpen84(){
-    const sb=$84('.sidebar');
-    if(!sb)return false;
-    const cs=getComputedStyle(sb);
-    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
-  }
-  function cleanMenu84(){
-    addStyle84();
-    const seen=new Set();
-    $$84('.nav button').forEach(btn=>{
-      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
-      if(!key)return;
-      if(seen.has(key))btn.classList.add('v84-dupe');
-      else {seen.add(key);btn.classList.remove('v84-dupe');}
-    });
-    $$84('button').forEach(btn=>{
-      const txt=(btn.textContent||'').trim().toLowerCase();
-      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
-    });
-    const p=$84('#v83-pull'); if(p)p.remove();
-  }
-  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
-  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
-  let blockPull=false,sy=0;
-  document.addEventListener('touchstart',function(e){
-    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
-    blockPull = (window.scrollY<=3) || menuOpen84();
-    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchmove',function(e){
-    if(!blockPull)return;
-    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
-    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchend',function(e){
-    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
-  }, true);
-  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
-  const oldRenderApp84=window.renderApp;
-  if(typeof oldRenderApp84==='function'){
-    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldRenderPage84=window.renderPage;
-  if(typeof oldRenderPage84==='function'){
-    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldBind84=window.bind;
-  if(typeof oldBind84==='function'){
-    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
-  }
-  // Final stable logout fallback.
-  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
-  document.addEventListener('click',function(e){
-    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
-    const txt=(b.textContent||'').trim().toLowerCase();
-    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
-  }, true);
-  setInterval(cleanMenu84,3000);
-  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
-})();
-/* ================= END V84 ================= */
-</script>
-</body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>V-SCORE Mission Summary</title><style>body{font-family:Arial,sans-serif;color:#111827;padding:24px}h1{color:#991b1b}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}.meta{background:#fff7ed;border-left:5px solid #facc15;padding:12px;border-radius:10px}.proof{max-width:160px;border-radius:10px;border:1px solid #ddd}.small{color:#64748b;font-size:12px}@media print{button{display:none}}</style></head><body><h1>V-SCORE Mission Summary</h1><div class="meta"><b>Task:</b> ${esc(t.title||'-')}<br><b>Assigned To:</b> ${esc(assigned.full_name||'-')}<br><b>Given By:</b> ${esc(giver.full_name||'-')}<br><b>Branch:</b> ${esc(t.branch||assigned.branch||'-')}<br><b>Status:</b> ${esc(t.status||'-')}<br><b>Created:</b> ${esc(fmt77(t.created_at))}<br><b>Due:</b> ${esc(fmt77(t.due_at))}<br><b>Submitted:</b> ${esc(fmt77(t.submitted_at))}</div><h2>Checklist Result</h2><table><thead><tr><th>#</th><th>Task</th><th>Progress</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.text)}</td><td>${Math.max(0,Math.min(100,Number(r.pct)||0))}%</td><td>${esc(r.done||r.pct>=100?'Done':(r.status||'Not started'))}</td><td>${esc(r.remarks||'')}</td></tr>`).join('')}</tbody></table><h2>Proof</h2>${t.proof_url?`<img class="proof" src="${esc(t.proof_url)}">`:'No proof attached yet.'}<p class="small">Generated from V-SCORE. Keep as management record.</p><button onclick="window.print()">Print</button></body></html>`;
   }
   window.v77SaveSummary=function(id){
     const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast77('Mission not found.','error');
@@ -10708,90 +10541,7 @@ init();
   window.v82DownloadAttendanceExcel=function(branch='__ALL__'){
     const {from,to}=dateRange(); const rows=branchRows82(branch);
     const htmlRows=rows.map(r=>{const e=empSafe(r.employee_id);return `<tr><td>${E(e.full_name||'')}</td><td>${E(r.branch||e.branch||'')}</td><td>${E(r.work_date)}</td><td>${E(r.tin?fmt(r.tin.created_at):'')}</td><td>${E(r.tout?fmt(r.tout.created_at):'')}</td><td>${E(hours(r.tin?.created_at,r.tout?.created_at)||'')}</td><td>${E(loc(r.tin)||'')}</td><td>${E(loc(r.tout)||'')}</td><td>${E(r.tin?.remarks||r.tout?.remarks||'')}</td></tr>`}).join('');
-    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table>
-<script>
-/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
-(function(){
-  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const $84=(s,r=document)=>r.querySelector(s);
-  function addStyle84(){
-    if(document.getElementById('v84-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
-      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-      .topbar .split:empty{display:none!important;}
-      .nav button.v84-dupe{display:none!important;}
-      .sidebar .nav{padding-bottom:18px!important;}
-      @media(max-width:900px){
-        .topbar{padding:12px 14px!important;gap:6px!important;}
-        .topbar .split{display:none!important;}
-        .sidebar{overscroll-behavior:contain!important;}
-        body{overscroll-behavior-y:auto!important;}
-      }
-    </style>`);
-  }
-  function menuOpen84(){
-    const sb=$84('.sidebar');
-    if(!sb)return false;
-    const cs=getComputedStyle(sb);
-    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
-  }
-  function cleanMenu84(){
-    addStyle84();
-    const seen=new Set();
-    $$84('.nav button').forEach(btn=>{
-      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
-      if(!key)return;
-      if(seen.has(key))btn.classList.add('v84-dupe');
-      else {seen.add(key);btn.classList.remove('v84-dupe');}
-    });
-    $$84('button').forEach(btn=>{
-      const txt=(btn.textContent||'').trim().toLowerCase();
-      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
-    });
-    const p=$84('#v83-pull'); if(p)p.remove();
-  }
-  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
-  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
-  let blockPull=false,sy=0;
-  document.addEventListener('touchstart',function(e){
-    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
-    blockPull = (window.scrollY<=3) || menuOpen84();
-    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchmove',function(e){
-    if(!blockPull)return;
-    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
-    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchend',function(e){
-    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
-  }, true);
-  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
-  const oldRenderApp84=window.renderApp;
-  if(typeof oldRenderApp84==='function'){
-    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldRenderPage84=window.renderPage;
-  if(typeof oldRenderPage84==='function'){
-    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
-  }
-  const oldBind84=window.bind;
-  if(typeof oldBind84==='function'){
-    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
-  }
-  // Final stable logout fallback.
-  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
-  document.addEventListener('click',function(e){
-    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
-    const txt=(b.textContent||'').trim().toLowerCase();
-    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
-  }, true);
-  setInterval(cleanMenu84,3000);
-  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
-})();
-/* ================= END V84 ================= */
-</script>
-</body></html>`;
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
     const safe=String(branch==='__ALL__'?'ALL_BRANCHES':branch).replace(/[^a-z0-9_-]+/gi,'_'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'})); a.download=`V-SCORE_ATTENDANCE_${safe}_${from}_to_${to}.xls`; document.body.appendChild(a); a.click(); a.remove();
   };
   function attendancePage82(){
@@ -10858,90 +10608,193 @@ init();
 /* ================= END V82 ================= */
 
 
-/* V83 pull-refresh patch removed in V84 for stability. */
-
-
-</script>
-<script>
-/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
+/* ================= V82.1 STABLE MANAGER ACCESS + TASKLIST BUTTON FIX =================
+   Safe patch on top of V82 only:
+   - Manager/Retail can open/download attendance folders under their access.
+   - No pull refresh, no new heavy UI.
+   - End-of-Shift Output submit/preview works by direct event binding/delegation.
+*/
 (function(){
-  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const $84=(s,r=document)=>r.querySelector(s);
-  function addStyle84(){
-    if(document.getElementById('v84-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
-      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
-      .topbar .split:empty{display:none!important;}
-      .nav button.v84-dupe{display:none!important;}
-      .sidebar .nav{padding-bottom:18px!important;}
-      @media(max-width:900px){
-        .topbar{padding:12px 14px!important;gap:6px!important;}
-        .topbar .split{display:none!important;}
-        .sidebar{overscroll-behavior:contain!important;}
-        body{overscroll-behavior-y:auto!important;}
-      }
-    </style>`);
+  'use strict';
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safeToast=(m,t='ok')=>{try{toast(m,t)}catch(_){console.log(m)}};
+  const rkey=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
+  const isRetail=()=>['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(rkey())||String(window.S?.profile?.branch||'').toUpperCase()==='NATIONAL BRANCH';
+  const isMgr=()=>isRetail()||['manager','branch_manager','team_leader','fsqa_officer','branch_leader'].includes(rkey());
+  const me=()=>String(window.S?.profile?.id||'');
+  const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+  function parseArr(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.map(String).filter(Boolean);
+    let s=String(v).trim();
+    for(let i=0;i<2;i++){try{if(/%[0-9A-F]{2}/i.test(s))s=decodeURIComponent(s)}catch(_){}}
+    try{const j=JSON.parse(s); if(Array.isArray(j))return j.map(String).filter(Boolean); if(j&&Array.isArray(j.branches))return j.branches.map(String).filter(Boolean);}catch(_){ }
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
   }
-  function menuOpen84(){
-    const sb=$84('.sidebar');
-    if(!sb)return false;
-    const cs=getComputedStyle(sb);
-    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+  function empSafe(id){try{return typeof emp==='function'?emp(id):((window.S?.allEmployees||window.S?.employees||[]).find(e=>String(e.id)===String(id))||{});}catch(_){return {}}}
+  function allBranches(){
+    const defaults=(typeof defaultBranches!=='undefined'?defaultBranches:[])||[];
+    const fromB=(window.S?.branches||[]).map(b=>b.branch_name||b.name||b.branch).filter(Boolean);
+    const fromE=[...(window.S?.allEmployees||[]),...(window.S?.employees||[])].map(e=>e.branch).filter(Boolean);
+    return [...new Set([...defaults,...fromB,...fromE].filter(Boolean))].sort();
   }
-  function cleanMenu84(){
-    addStyle84();
-    const seen=new Set();
-    $$84('.nav button').forEach(btn=>{
-      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
-      if(!key)return;
-      if(seen.has(key))btn.classList.add('v84-dupe');
-      else {seen.add(key);btn.classList.remove('v84-dupe');}
-    });
-    $$84('button').forEach(btn=>{
-      const txt=(btn.textContent||'').trim().toLowerCase();
-      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
-    });
-    const p=$84('#v83-pull'); if(p)p.remove();
+  function settingAccess(id=me()){
+    const set=window.S?.settings||{};
+    const keys=['branch_access_'+id,'manager_branch_access_'+id,'assigned_branches_'+id,'manager_branches_'+id];
+    let out=[]; keys.forEach(k=>out.push(...parseArr(set[k])));
+    try{out.push(...parseArr(localStorage.getItem('v77_branch_access_'+id)||localStorage.getItem('branch_access_'+id)));}catch(_){ }
+    return out;
   }
-  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
-  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
-  let blockPull=false,sy=0;
-  document.addEventListener('touchstart',function(e){
-    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
-    blockPull = (window.scrollY<=3) || menuOpen84();
-    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchmove',function(e){
-    if(!blockPull)return;
-    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
-    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
-  }, true);
-  document.addEventListener('touchend',function(e){
-    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
-  }, true);
-  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
-  const oldRenderApp84=window.renderApp;
-  if(typeof oldRenderApp84==='function'){
-    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  function profileAccess(){
+    if(isRetail())return allBranches();
+    const p=window.S?.profile||{};
+    const out=[p.branch,...parseArr(p.assigned_branches),...parseArr(p.managed_branches),...parseArr(p.access_branches),...parseArr(p.branch_access),...parseArr(p.branch_scope),...settingAccess(p.id)];
+    // If a manager has staff in more than one branch already loaded, allow folders for those assigned/visible staff branches too.
+    if(isMgr()) (window.S?.employees||[]).forEach(e=>{if(e.branch)out.push(e.branch)});
+    return [...new Set(out.filter(Boolean))];
   }
-  const oldRenderPage84=window.renderPage;
-  if(typeof oldRenderPage84==='function'){
-    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  function dateRange(){return {from:QS('#v821From')?.value||localStorage.getItem('v821_att_from')||today(),to:QS('#v821To')?.value||localStorage.getItem('v821_att_to')||today()};}
+  function inRange(x,from,to){const d=String(x||'').slice(0,10);return (!from||d>=from)&&(!to||d<=to)}
+  async function ensureAttendance(){
+    const {from,to}=dateRange();
+    let rows=(window.S?.attendanceLogs||[]).filter(r=>inRange(r.work_date||r.created_at,from,to));
+    // Always try a fresh query for manager/retail, because old S.attendanceLogs may be stale or not loaded.
+    if(isMgr()){
+      try{
+        const qres=await sb.from('vscore_attendance_logs').select('*').gte('work_date',from).lte('work_date',to).order('created_at',{ascending:false}).limit(3000);
+        if(!qres.error&&Array.isArray(qres.data)){rows=qres.data; window.S.attendanceLogs=qres.data;}
+      }catch(e){console.warn('attendance fresh load skipped',e)}
+    }
+    const allowed=profileAccess();
+    if(!isRetail())rows=rows.filter(r=>allowed.includes(String(r.branch||empSafe(r.employee_id).branch||'')));
+    return rows;
   }
-  const oldBind84=window.bind;
-  if(typeof oldBind84==='function'){
-    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  function hrs(a,b){try{if(!a||!b)return '';const h=(new Date(b)-new Date(a))/36e5;return h>0?h.toFixed(2):''}catch(_){return ''}}
+  function when(v){try{return v?new Date(v).toLocaleString():'-'}catch(_){return v||'-'}}
+  function time(v){try{return v?new Date(v).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'-'}catch(_){return '-'}}
+  function loc(r){return r?.location_text||r?.location||r?.address||((r?.latitude||r?.lat)?`${r.latitude||r.lat}, ${r.longitude||r.lng}`:'')}
+  function pic(r){return r?.proof_url||r?.photo_url||r?.photo_json||r?.image_url||r?.selfie_url||''}
+  function groupRows(logs){
+    const g={};
+    (logs||[]).forEach(r=>{const d=String(r.work_date||r.created_at||'').slice(0,10);const id=String(r.employee_id||'');const br=r.branch||empSafe(r.employee_id).branch||'No Branch';const k=id+'|'+d;if(!g[k])g[k]={employee_id:r.employee_id,branch:br,work_date:d,tin:null,tout:null,logs:[]};g[k].logs.push(r);if(String(r.event_type)==='time_in'&&!g[k].tin)g[k].tin=r;if(String(r.event_type)==='time_out'&&!g[k].tout)g[k].tout=r;});
+    return Object.values(g).sort((a,b)=>String(a.branch).localeCompare(String(b.branch))||String(b.work_date).localeCompare(String(a.work_date))||String(empSafe(a.employee_id).full_name||'').localeCompare(String(empSafe(b.employee_id).full_name||'')));
   }
-  // Final stable logout fallback.
-  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
-  document.addEventListener('click',function(e){
-    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
-    const txt=(b.textContent||'').trim().toLowerCase();
-    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
-  }, true);
-  setInterval(cleanMenu84,3000);
-  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+  function rowCard(r){const e=empSafe(r.employee_id);const a=pic(r.tin),b=pic(r.tout);return `<div class="v821-card"><h3>${E(e.full_name||'-')}</h3><p class="small muted">${E(r.branch||e.branch||'-')} · ${E(r.work_date)}</p><span class="pill ${r.tin&&r.tout?'green':'red'}">${r.tin&&r.tout?'Complete':'Missing IN/OUT'}</span><p><b>Time In:</b> ${E(time(r.tin?.created_at))}<br><b>Time Out:</b> ${E(time(r.tout?.created_at))}<br><b>Hours:</b> ${E(hrs(r.tin?.created_at,r.tout?.created_at)||'-')}</p><p class="small muted"><b>IN Location:</b> ${E(loc(r.tin)||'-')}<br><b>OUT Location:</b> ${E(loc(r.tout)||'-')}</p><div class="v821-photos">${a?`<img src="${E(a)}" onclick="zoom('${E(a)}')">`:''}${b?`<img src="${E(b)}" onclick="zoom('${E(b)}')">`:''}</div></div>`;}
+  async function attendanceHtml(branch=''){
+    const logs=await ensureAttendance(); const rows=groupRows(logs); const {from,to}=dateRange();
+    const filter=`<div class="v821-filter"><div class="field"><label>Start Date</label><input id="v821From" type="date" class="input" value="${E(from)}"></div><div class="field"><label>End Date</label><input id="v821To" type="date" class="input" value="${E(to)}"></div><button class="btn blue" onclick="v821ApplyAttendanceRange()">Apply</button></div>`;
+    if(branch){const show=branch==='__ALL__'?rows:rows.filter(r=>String(r.branch)===String(branch));return `<div class="card"><h3>${E(branch==='__ALL__'?'All Branches':branch)} · Attendance Folder</h3>${filter}<div class="split"><button class="btn ghost" onclick="v821OpenAttendanceBranch('')">Back</button><button class="btn green" onclick="v821DownloadAttendanceExcel('${E(branch)}')">Download Excel</button></div></div>${show.map(rowCard).join('')||'<div class="empty">No attendance logs in this date range.</div>'}`;}
+    let branches=[...new Set([...profileAccess(),...rows.map(r=>r.branch)].filter(Boolean))].sort(); if(isRetail())branches.unshift('__ALL__');
+    const cards=branches.map(b=>{const rr=b==='__ALL__'?rows:rows.filter(r=>String(r.branch)===String(b));const staff=new Set(rr.map(x=>String(x.employee_id))).size;const complete=rr.filter(x=>x.tin&&x.tout).length;const missing=rr.filter(x=>!x.tin||!x.tout).length;const total=rr.reduce((s,x)=>s+Number(hrs(x.tin?.created_at,x.tout?.created_at)||0),0).toFixed(2);return `<div class="v821-folder"><h3>${E(b==='__ALL__'?'All Branches':b)}</h3><div class="v821-kpis"><div><span>Staff</span><b>${staff}</b></div><div><span>Complete</span><b>${complete}</b></div><div><span>Missing</span><b>${missing}</b></div></div><p class="small muted">Rows: ${rr.length} · Hours: <b>${total}</b></p><div class="split"><button class="btn sm blue" onclick="v821OpenAttendanceBranch('${E(b)}')">Open Folder</button><button class="btn sm green" onclick="v821DownloadAttendanceExcel('${E(b)}')">Download Excel</button></div></div>`;}).join('');
+    return `<div class="card"><h3>Attendance Monitor</h3><p class="muted">Managers can open/download branches under them. Retail can open/download all branches.</p>${filter}</div><div class="v821-grid">${cards||'<div class="empty">No branch access found.</div>'}</div>`;
+  }
+  window.v821OpenAttendanceBranch=async function(branch){window.__v821AttendanceBranch=branch||''; await renderAttendance821();};
+  window.v821ApplyAttendanceRange=async function(){localStorage.setItem('v821_att_from',QS('#v821From')?.value||today());localStorage.setItem('v821_att_to',QS('#v821To')?.value||today()); await renderAttendance821();};
+  window.v821DownloadAttendanceExcel=async function(branch='__ALL__'){
+    const logs=await ensureAttendance(); let rows=groupRows(logs); if(branch&&branch!=='__ALL__')rows=rows.filter(r=>String(r.branch)===String(branch)); const {from,to}=dateRange();
+    const body=rows.map(r=>{const e=empSafe(r.employee_id);return `<tr><td>${E(e.full_name||'')}</td><td>${E(r.branch||e.branch||'')}</td><td>${E(r.work_date)}</td><td>${E(r.tin?when(r.tin.created_at):'')}</td><td>${E(r.tout?when(r.tout.created_at):'')}</td><td>${E(hrs(r.tin?.created_at,r.tout?.created_at)||'')}</td><td>${E(loc(r.tin)||'')}</td><td>${E(loc(r.tout)||'')}</td></tr>`}).join('');
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>IN Location</th><th>OUT Location</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
+    const safe=String(branch==='__ALL__'?'ALL_BRANCHES':branch).replace(/[^a-z0-9_-]+/gi,'_'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'})); a.download=`V-SCORE_ATTENDANCE_${safe}_${from}_to_${to}.xls`; document.body.appendChild(a); a.click(); a.remove();
+  };
+  async function renderAttendance821(){
+    const page=QS('#page'); if(!page)return; page.innerHTML='<div class="card"><h3>Loading attendance...</h3><p class="muted">Please wait.</p></div>'; page.innerHTML=await attendanceHtml(window.__v821AttendanceBranch||'');
+  }
+
+  function isOutput(t){const s=String(t.source_type||'').toLowerCase()+' '+String(t.task_type||'').toLowerCase(); return /daily_output|self_tasklist|tasklist/.test(s)}
+  function dOf(t){return String(t.submitted_at||t.created_at||t.updated_at||'').slice(0,10)}
+  function parseItems(raw){let s=String(raw||'').trim();for(let i=0;i<2;i++){try{if(/%[0-9A-F]{2}/i.test(s))s=decodeURIComponent(s)}catch(_){}}try{const j=JSON.parse(s);if(Array.isArray(j))return j.map(x=>({task:String(x.task||x.text||x.name||'Task'),progress:Number(x.progress||0),status:String(x.status||'ongoing'),remarks:String(x.remarks||'')}));}catch(_){ }return s.split(/\n|•|\d+\./).map(x=>x.trim()).filter(Boolean).map(x=>({task:x,progress:100,status:'done',remarks:''}));}
+  function outputRows(){let rows=(window.S?.tasks||[]).filter(isOutput); if(!isMgr())rows=rows.filter(t=>String(t.assigned_to_employee_id)===me()||String(t.assigned_by_employee_id)===me()); else if(!isRetail()){const allowed=profileAccess(); rows=rows.filter(t=>allowed.includes(String(t.branch||empSafe(t.assigned_to_employee_id).branch||''))||String(t.assigned_to_employee_id)===me()||String(t.assigned_by_employee_id)===me());} return rows.sort((a,b)=>new Date(b.submitted_at||b.created_at||0)-new Date(a.submitted_at||a.created_at||0));}
+  function hasTodayOutput(){return outputRows().some(t=>String(t.assigned_to_employee_id)===me()&&dOf(t)===today()&&['shared','submitted','approved','pending_merit','done'].includes(String(t.status||'').toLowerCase()));}
+  function outputCard(t){const who=empSafe(t.assigned_to_employee_id);const img=t.proof_url?`<img src="${E(t.proof_url)}" class="thumb" onclick="zoom('${E(t.proof_url)}')">`:'';const items=parseItems(t.task_items);return `<div class="v821-card"><h3>${E(t.title||'Daily Output')}</h3><p class="small muted"><b>Employee:</b> ${E(who.full_name||'-')}<br><b>Branch:</b> ${E(t.branch||who.branch||'-')}<br><b>Date:</b> ${E(dOf(t)||'-')}</p>${items.map((x,i)=>`<div class="v821-line"><b>${i+1}. ${E(x.task)}</b><span>${E(String(x.status).toLowerCase()==='done'?'Done':'Ongoing')} · ${Number(x.progress||0)}%</span>${x.remarks?`<small>${E(x.remarks)}</small>`:''}</div>`).join('')||'<div class="small muted">No details.</div>'}${img?`<div class="v821-photos">${img}</div>`:''}</div>`;}
+  function outputPage(){const isExec=isRetail(); const rows=outputRows(); const t=today(); const todayRows=rows.filter(x=>dOf(x)===t); const oldOngoing=rows.filter(x=>dOf(x)<t&&parseItems(x.task_items).some(i=>String(i.status).toLowerCase()!=='done'&&Number(i.progress||0)<100)); const filed=rows.filter(x=>dOf(x)<t&&!oldOngoing.includes(x)).slice(0,30);
+    const form=isExec?'':`<div class="card"><h3>End-of-Shift Output</h3><p class="muted">Before Time Out, declare what you completed today for appreciation and accountability.</p><form id="v821OutputForm"><div class="field"><label>Daily objectives / assigned work</label><textarea id="v821Objectives" placeholder="One item per line"></textarea></div><div class="field"><label>What I completed today</label><textarea id="v821Done" required placeholder="One item per line"></textarea></div><div class="field"><label>Remarks / support needed</label><textarea id="v821Remarks" placeholder="Optional"></textarea></div><div class="field"><label>Proof photo optional</label><input id="v821Proof" type="file" accept="image/*" class="input"><div id="v821Preview" class="v821-preview hidden"></div></div><button class="btn green full" type="submit">Submit End-of-Shift Output</button></form></div>`;
+    return `<div class="v821-output">${form}<div class="card"><h3>${isExec?'Output Monitoring':'My Output Monitor'}</h3><h4>Today</h4>${todayRows.map(outputCard).join('')||'<div class="empty">No output submitted today yet.</div>'}<h4>Ongoing Carry-over</h4>${oldOngoing.map(outputCard).join('')||'<div class="empty">No unfinished carry-over.</div>'}<details><summary><b>Filed previous outputs</b></summary>${filed.map(outputCard).join('')||'<div class="empty">No filed output.</div>'}</details></div></div>`;
+  }
+  function fileData(file){return new Promise((res,rej)=>{if(!file)return res(''); if(typeof imageData==='function'){imageData(file,900).then(res).catch(()=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file);});}else{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file);}})}
+  async function submitOutput(ev){ev.preventDefault();const btn=ev.submitter||QS('#v821OutputForm button[type="submit"]');try{btn.disabled=true;btn.textContent='Submitting...';const objectives=QS('#v821Objectives')?.value||'';const done=QS('#v821Done')?.value||'';const remarks=QS('#v821Remarks')?.value||'';if(!done.trim())throw new Error('Please list what you completed today.');const items=[];objectives.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>items.push({task:x,progress:0,status:'ongoing',remarks:''}));done.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>items.push({task:x,progress:100,status:'done',remarks:remarks||''}));const photo=await fileData(QS('#v821Proof')?.files?.[0]);const rec={title:today()+' End-of-Shift Output',task_items:JSON.stringify(items),assigned_to_employee_id:window.S.profile.id,assigned_by_employee_id:window.S.profile.id,branch:window.S.profile.branch,source_type:'daily_output',task_type:'daily_output',status:'shared',proof_url:photo,submitted_at:new Date().toISOString(),merit_points:0};let r=await sb.from('vscore_tasks').insert(rec);if(r.error){delete rec.task_type;delete rec.merit_points;r=await sb.from('vscore_tasks').insert(rec);}if(r.error)throw r.error;safeToast('End-of-shift output submitted.','ok');await loadData(); window.S.tab='tasklist'; renderPage();}catch(e){console.error(e);safeToast(e.message||'Submit failed. Please try again.','error'); if(btn){btn.disabled=false;btn.textContent='Submit End-of-Shift Output';}}}
+  function addStyle(){if(QS('#v821-style'))return;document.head.insertAdjacentHTML('beforeend',`<style id="v821-style">.v821-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.v821-folder,.v821-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.05);margin:10px 0}.v821-folder h3,.v821-card h3{margin:0 0 6px;color:#7f1d1d}.v821-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.v821-kpis div{background:#f8fafc;border:1px solid #e5e7eb;border-radius:13px;padding:8px;text-align:center}.v821-kpis span{display:block;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:1000}.v821-kpis b{font-size:20px}.v821-filter{border:1px solid #fed7aa;background:#fff7ed;border-radius:18px;padding:12px;display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}.v821-photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.v821-photos img,.v821-preview img{width:78px;height:58px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.v821-line{border:1px solid #e5e7eb;border-radius:13px;padding:9px 10px;background:#f8fafc;margin:7px 0}.v821-line b{display:block}.v821-line span{font-size:12px;color:#64748b}.v821-line small{display:block;color:#64748b}.v821-output{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:14px}@media(max-width:760px){.v821-grid,.v821-output{grid-template-columns:1fr}.v821-filter{grid-template-columns:1fr}.v821-folder,.v821-card{border-radius:16px;padding:12px}.split{gap:7px}.split .btn{flex:1 1 auto}.modal-card{max-width:100vw!important;overflow-x:hidden!important}textarea{min-height:90px}}</style>`)}
+  function cleanMenu(){try{const seen={};QSA('.nav button').forEach(b=>{const txt=(b.textContent||'').trim().replace(/\s+/g,' '); if(seen[txt])b.remove(); else seen[txt]=1;});}catch(_){}}
+  const oldNav=window.nav; if(typeof oldNav==='function'&&!oldNav.__v821){const wrapped=function(){let n=oldNav.apply(this,arguments)||[];const seen={};n=n.filter(x=>{if(!x)return false;const label=x[1]||x[0];if(seen[label])return false;seen[label]=1;return true;}); if(isMgr()&&!n.some(x=>x[0]==='attendance_monitor'||x[0]==='attendance'))n.push(['attendance_monitor','Attendance Monitor']); if(!isRetail()&&!n.some(x=>x[0]==='tasklist'))n.push(['tasklist','Daily Output']); return n;};wrapped.__v821=true;window.nav=nav=wrapped;}
+  const oldRenderPage=window.renderPage; if(typeof oldRenderPage==='function'&&!oldRenderPage.__v821){const wrapped=function(){addStyle();const page=QS('#page'); if(window.S&&['attendance','attendance_monitor'].includes(window.S.tab)&&isMgr()&&page){renderAttendance821();return;} if(window.S&&['tasklist','taskmonitor'].includes(window.S.tab)&&page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">${isRetail()?'Output Monitoring':'Daily Output'}</span></div>${outputPage()}`; bindDelegates(page); return;} const r=oldRenderPage.apply(this,arguments); setTimeout(()=>{addStyle();bindDelegates(document);cleanMenu();},100); return r;};wrapped.__v821=true;window.renderPage=renderPage=wrapped;}
+  function bindDelegates(root=document){const p=QS('#v821Proof',root);if(p&&!p.dataset.v821){p.dataset.v821='1';p.addEventListener('change',()=>{const box=QS('#v821Preview');const f=p.files?.[0];if(!box)return;if(!f){box.classList.add('hidden');box.innerHTML='';return;}box.classList.remove('hidden');box.innerHTML=`<img src="${URL.createObjectURL(f)}">`;});}const f=QS('#v821OutputForm',root);if(f&&!f.dataset.v821){f.dataset.v821='1';f.addEventListener('submit',submitOutput);}}
+  document.addEventListener('submit',ev=>{if(ev.target&&ev.target.id==='v821OutputForm')submitOutput(ev)},true);
+  const oldRenderApp=window.renderApp; if(typeof oldRenderApp==='function'&&!oldRenderApp.__v821){const wrapped=function(){const r=oldRenderApp.apply(this,arguments);setTimeout(()=>{addStyle();cleanMenu();bindDelegates(document)},180);return r;};wrapped.__v821=true;window.renderApp=renderApp=wrapped;}
+  setTimeout(()=>{addStyle();cleanMenu();bindDelegates(document)},800);
+  console.log('V82.1 stable manager access + tasklist button fix loaded.');
 })();
-/* ================= END V84 ================= */
-</script>
-</body></html>
+/* ================= END V82.1 ================= */
+
+
+/* ================= V82.3 LOGIN FIRST + CAMERA STABILITY PATCH ================= */
+(function(){
+  function toastSafe(msg,type){try{toast(msg,type||'error')}catch(e){alert(msg)}}
+  // Always keep saved session optional; do not auto-open the app from old localStorage unless user clicks Continue.
+  try{
+    const oldBoot=window.boot;
+    window.forceLoginFirst=function(){try{renderAuth('login')}catch(e){console.warn(e)}};
+  }catch(e){}
+
+  // Harden real-camera capture so local file testing does not show a dead black preview or browser "select a file" error.
+  window.v823CameraEnvironmentOK=function(){
+    return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) && window.isSecureContext && location.protocol!=='file:';
+  };
+
+  if(typeof window.v67StrictAttendanceCamera==='function'){
+    window.v67StrictAttendanceCamera=async function(input,opts={}){
+      if(!input)return;
+      if(!window.v823CameraEnvironmentOK()){
+        toastSafe('Camera testing must be on your HTTPS GitHub Pages link. Local downloaded file cannot open real camera safely.','error');
+        return;
+      }
+      let stream=null,facing=opts.facing||'user';
+      const stop=()=>{try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(_){} stream=null;};
+      const start=async()=>{
+        stop();
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}},audio:false});
+        const v=document.getElementById('v823Video'); if(v)v.srcObject=stream;
+        const lbl=document.getElementById('v823Facing'); if(lbl)lbl.textContent=facing==='user'?'Front Camera':'Back Camera';
+      };
+      try{
+        if(typeof modal==='function') modal(`<div class="v67-camera"><div class="split" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Take Real Camera Photo</h2><span class="pill blue" id="v823Facing">Front Camera</span></div><button class="btn sm dark" id="v823Close">Close</button></div><br><video id="v823Video" autoplay playsinline muted style="width:100%;max-height:360px;background:#111;border-radius:16px;object-fit:cover"></video><canvas id="v823Canvas" style="display:none"></canvas><div class="split" style="margin-top:12px"><button class="btn ghost" id="v823Flip">Flip</button><button class="btn green" id="v823Capture">Capture</button></div><p class="muted small"><b>Real camera only.</b> Use the GitHub HTTPS link and allow camera permission.</p></div>`);
+        else document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="modal-card v67-camera"><h2>Take Real Camera Photo</h2><video id="v823Video" autoplay playsinline muted style="width:100%;max-height:360px;background:#111;border-radius:16px;object-fit:cover"></video><canvas id="v823Canvas" style="display:none"></canvas><div class="split"><button class="btn ghost" id="v823Flip">Flip</button><button class="btn green" id="v823Capture">Capture</button><button class="btn dark" id="v823Close">Close</button></div></div></div>`);
+        await start();
+        const close=()=>{stop();try{if(typeof closeModal==='function')closeModal();else document.querySelector('.modal')?.remove()}catch(_){}};
+        document.getElementById('v823Close').onclick=close;
+        document.getElementById('v823Flip').onclick=async()=>{facing=facing==='user'?'environment':'user';try{await start()}catch(e){toastSafe('This device did not allow switching camera.','error')}};
+        document.getElementById('v823Capture').onclick=()=>{
+          const v=document.getElementById('v823Video'), c=document.getElementById('v823Canvas');
+          if(!v || v.readyState<2 || !(v.videoWidth>0)) {toastSafe('Camera not ready yet. Wait 1 second, then tap Capture again.','error');return;}
+          c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+          c.toBlob(async blob=>{
+            if(!blob){toastSafe('Photo capture failed. Please retake.','error');return;}
+            const file=new File([blob],(opts.prefix||'camera')+'_'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+            try{const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){console.warn('attach failed',e)}
+            close();
+            try{await opts.onFile?.(file)}catch(e){console.error(e);toastSafe(e.message||String(e),'error')}
+          },'image/jpeg',0.82);
+        };
+      }catch(e){stop();try{if(typeof closeModal==='function')closeModal();}catch(_){} toastSafe('Camera permission blocked. Open the HTTPS GitHub link and allow camera access.','error');}
+    };
+  }
+
+  // Prevent old camera/file picker from triggering when real camera is required.
+  window.v60ManualGallery=function(){toastSafe('Gallery is disabled for Time In/Out. Use real camera on the HTTPS app link.','error')};
+
+  // Keep duplicate Ignore Today to one button after rendering.
+  window.v823CleanActionButtons=function(){try{
+    document.querySelectorAll('.case-card,.v821-card,.card').forEach(card=>{
+      const btns=[...card.querySelectorAll('button')].filter(b=>(b.textContent||'').trim()==='Ignore Today');
+      btns.slice(1).forEach(b=>b.remove());
+    });
+  }catch(e){}}
+  const oldRP=window.renderPage;
+  if(typeof oldRP==='function'&&!oldRP.__v823){
+    const wr=function(){const r=oldRP.apply(this,arguments);setTimeout(window.v823CleanActionButtons,120);return r};wr.__v823=true;window.renderPage=renderPage=wr;
+  }
+  setTimeout(window.v823CleanActionButtons,1000);
+})();
+/* ================= END V82.3 ================= */
+
+</script></body></html>
