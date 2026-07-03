@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<title>V-SCORE V83 | Refresh Cancel Tasklist Summary</title>
+<title>V-SCORE V84 | Stable No Refresh Button</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b91c1c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -126,7 +126,90 @@ function printUrl(url){if(!url)return toast('No file to print','error');const w=
 .checkline{display:flex;gap:10px;align-items:flex-start;margin:8px 0}.checkline input{width:auto;margin-top:4px}.claim-card{border:1px solid #fde68a;background:#fffbeb;border-radius:18px;padding:14px}.security-grid{display:grid;gap:10px}.security-item{padding:12px;border-radius:14px;background:#f8fafc;border:1px solid var(--line)}
 @media(max-width:900px){.launch-hero,.launch-card{border-radius:16px;padding:13px}.claim-card{padding:12px}}
 
-</style></head><body><img src="${url}"><script>window.onload=function(){window.print()}<\/script></body></html>`);w.document.close()}
+</style></head><body><img src="${url}"><script>window.onload=function(){window.print()}<\/script>
+<script>
+/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
+(function(){
+  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $84=(s,r=document)=>r.querySelector(s);
+  function addStyle84(){
+    if(document.getElementById('v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+      .topbar .split:empty{display:none!important;}
+      .nav button.v84-dupe{display:none!important;}
+      .sidebar .nav{padding-bottom:18px!important;}
+      @media(max-width:900px){
+        .topbar{padding:12px 14px!important;gap:6px!important;}
+        .topbar .split{display:none!important;}
+        .sidebar{overscroll-behavior:contain!important;}
+        body{overscroll-behavior-y:auto!important;}
+      }
+    </style>`);
+  }
+  function menuOpen84(){
+    const sb=$84('.sidebar');
+    if(!sb)return false;
+    const cs=getComputedStyle(sb);
+    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+  }
+  function cleanMenu84(){
+    addStyle84();
+    const seen=new Set();
+    $$84('.nav button').forEach(btn=>{
+      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(!key)return;
+      if(seen.has(key))btn.classList.add('v84-dupe');
+      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    });
+    $$84('button').forEach(btn=>{
+      const txt=(btn.textContent||'').trim().toLowerCase();
+      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+    });
+    const p=$84('#v83-pull'); if(p)p.remove();
+  }
+  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
+  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
+  let blockPull=false,sy=0;
+  document.addEventListener('touchstart',function(e){
+    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
+    blockPull = (window.scrollY<=3) || menuOpen84();
+    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchmove',function(e){
+    if(!blockPull)return;
+    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
+    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchend',function(e){
+    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
+  }, true);
+  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
+  const oldRenderApp84=window.renderApp;
+  if(typeof oldRenderApp84==='function'){
+    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldRenderPage84=window.renderPage;
+  if(typeof oldRenderPage84==='function'){
+    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldBind84=window.bind;
+  if(typeof oldBind84==='function'){
+    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  }
+  // Final stable logout fallback.
+  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
+    const txt=(b.textContent||'').trim().toLowerCase();
+    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
+  }, true);
+  setInterval(cleanMenu84,3000);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+})();
+/* ================= END V84 ================= */
+</script>
+</body></html>`);w.document.close()}
 function safeName(id){return emp(id)?.full_name||'Unknown / Removed'}
 
 async function init(){await loadPublicSettings();const s=readSession();if(s){S.user={id:'direct-'+s.id,email:s.email,employee_id:s.id};renderAuth()}else renderAuth()}
@@ -8432,7 +8515,90 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   window.v68DownloadAttendanceExcel=function(branch='__ALL__'){
     const logs=visibleAttendanceLogs68(); const rows=groupedAttendance68(logs).filter(r=>branch==='__ALL__'||String(r.branch||'')===String(branch)); const {from,to}=dateRange68();
     const htmlRows=rows.map(r=>{const e=emp68(r.employee_id);return `<tr><td>${esc68(e.full_name)}</td><td>${esc68(r.branch||e.branch||'')}</td><td>${esc68(r.work_date)}</td><td>${esc68(r.tin?new Date(r.tin.created_at).toLocaleString():'')}</td><td>${esc68(r.tout?new Date(r.tout.created_at).toLocaleString():'')}</td><td>${esc68(hours68(r.tin?.created_at,r.tout?.created_at)||'')}</td><td>${esc68(loc68(r.tin)||'')}</td><td>${esc68(loc68(r.tout)||'')}</td><td>${esc68(r.tin?.remarks||r.tout?.remarks||'')}</td></tr>`}).join('');
-    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table>
+<script>
+/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
+(function(){
+  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $84=(s,r=document)=>r.querySelector(s);
+  function addStyle84(){
+    if(document.getElementById('v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+      .topbar .split:empty{display:none!important;}
+      .nav button.v84-dupe{display:none!important;}
+      .sidebar .nav{padding-bottom:18px!important;}
+      @media(max-width:900px){
+        .topbar{padding:12px 14px!important;gap:6px!important;}
+        .topbar .split{display:none!important;}
+        .sidebar{overscroll-behavior:contain!important;}
+        body{overscroll-behavior-y:auto!important;}
+      }
+    </style>`);
+  }
+  function menuOpen84(){
+    const sb=$84('.sidebar');
+    if(!sb)return false;
+    const cs=getComputedStyle(sb);
+    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+  }
+  function cleanMenu84(){
+    addStyle84();
+    const seen=new Set();
+    $$84('.nav button').forEach(btn=>{
+      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(!key)return;
+      if(seen.has(key))btn.classList.add('v84-dupe');
+      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    });
+    $$84('button').forEach(btn=>{
+      const txt=(btn.textContent||'').trim().toLowerCase();
+      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+    });
+    const p=$84('#v83-pull'); if(p)p.remove();
+  }
+  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
+  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
+  let blockPull=false,sy=0;
+  document.addEventListener('touchstart',function(e){
+    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
+    blockPull = (window.scrollY<=3) || menuOpen84();
+    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchmove',function(e){
+    if(!blockPull)return;
+    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
+    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchend',function(e){
+    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
+  }, true);
+  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
+  const oldRenderApp84=window.renderApp;
+  if(typeof oldRenderApp84==='function'){
+    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldRenderPage84=window.renderPage;
+  if(typeof oldRenderPage84==='function'){
+    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldBind84=window.bind;
+  if(typeof oldBind84==='function'){
+    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  }
+  // Final stable logout fallback.
+  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
+    const txt=(b.textContent||'').trim().toLowerCase();
+    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
+  }, true);
+  setInterval(cleanMenu84,3000);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+})();
+/* ================= END V84 ================= */
+</script>
+</body></html>`;
     const safeBranch=String(branch==='__ALL__'?'ALL_BRANCHES':branch).replace(/[^a-z0-9_-]+/gi,'_'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'})); a.download=`V-SCORE_ATTENDANCE_${safeBranch}_${from}_to_${to}.xls`; document.body.appendChild(a); a.click(); a.remove();
   };
 
@@ -9159,7 +9325,90 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   try{window.validateDirectVio=validateDirectVio=function(id,btn){return v73OpenViolationClose(id,'validate')}}catch(_){window.validateDirectVio=function(id){return v73OpenViolationClose(id,'validate')}}
   try{window.cancelDirectVio=cancelDirectVio=function(id,btn){return v73OpenViolationClose(id,'cancel')}}catch(_){window.cancelDirectVio=function(id){return v73OpenViolationClose(id,'cancel')}}
 
-  window.v73PrintHtml=function(html,title='V-SCORE Summary'){const w=window.open('','_blank');if(!w)return toast73('Allow pop-up to print.','error');w.document.write(`<html><head><title>${esc73(title)}</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1,h2{color:#7f1d1d}table{width:100%;border-collapse:collapse}td,th{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}.v73-print{max-width:900px;margin:auto}</style></head><body>${html}<script>window.onload=function(){window.print()}<\/script></body></html>`);w.document.close()};
+  window.v73PrintHtml=function(html,title='V-SCORE Summary'){const w=window.open('','_blank');if(!w)return toast73('Allow pop-up to print.','error');w.document.write(`<html><head><title>${esc73(title)}</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#111827}h1,h2{color:#7f1d1d}table{width:100%;border-collapse:collapse}td,th{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}.v73-print{max-width:900px;margin:auto}</style></head><body>${html}<script>window.onload=function(){window.print()}<\/script>
+<script>
+/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
+(function(){
+  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $84=(s,r=document)=>r.querySelector(s);
+  function addStyle84(){
+    if(document.getElementById('v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+      .topbar .split:empty{display:none!important;}
+      .nav button.v84-dupe{display:none!important;}
+      .sidebar .nav{padding-bottom:18px!important;}
+      @media(max-width:900px){
+        .topbar{padding:12px 14px!important;gap:6px!important;}
+        .topbar .split{display:none!important;}
+        .sidebar{overscroll-behavior:contain!important;}
+        body{overscroll-behavior-y:auto!important;}
+      }
+    </style>`);
+  }
+  function menuOpen84(){
+    const sb=$84('.sidebar');
+    if(!sb)return false;
+    const cs=getComputedStyle(sb);
+    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+  }
+  function cleanMenu84(){
+    addStyle84();
+    const seen=new Set();
+    $$84('.nav button').forEach(btn=>{
+      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(!key)return;
+      if(seen.has(key))btn.classList.add('v84-dupe');
+      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    });
+    $$84('button').forEach(btn=>{
+      const txt=(btn.textContent||'').trim().toLowerCase();
+      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+    });
+    const p=$84('#v83-pull'); if(p)p.remove();
+  }
+  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
+  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
+  let blockPull=false,sy=0;
+  document.addEventListener('touchstart',function(e){
+    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
+    blockPull = (window.scrollY<=3) || menuOpen84();
+    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchmove',function(e){
+    if(!blockPull)return;
+    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
+    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchend',function(e){
+    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
+  }, true);
+  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
+  const oldRenderApp84=window.renderApp;
+  if(typeof oldRenderApp84==='function'){
+    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldRenderPage84=window.renderPage;
+  if(typeof oldRenderPage84==='function'){
+    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldBind84=window.bind;
+  if(typeof oldBind84==='function'){
+    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  }
+  // Final stable logout fallback.
+  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
+    const txt=(b.textContent||'').trim().toLowerCase();
+    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
+  }, true);
+  setInterval(cleanMenu84,3000);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+})();
+/* ================= END V84 ================= */
+</script>
+</body></html>`);w.document.close()};
   window.v73PrintById=function(id,title='V-SCORE Summary'){const el=document.getElementById(id);if(!el)return toast73('Summary not found.','error');v73PrintHtml(`<div class="v73-print"><h1>${esc73(title)}</h1>${el.outerHTML}</div>`,title)};
 
   const oldRenderPage73=window.renderPage||renderPage;
@@ -9729,7 +9978,90 @@ init();
   function printHtml77(t){
     const assigned=emp77(t.assigned_to_employee_id), giver=emp77(t.assigned_by_employee_id);
     const rows=taskRows77(t);
-    return `<!doctype html><html><head><meta charset="utf-8"><title>V-SCORE Mission Summary</title><style>body{font-family:Arial,sans-serif;color:#111827;padding:24px}h1{color:#991b1b}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}.meta{background:#fff7ed;border-left:5px solid #facc15;padding:12px;border-radius:10px}.proof{max-width:160px;border-radius:10px;border:1px solid #ddd}.small{color:#64748b;font-size:12px}@media print{button{display:none}}</style></head><body><h1>V-SCORE Mission Summary</h1><div class="meta"><b>Task:</b> ${esc(t.title||'-')}<br><b>Assigned To:</b> ${esc(assigned.full_name||'-')}<br><b>Given By:</b> ${esc(giver.full_name||'-')}<br><b>Branch:</b> ${esc(t.branch||assigned.branch||'-')}<br><b>Status:</b> ${esc(t.status||'-')}<br><b>Created:</b> ${esc(fmt77(t.created_at))}<br><b>Due:</b> ${esc(fmt77(t.due_at))}<br><b>Submitted:</b> ${esc(fmt77(t.submitted_at))}</div><h2>Checklist Result</h2><table><thead><tr><th>#</th><th>Task</th><th>Progress</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.text)}</td><td>${Math.max(0,Math.min(100,Number(r.pct)||0))}%</td><td>${esc(r.done||r.pct>=100?'Done':(r.status||'Not started'))}</td><td>${esc(r.remarks||'')}</td></tr>`).join('')}</tbody></table><h2>Proof</h2>${t.proof_url?`<img class="proof" src="${esc(t.proof_url)}">`:'No proof attached yet.'}<p class="small">Generated from V-SCORE. Keep as management record.</p><button onclick="window.print()">Print</button></body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>V-SCORE Mission Summary</title><style>body{font-family:Arial,sans-serif;color:#111827;padding:24px}h1{color:#991b1b}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #d1d5db;padding:8px;text-align:left}.meta{background:#fff7ed;border-left:5px solid #facc15;padding:12px;border-radius:10px}.proof{max-width:160px;border-radius:10px;border:1px solid #ddd}.small{color:#64748b;font-size:12px}@media print{button{display:none}}</style></head><body><h1>V-SCORE Mission Summary</h1><div class="meta"><b>Task:</b> ${esc(t.title||'-')}<br><b>Assigned To:</b> ${esc(assigned.full_name||'-')}<br><b>Given By:</b> ${esc(giver.full_name||'-')}<br><b>Branch:</b> ${esc(t.branch||assigned.branch||'-')}<br><b>Status:</b> ${esc(t.status||'-')}<br><b>Created:</b> ${esc(fmt77(t.created_at))}<br><b>Due:</b> ${esc(fmt77(t.due_at))}<br><b>Submitted:</b> ${esc(fmt77(t.submitted_at))}</div><h2>Checklist Result</h2><table><thead><tr><th>#</th><th>Task</th><th>Progress</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.text)}</td><td>${Math.max(0,Math.min(100,Number(r.pct)||0))}%</td><td>${esc(r.done||r.pct>=100?'Done':(r.status||'Not started'))}</td><td>${esc(r.remarks||'')}</td></tr>`).join('')}</tbody></table><h2>Proof</h2>${t.proof_url?`<img class="proof" src="${esc(t.proof_url)}">`:'No proof attached yet.'}<p class="small">Generated from V-SCORE. Keep as management record.</p><button onclick="window.print()">Print</button>
+<script>
+/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
+(function(){
+  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $84=(s,r=document)=>r.querySelector(s);
+  function addStyle84(){
+    if(document.getElementById('v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+      .topbar .split:empty{display:none!important;}
+      .nav button.v84-dupe{display:none!important;}
+      .sidebar .nav{padding-bottom:18px!important;}
+      @media(max-width:900px){
+        .topbar{padding:12px 14px!important;gap:6px!important;}
+        .topbar .split{display:none!important;}
+        .sidebar{overscroll-behavior:contain!important;}
+        body{overscroll-behavior-y:auto!important;}
+      }
+    </style>`);
+  }
+  function menuOpen84(){
+    const sb=$84('.sidebar');
+    if(!sb)return false;
+    const cs=getComputedStyle(sb);
+    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+  }
+  function cleanMenu84(){
+    addStyle84();
+    const seen=new Set();
+    $$84('.nav button').forEach(btn=>{
+      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(!key)return;
+      if(seen.has(key))btn.classList.add('v84-dupe');
+      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    });
+    $$84('button').forEach(btn=>{
+      const txt=(btn.textContent||'').trim().toLowerCase();
+      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+    });
+    const p=$84('#v83-pull'); if(p)p.remove();
+  }
+  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
+  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
+  let blockPull=false,sy=0;
+  document.addEventListener('touchstart',function(e){
+    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
+    blockPull = (window.scrollY<=3) || menuOpen84();
+    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchmove',function(e){
+    if(!blockPull)return;
+    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
+    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchend',function(e){
+    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
+  }, true);
+  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
+  const oldRenderApp84=window.renderApp;
+  if(typeof oldRenderApp84==='function'){
+    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldRenderPage84=window.renderPage;
+  if(typeof oldRenderPage84==='function'){
+    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldBind84=window.bind;
+  if(typeof oldBind84==='function'){
+    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  }
+  // Final stable logout fallback.
+  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
+    const txt=(b.textContent||'').trim().toLowerCase();
+    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
+  }, true);
+  setInterval(cleanMenu84,3000);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+})();
+/* ================= END V84 ================= */
+</script>
+</body></html>`;
   }
   window.v77SaveSummary=function(id){
     const t=(S.tasks||[]).find(x=>String(x.id)===String(id)); if(!t)return toast77('Mission not found.','error');
@@ -10376,7 +10708,90 @@ init();
   window.v82DownloadAttendanceExcel=function(branch='__ALL__'){
     const {from,to}=dateRange(); const rows=branchRows82(branch);
     const htmlRows=rows.map(r=>{const e=empSafe(r.employee_id);return `<tr><td>${E(e.full_name||'')}</td><td>${E(r.branch||e.branch||'')}</td><td>${E(r.work_date)}</td><td>${E(r.tin?fmt(r.tin.created_at):'')}</td><td>${E(r.tout?fmt(r.tout.created_at):'')}</td><td>${E(hours(r.tin?.created_at,r.tout?.created_at)||'')}</td><td>${E(loc(r.tin)||'')}</td><td>${E(loc(r.tout)||'')}</td><td>${E(r.tin?.remarks||r.tout?.remarks||'')}</td></tr>`}).join('');
-    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table></body></html>`;
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee Name</th><th>Branch</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours Rendered</th><th>Time In Location</th><th>Time Out Location</th><th>Remarks</th></tr></thead><tbody>${htmlRows}</tbody></table>
+<script>
+/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
+(function(){
+  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $84=(s,r=document)=>r.querySelector(s);
+  function addStyle84(){
+    if(document.getElementById('v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+      .topbar .split:empty{display:none!important;}
+      .nav button.v84-dupe{display:none!important;}
+      .sidebar .nav{padding-bottom:18px!important;}
+      @media(max-width:900px){
+        .topbar{padding:12px 14px!important;gap:6px!important;}
+        .topbar .split{display:none!important;}
+        .sidebar{overscroll-behavior:contain!important;}
+        body{overscroll-behavior-y:auto!important;}
+      }
+    </style>`);
+  }
+  function menuOpen84(){
+    const sb=$84('.sidebar');
+    if(!sb)return false;
+    const cs=getComputedStyle(sb);
+    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
+  }
+  function cleanMenu84(){
+    addStyle84();
+    const seen=new Set();
+    $$84('.nav button').forEach(btn=>{
+      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(!key)return;
+      if(seen.has(key))btn.classList.add('v84-dupe');
+      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    });
+    $$84('button').forEach(btn=>{
+      const txt=(btn.textContent||'').trim().toLowerCase();
+      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+    });
+    const p=$84('#v83-pull'); if(p)p.remove();
+  }
+  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
+  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
+  let blockPull=false,sy=0;
+  document.addEventListener('touchstart',function(e){
+    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
+    blockPull = (window.scrollY<=3) || menuOpen84();
+    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchmove',function(e){
+    if(!blockPull)return;
+    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
+    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchend',function(e){
+    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
+  }, true);
+  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
+  const oldRenderApp84=window.renderApp;
+  if(typeof oldRenderApp84==='function'){
+    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldRenderPage84=window.renderPage;
+  if(typeof oldRenderPage84==='function'){
+    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldBind84=window.bind;
+  if(typeof oldBind84==='function'){
+    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  }
+  // Final stable logout fallback.
+  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
+    const txt=(b.textContent||'').trim().toLowerCase();
+    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
+  }, true);
+  setInterval(cleanMenu84,3000);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
+})();
+/* ================= END V84 ================= */
+</script>
+</body></html>`;
     const safe=String(branch==='__ALL__'?'ALL_BRANCHES':branch).replace(/[^a-z0-9_-]+/gi,'_'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'})); a.download=`V-SCORE_ATTENDANCE_${safe}_${from}_to_${to}.xls`; document.body.appendChild(a); a.click(); a.remove();
   };
   function attendancePage82(){
@@ -10443,55 +10858,90 @@ init();
 /* ================= END V82 ================= */
 
 
-/* ================= V83 FINAL STABILITY: cancel, refresh, tasklist 12h, clean nav ================ */
+/* V83 pull-refresh patch removed in V84 for stability. */
+
+
+</script>
+<script>
+/* ================= V84 STABLE CLEANUP: remove refresh button, no pull-refresh, dedupe menu ================ */
 (function(){
-  const $v83=(s,r=document)=>r.querySelector(s);
-  const $$v83=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const safe83=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const me83=()=>String(window.S?.profile?.id||'');
-  const role83=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
-  const owner83=()=>['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(role83());
-  const manager83=()=>owner83()||['manager','branch_manager','team_leader','fsqa','branch_leader'].includes(role83());
-  const toast83=(m,t='ok')=>{try{toast(m,t)}catch(_){alert(m)}};
-  function addStyle83(){if($v83('#v83-style'))return;document.head.insertAdjacentHTML('beforeend',`<style id="v83-style">
-    #v83-pull{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%) translateY(-120px);z-index:99999;background:#111827;color:#fff;border-radius:999px;padding:10px 16px;font-weight:900;box-shadow:0 12px 30px rgba(0,0,0,.25);transition:.2s ease;pointer-events:none}#v83-pull.show{transform:translateX(-50%) translateY(0)}#v83-pull.ready{background:#16a34a}.v83-summary-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.v83-summary-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px;max-width:880px;margin:auto}.v83-summary-card h2{color:#7f1d1d;margin:0 0 8px}.v83-summary-table{width:100%;border-collapse:collapse}.v83-summary-table td,.v83-summary-table th{border:1px solid #e5e7eb;padding:8px;text-align:left;background:#fff}.v83-mini-proof{width:92px;height:70px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.v83-hide-dupe{display:none!important}@media(max-width:760px){.v83-summary-actions{display:grid}.v83-summary-card{border-radius:14px;padding:12px}.v83-summary-table{font-size:12px}.v83-mini-proof{width:76px;height:58px}}
-  </style>`)}
-  function decode83(raw){let s=String(raw||'').trim();for(let i=0;i<3;i++){try{if(/%[0-9A-F]{2}/i.test(s))s=decodeURIComponent(s)}catch(_){}}return s;}
-  function parseItems83(raw){let s=decode83(raw);let marker=s.match(/\[VSCORE_TASK_DETAILS:(.*?)\]$/);if(marker){try{const arr=JSON.parse(marker[1]);if(Array.isArray(arr))return arr.map(x=>({task:String(x.task||x.text||x.name||'Task'),progress:Number(x.progress||0),status:String(x.status||'pending'),remarks:String(x.remarks||'')}));}catch(_){}}
-    try{const j=JSON.parse(s);if(Array.isArray(j))return j.map(x=>({task:String(x.task||x.text||x.name||'Task'),progress:Number(x.progress||0),status:String(x.status||'pending'),remarks:String(x.remarks||'')}));}catch(_){}
-    return s.split(/\n|\r|•/).map(x=>x.replace(/^\s*\d+[.)]\s*/,'').replace(/^[-✓✔]\s*/,'').trim()).filter(Boolean).slice(0,20).map(x=>({task:x,progress:/done|100%|completed/i.test(x)?100:0,status:/done|100%|completed/i.test(x)?'done':'ongoing',remarks:''}));
+  const $$84=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const $84=(s,r=document)=>r.querySelector(s);
+  function addStyle84(){
+    if(document.getElementById('v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #refresh,#pageRef,#v83-pull{display:none!important;visibility:hidden!important;pointer-events:none!important;}
+      .topbar .split:empty{display:none!important;}
+      .nav button.v84-dupe{display:none!important;}
+      .sidebar .nav{padding-bottom:18px!important;}
+      @media(max-width:900px){
+        .topbar{padding:12px 14px!important;gap:6px!important;}
+        .topbar .split{display:none!important;}
+        .sidebar{overscroll-behavior:contain!important;}
+        body{overscroll-behavior-y:auto!important;}
+      }
+    </style>`);
   }
-  function isTasklist83(t){return /self_tasklist|tasklist|daily_output/i.test(String(t?.source_type||'')+' '+String(t?.task_type||''));}
-  function avg83(t){const a=parseItems83(t?.task_items);return a.length?Math.round(a.reduce((s,x)=>s+Number(x.progress||0),0)/a.length):(/approved|done|completed|closed/i.test(String(t?.status||''))?100:0)}
-  function done83(t){return avg83(t)>=100||/approved|done|completed|closed|filed/i.test(String(t?.status||''));}
-  function dateMs83(t){return new Date(t?.submitted_at||t?.updated_at||t?.created_at||Date.now()).getTime()||Date.now();}
-  async function purgeDoneTasklists83(){try{const cutoff=new Date(Date.now()-12*60*60*1000).toISOString();await sb.from('vscore_tasks').delete().in('source_type',['self_tasklist','daily_output']).lt('submitted_at',cutoff).in('status',['done','completed','approved','closed','filed','shared']);}catch(e){console.warn('V83 tasklist purge skipped',e.message)}}
-  const oldLoad83=window.loadData;
-  if(typeof oldLoad83==='function'&&!oldLoad83.__v83){const wrapped=async function(){await purgeDoneTasklists83();await oldLoad83.apply(this,arguments);try{S.tasks=(S.tasks||[]).filter(t=>!isTasklist83(t)||!done83(t)||(Date.now()-dateMs83(t)<=12*60*60*1000));}catch(_){}};wrapped.__v83=true;window.loadData=loadData=wrapped;}
-
-  function cleanNav83(list){let n=(list||[]).filter(Boolean);let seen={};n=n.filter(x=>{let key=String((x&&x[0])||'')+'|'+String((x&&x[1])||'').toLowerCase();let label=String((x&&x[1])||'').toLowerCase();if(label==='attendance monitor'){if(seen.attmon)return false;seen.attmon=1;return true;} if(seen[key])return false;seen[key]=1;return true;}); if(manager83()){n=n.filter(x=>!(String(x[0])==='attendance'&&String(x[1]||'').toLowerCase().includes('monitor'))); if(!n.some(x=>String(x[1]||'').toLowerCase()==='attendance monitor')){let idx=n.findIndex(x=>String(x[0])==='taskmonitor'||String(x[0])==='tasklist');n.splice(idx>=0?idx+1:n.length,0,['attendance_monitor','Attendance Monitor']);}}
-    return n;
+  function menuOpen84(){
+    const sb=$84('.sidebar');
+    if(!sb)return false;
+    const cs=getComputedStyle(sb);
+    return sb.classList.contains('open') || sb.classList.contains('show') || (innerWidth<=900 && cs.display!=='none' && cs.visibility!=='hidden');
   }
-  const oldNav83=window.nav;
-  if(typeof oldNav83==='function'&&!oldNav83.__v83){const wrapped=function(){return cleanNav83(oldNav83.apply(this,arguments)||[])};wrapped.__v83=true;window.nav=nav=wrapped;}
-  function cleanMenu83(){const labels={};$$v83('.nav button,[data-tab]').forEach(btn=>{const txt=String(btn.textContent||'').trim().toLowerCase();const tab=btn.dataset?.tab||''; if(txt==='attendance monitor'){if(labels.attmon)btn.classList.add('v83-hide-dupe');else labels.attmon=1;} });}
-
-  window.canCancelMission83=function(t){return owner83()||String(t?.assigned_by_employee_id||'')===me83()||String(t?.created_by||'')===me83();}
-  window.cancelTask=cancelTask=async function(id,btn){const t=(S.tasks||[]).find(x=>String(x.id)===String(id));if(!t)return toast83('Mission not found. Please refresh once.','error');if(!canCancelMission83(t))return toast83('Only the mission giver or Retail/Management can cancel this mission.','error');let reason=prompt('Reason for cancelling this mission?');if(!reason)return;await act(btn,{busy:'Cancelling...',success:'Cancelled',reset:'Cancelled',toast:'Mission cancelled.'},async()=>{let payload={status:'cancelled',cancel_reason:reason,cancelled_by:S.profile.id,cancelled_at:new Date().toISOString(),resolution:'Cancelled: '+reason};let r=await sb.from('vscore_tasks').update(payload).eq('id',id);if(r.error){payload={status:'cancelled',resolution:'Cancelled: '+reason};r=await sb.from('vscore_tasks').update(payload).eq('id',id);}if(r.error){payload={status:'cancelled'};r=await sb.from('vscore_tasks').update(payload).eq('id',id);}if(r.error)throw r.error;try{await auditEvent('Mission cancelled','vscore_tasks',`${t.title||id}: ${reason}`)}catch(_){}} ,async()=>{await loadData();renderPage();});}
-  const oldMissionActions83=window.missionActions;
-  window.missionActions=missionActions=function(t,manage){const status=String(t?.status||'').toLowerCase();const assigned=String(t?.assigned_to_employee_id||'')===me83();const giver=canCancelMission83(t);let out='';if(assigned&&['assigned','accepted','disagreed','for_action'].includes(status)){if(status==='assigned')out+=`<button class="btn sm green acceptTask" data-id="${safe83(t.id)}">Accept</button> `;out+=`<button class="btn sm blue proofTask" data-id="${safe83(t.id)}">Submit Proof</button> `;}if(giver&&['submitted','pending_merit','for_validation'].includes(status))out+=`<button class="btn sm green approveTask" data-id="${safe83(t.id)}">Approve / Validate</button> `;if(giver&&!['approved','completed','cancelled','closed'].includes(status))out+=`<button class="btn sm dark cancelTask" data-id="${safe83(t.id)}">Cancel Mission</button> `;return out||'<span class="small muted">Monitor only</span>';};
-
-  function taskSummary83(t){const items=parseItems83(t.task_items);const who=(typeof emp==='function'?emp(t.assigned_to_employee_id):{})||{};const by=(typeof emp==='function'?emp(t.assigned_by_employee_id):{})||{};const proof=String(t.proof_url||'');return `<div class="v83-summary-card" id="v83SummaryCard"><h2>${safe83(t.title||'Tasklist Summary')}</h2><p><b>Employee:</b> ${safe83(who.full_name||'-')}<br><b>Branch:</b> ${safe83(t.branch||who.branch||'-')}<br><b>Shared / Submitted:</b> ${safe83(typeof fmt==='function'?fmt(t.submitted_at||t.created_at):String(t.submitted_at||t.created_at||'-'))}<br><b>Status:</b> ${safe83(t.status||'shared')}</p><table class="v83-summary-table"><thead><tr><th>#</th><th>Task / Output</th><th>Progress</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${items.map((x,i)=>`<tr><td>${i+1}</td><td>${safe83(x.task)}</td><td>${Number(x.progress||0)}%</td><td>${safe83(x.status||'')}</td><td>${safe83(x.remarks||'')}</td></tr>`).join('')||'<tr><td colspan="5">No checklist details.</td></tr>'}</tbody></table>${proof?`<p><b>Proof:</b><br><img class="v83-mini-proof" src="${safe83(proof.replace(/^\[|\]$/g,'').split(',')[0].replace(/^"|"$/g,''))}"></p>`:''}<div class="v83-summary-actions"><button class="btn green" onclick="downloadSummary83('${safe83(t.id)}')">Download JPEG Summary</button><button class="btn blue" onclick="window.print()">Print Summary</button><button class="btn dark" onclick="closeModal()">Close</button></div></div>`;}
-  window.showTaskSummary83=function(id){const t=(S.tasks||[]).find(x=>String(x.id)===String(id));if(!t)return toast83('Summary not found. Refresh once.','error');modal(taskSummary83(t));}
-  window.downloadSummary83=async function(id){const card=$v83('#v83SummaryCard');if(!card)return;try{let canvas;if(window.html2canvas){canvas=await html2canvas(card,{backgroundColor:'#ffffff',scale:2});}else{const html='<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">'+card.outerHTML+'</div></foreignObject></svg>';const url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(html);const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=url});canvas=document.createElement('canvas');canvas.width=900;canvas.height=700;canvas.getContext('2d').drawImage(img,0,0);}const a=document.createElement('a');a.download='vscore-tasklist-summary.jpg';a.href=canvas.toDataURL('image/jpeg',0.92);a.click();}catch(e){console.error(e);toast83('Could not save JPEG here. Use Print Summary / Save as PDF.','error')}};
-  function addSummaryButtons83(){(S.tasks||[]).filter(isTasklist83).forEach(t=>{const id=String(t.id);$$v83(`[data-id="${CSS.escape(id)}"]`).forEach(el=>{const card=el.closest('.card,.v81-output-card,tr,.v69-card,.v83-card')||el.parentElement;if(card&&!card.querySelector(`.v83-summary-btn[data-id="${CSS.escape(id)}"]`)){card.insertAdjacentHTML('beforeend',`<div class="v83-summary-actions"><button class="btn sm blue v83-summary-btn" data-id="${safe83(id)}" onclick="showTaskSummary83('${safe83(id)}')">View Summary</button><button class="btn sm green" onclick="showTaskSummary83('${safe83(id)}')">Download JPEG</button></div>`);}});});}
-
-  function setupPullRefresh83(){if(window.__v83Pull)return;window.__v83Pull=1;addStyle83();document.body.insertAdjacentHTML('beforeend','<div id="v83-pull">Pull to refresh</div>');let startY=0,pulling=false,ready=false;document.addEventListener('touchstart',e=>{if(window.scrollY<=3){startY=e.touches[0].clientY;pulling=true;ready=false;}}, {passive:true});document.addEventListener('touchmove',e=>{if(!pulling)return;let dy=e.touches[0].clientY-startY;const box=$v83('#v83-pull');if(dy>35){box.classList.add('show');box.textContent=dy>95?'Release to refresh':'Pull to refresh';box.classList.toggle('ready',dy>95);ready=dy>95;}}, {passive:true});document.addEventListener('touchend',async()=>{if(!pulling)return;pulling=false;const box=$v83('#v83-pull');if(ready){box.textContent='Refreshing...';try{await loadData();renderPage();box.textContent='Updated ✓';}catch(e){box.textContent='Refresh failed';}setTimeout(()=>box.classList.remove('show','ready'),650);}else box.classList.remove('show','ready');});}
-
-  const oldRenderPage83=window.renderPage;if(typeof oldRenderPage83==='function'&&!oldRenderPage83.__v83){const wrapped=function(){addStyle83();const r=oldRenderPage83.apply(this,arguments);setTimeout(()=>{cleanMenu83();addSummaryButtons83();},200);return r};wrapped.__v83=true;window.renderPage=renderPage=wrapped;}
-  const oldBind83=window.bind;if(typeof oldBind83==='function'&&!oldBind83.__v83){const wrapped=function(){const r=oldBind83.apply(this,arguments);setTimeout(()=>{cleanMenu83();$$v83('.cancelTask').forEach(b=>b.onclick=()=>cancelTask(b.dataset.id,b));addSummaryButtons83();},80);return r};wrapped.__v83=true;window.bind=bind=wrapped;}
-  setupPullRefresh83();setInterval(()=>{cleanMenu83();addSummaryButtons83();},1800);setTimeout(()=>{cleanMenu83();addSummaryButtons83();},1500);console.log('V83 final stability loaded');
+  function cleanMenu84(){
+    addStyle84();
+    const seen=new Set();
+    $$84('.nav button').forEach(btn=>{
+      const key=(btn.dataset.tab||btn.textContent||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(!key)return;
+      if(seen.has(key))btn.classList.add('v84-dupe');
+      else {seen.add(key);btn.classList.remove('v84-dupe');}
+    });
+    $$84('button').forEach(btn=>{
+      const txt=(btn.textContent||'').trim().toLowerCase();
+      if(txt==='refresh data'||txt==='refresh this page'||txt==='reload app')btn.style.display='none';
+    });
+    const p=$84('#v83-pull'); if(p)p.remove();
+  }
+  // Block only the old V83 pull-refresh gesture when it begins from very top or while menu is open.
+  // This keeps normal page scrolling/clicking intact and avoids accidental refresh loops.
+  let blockPull=false,sy=0;
+  document.addEventListener('touchstart',function(e){
+    sy=e.touches&&e.touches[0]?e.touches[0].clientY:0;
+    blockPull = (window.scrollY<=3) || menuOpen84();
+    if(blockPull && menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchmove',function(e){
+    if(!blockPull)return;
+    const y=e.touches&&e.touches[0]?e.touches[0].clientY:sy;
+    if((y-sy)>20 || menuOpen84()) e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('touchend',function(e){
+    if(blockPull){ e.stopImmediatePropagation(); blockPull=false; }
+  }, true);
+  // Guard against the removed V83 interval causing UI clutter if an old browser cache still has it.
+  const oldRenderApp84=window.renderApp;
+  if(typeof oldRenderApp84==='function'){
+    window.renderApp=function(){const out=oldRenderApp84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldRenderPage84=window.renderPage;
+  if(typeof oldRenderPage84==='function'){
+    window.renderPage=function(){const out=oldRenderPage84.apply(this,arguments);setTimeout(cleanMenu84,80);setTimeout(cleanMenu84,400);return out;};
+  }
+  const oldBind84=window.bind;
+  if(typeof oldBind84==='function'){
+    window.bind=function(){try{oldBind84.apply(this,arguments)}catch(e){console.error(e)} cleanMenu84();};
+  }
+  // Final stable logout fallback.
+  window.v84Logout=function(){try{localStorage.removeItem('VSCORE_SESSION'); sessionStorage.clear();}catch(_){} try{if(typeof clearSession==='function')clearSession();}catch(_){} try{S.user=null;S.profile=null;}catch(_){} location.href=location.pathname+'?logout='+Date.now();};
+  document.addEventListener('click',function(e){
+    const b=e.target.closest&&e.target.closest('button'); if(!b)return;
+    const txt=(b.textContent||'').trim().toLowerCase();
+    if(txt==='logout'){e.preventDefault();e.stopImmediatePropagation();window.v84Logout();}
+  }, true);
+  setInterval(cleanMenu84,3000);
+  document.addEventListener('DOMContentLoaded',()=>{addStyle84();setTimeout(cleanMenu84,100);setTimeout(cleanMenu84,700);});
 })();
-/* ================= END V83 ================= */
-
-</script></body></html>
+/* ================= END V84 ================= */
+</script>
+</body></html>
