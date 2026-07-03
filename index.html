@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<title>V-SCORE V81 | End-of-Shift Output Phone Fix</title>
+<title>V-SCORE V83 | Staff-Friendly Stable Build</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b91c1c">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -66,6 +66,8 @@ const SUPABASE_URL='https://qddolmytekocsitsrvaj.supabase.co';
 const SUPABASE_KEY='sb_publishable_Z6Zi050aQqnnUP-h3lS4Yg_Uh5RnQZI';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let S={user:null,profile:null,tab:'dashboard',employees:[],allEmployees:[],memos:[],acks:[],allAcks:[],achievements:[],violations:[],ledger:[],branches:[],rewards:[],reports:[],tasks:[],rules:[],fsqa:[],policies:[],forms:[],audits:[],settings:{}};
+window.sb=sb;
+window.S=S;
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=d=>d?new Date(d).toLocaleString():'-';
@@ -96,207 +98,12 @@ function zoom(src){modal(`<h2>Preview</h2><img src="${src}" style="width:100%;ma
 function modal(html){document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="modal-card">${html}</div></div>`)}
 function closeModal(){$('.modal')?.remove()}
 function downloadUrl(url,name='vscore-form.jpg'){if(!url)return toast('No file to download','error');const a=document.createElement('a');a.href=url;a.download=name||'vscore-file.jpg';document.body.appendChild(a);a.click();a.remove()}
-function printUrl(url){if(!url)return toast('No file to print','error');const w=window.open('','_blank');if(!w)return toast('Allow pop-up to print.','error');w.document.write(`<html><head><title>Print Form</title><style>body{margin:0;padding:20px;font-family:Arial}img{max-width:100%;height:auto;display:block;margin:auto}
-/* V13 mobile + action polish */
-@media(max-width:900px){.app{display:block!important}.sidebar{position:relative!important;width:auto!important;min-height:auto!important;border-radius:0 0 22px 22px!important}.sidebar .nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.main{padding:12px!important}.topbar{position:sticky!important;top:0;z-index:20;gap:10px!important;align-items:flex-start!important}.topbar .split{width:100%;justify-content:flex-start!important}.grid.two,.grid.three,.grid.four{grid-template-columns:1fr!important}.card{border-radius:18px!important;padding:14px!important}table{display:block;overflow-x:auto;white-space:nowrap}.modal-card{width:94vw!important;max-height:88vh!important;overflow:auto}.btn{min-height:42px}}
-.btn{transition:.16s ease;touch-action:manipulation}.btn:active{transform:scale(.98)}.stars{font-size:20px;color:#f59e0b;letter-spacing:2px}.cred-card{border:1px solid var(--line);border-radius:18px;padding:16px;background:linear-gradient(135deg,#fff7ed,#fff);box-shadow:var(--shadow)}
-
-/* V15.1 PowerPoint slide viewer */
-.ppt-stage{background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow);min-height:420px;display:grid;align-content:center;gap:14px}
-.ppt-frame{background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:22px;padding:24px;min-height:340px;display:grid;place-items:center;text-align:center}
-.ppt-frame h3{font-size:28px;margin:0 0 12px;color:#7f1d1d}.ppt-frame p{font-size:18px;line-height:1.55;white-space:pre-wrap}.ppt-frame img{max-width:100%;max-height:420px;border-radius:16px;border:1px solid var(--line);object-fit:contain}
-.ppt-controls{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}.ppt-dots{display:flex;gap:5px;flex-wrap:wrap}.ppt-dot{width:10px;height:10px;border-radius:999px;background:#e5e7eb}.ppt-dot.active{background:var(--red)}
-
-
-/* V15.2 Reliable PPTX visual slide renderer */
-.modal-card .split .btn.dark{min-height:auto;padding:10px 14px;border-radius:12px}
-.ppt-stage{overflow:hidden}
-.ppt-canvas{position:relative;width:100%;aspect-ratio:16/9;background:#fff;border:1px solid #fed7aa;border-radius:20px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}
-.ppt-layer-img,.ppt-layer-text{position:absolute;box-sizing:border-box}
-.ppt-layer-img{object-fit:contain}
-.ppt-layer-text{white-space:pre-wrap;overflow:hidden;line-height:1.18;text-align:left;color:#111827;padding:3px 6px;font-family:Arial,Segoe UI,sans-serif}
-.ppt-fallback{padding:18px;background:#fff7ed;border:1px dashed #f59e0b;border-radius:16px;color:#7f1d1d;margin-top:12px}
-@media(max-width:700px){.ppt-frame{padding:10px;min-height:260px}.ppt-canvas{border-radius:14px}.ppt-layer-text{font-size:12px!important}.ppt-controls .btn{width:100%;}.ppt-controls{display:grid}.modal-card{padding:14px!important}}
-
-
-/* V19 launch readiness widgets */
-.launch-hero{background:linear-gradient(135deg,#fff7ed,#fff,#fef2f2);border:1px solid #fed7aa;border-radius:24px;padding:18px;box-shadow:var(--shadow)}
-.launch-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 12px 28px rgba(15,23,42,.06)}
-.health-bar{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:8px}.health-bar span{display:block;height:100%;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e)}
-.checkline{display:flex;gap:10px;align-items:flex-start;margin:8px 0}.checkline input{width:auto;margin-top:4px}.claim-card{border:1px solid #fde68a;background:#fffbeb;border-radius:18px;padding:14px}.security-grid{display:grid;gap:10px}.security-item{padding:12px;border-radius:14px;background:#f8fafc;border:1px solid var(--line)}
-@media(max-width:900px){.launch-hero,.launch-card{border-radius:16px;padding:13px}.claim-card{padding:12px}}
-
-</style></head><body><img src="${url}"><script>window.onload=function(){window.print()}<\/script>
-
-<!-- V82.2 CLEAN REPLACE PATCH: removes fighting duplicate buttons/menu logic; no new refresh behavior -->
-<script>
-(function(){
-  'use strict';
-  if(window.__VSCORE_V82_2_CLEAN_REPLACE__) return;
-  window.__VSCORE_V82_2_CLEAN_REPLACE__=true;
-
-  const $=(s,r=document)=>r.querySelector(s);
-  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const TXT=(el)=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
-  const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const isMgr=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return false}};
-  const me=()=>{try{return S?.profile?.id||'me'}catch(_){return 'me'}};
-  const toastOk=(m)=>{try{toast(m,'ok')}catch(_){console.log(m)}};
-
-  // Stop old patches from printing many repeated "loaded" logs.
-  const oldLog=console.log.bind(console);
-  console.log=function(){
-    try{
-      const m=Array.from(arguments).join(' ');
-      if(/V7\d|V8\d|loaded|patch/i.test(m) && /loaded/i.test(m)) return;
-    }catch(_){ }
-    return oldLog.apply(console,arguments);
-  };
-
-  function ignoreStore(){
-    try{return JSON.parse(localStorage.getItem('vscore_ignored_today_clean')||'{}')||{}}catch(_){return {}}
-  }
-  function saveIgnoreStore(m){
-    localStorage.setItem('vscore_ignored_today_clean',JSON.stringify(m));
-    // keep compatibility with older patches so they do not re-show the same card
-    localStorage.setItem('v76_ignored_cases',JSON.stringify(m));
-    localStorage.setItem('v75_ignored_cases',JSON.stringify(m));
-    localStorage.setItem('v74_ignored_cases',JSON.stringify(m));
-  }
-  function caseKey(card){
-    if(!card) return '';
-    let k=card.getAttribute('data-case')||card.dataset.case||card.dataset.id||card.getAttribute('data-id')||'';
-    if(!k){
-      const t=TXT(card).toLowerCase();
-      if(/no time in|missing time|attendance/.test(t)){
-        const name=(t.match(/([a-z][a-z\s.]{2,40})(?: no time in| missing| attendance)/i)||[])[1]||t.slice(0,60);
-        k='attendance:'+name.replace(/[^a-z0-9]+/g,'_')+':'+new Date().toISOString().slice(0,10);
-      }
-    }
-    return k||('case:'+TXT(card).toLowerCase().slice(0,80).replace(/[^a-z0-9]+/g,'_'));
-  }
-
-  window.vscoreCleanIgnoreToday=function(key){
-    const m=ignoreStore();
-    m[key||('manual:'+Date.now())]={by:me(),at:new Date().toISOString()};
-    saveIgnoreStore(m);
-    toastOk('Ignored on your interface only.');
-    setTimeout(()=>{try{renderPage()}catch(_){cleanInterface();}},20);
-  };
-  // Replace old ignore functions so old buttons all do only one stable action.
-  window.v74IgnoreCase=window.v75IgnoreCase=window.v76IgnoreCase=window.vscoreCleanIgnoreToday;
-
-  function normalizeIgnoreButtons(card){
-    if(!card || !isMgr()) return;
-    const t=TXT(card).toLowerCase();
-    const isAttendance=/no time in|missing time|attendance action|attendance/.test(t);
-    if(!isAttendance) return;
-    const key=caseKey(card);
-    const ignored=ignoreStore();
-    if(ignored[key]){ card.remove(); return; }
-
-    let actionBox=card.querySelector('.v62-case-actions,.v76-actions,.v74-actions,.split');
-    if(!actionBox){
-      actionBox=document.createElement('div');
-      actionBox.className='split vscore-clean-actions';
-      card.appendChild(actionBox);
-    }
-    // Remove every old ignore button then add one clean button.
-    $$('button',card).filter(b=>TXT(b)==='Ignore Today').forEach(b=>b.remove());
-    const btn=document.createElement('button');
-    btn.className='btn sm ghost vscore-ignore-one';
-    btn.type='button';
-    btn.textContent='Ignore Today';
-    btn.onclick=function(ev){ev.preventDefault();ev.stopPropagation();window.vscoreCleanIgnoreToday(key)};
-    actionBox.insertBefore(btn, actionBox.firstChild);
-  }
-
-  function dedupeButtonsWithin(box){
-    const seen=new Set();
-    $$('button',box).forEach(btn=>{
-      const txt=TXT(btn);
-      // Keep buttons that are supposed to repeat only when they are in different cards.
-      const scope = btn.closest('.v62-case,.v76-row,.v74-card,.card,tr') || box;
-      const key = txt+'@@'+(scope.__vscoreScopeId || (scope.__vscoreScopeId=Math.random().toString(36).slice(2)));
-      if((txt==='Ignore Today'||txt==='Attendance Monitor') && seen.has(key)) btn.remove();
-      else seen.add(key);
-    });
-  }
-
-  function cleanMenu(){
-    const nav=$('.nav'); if(!nav) return;
-    const seen=new Set();
-    $$('button',nav).forEach(btn=>{
-      const tab=btn.getAttribute('data-tab')||'';
-      const label=TXT(btn).toLowerCase();
-      const key=(tab||label).replace(/\s+/g,'_');
-      if(!key) return;
-      if(seen.has(key)){ btn.remove(); return; }
-      seen.add(key);
-    });
-    // Force only one Attendance Monitor by label, even if data-tab differs from old patch.
-    const att=$$('button',nav).filter(b=>/attendance monitor/i.test(TXT(b)));
-    att.slice(1).forEach(b=>b.remove());
-  }
-
-  function cleanInterface(){
-    cleanMenu();
-    // no refresh buttons from newer unstable attempts
-    $$('button').forEach(b=>{
-      const t=TXT(b);
-      if(/^Refresh Data$|^Refresh This Page$|^Pull to refresh$/i.test(t)) b.remove();
-    });
-    // remove duplicate attendance navs/cards and normalize ignore buttons.
-    $$('.v62-case,.v76-row,.v74-card,.card').forEach(card=>normalizeIgnoreButtons(card));
-    dedupeButtonsWithin(document.body);
-  }
-  window.vscoreCleanInterface=cleanInterface;
-
-  function wrap(name){
-    const old=window[name];
-    if(typeof old!=='function' || old.__vscoreCleanWrapped) return;
-    const neu=function(){
-      const res=old.apply(this,arguments);
-      setTimeout(cleanInterface,0);
-      setTimeout(cleanInterface,120);
-      return res;
-    };
-    neu.__vscoreCleanWrapped=true;
-    window[name]=neu;
-  }
-  wrap('renderApp');
-  wrap('renderPage');
-
-  document.addEventListener('click',function(e){
-    const btn=e.target.closest('button');
-    if(!btn) return;
-    if(TXT(btn)==='Ignore Today'){
-      const card=btn.closest('.v62-case,.v76-row,.v74-card,.card');
-      if(card){
-        e.preventDefault(); e.stopPropagation();
-        window.vscoreCleanIgnoreToday(caseKey(card));
-      }
-    }
-  },true);
-
-  let timer=null;
-  const mo=new MutationObserver(()=>{
-    clearTimeout(timer);
-    timer=setTimeout(cleanInterface,80);
-  });
-  try{mo.observe(document.body,{childList:true,subtree:true});}catch(_){ }
-
-  window.addEventListener('load',()=>setTimeout(cleanInterface,300));
-  setTimeout(cleanInterface,500);
-})();
-</script>
-
-</body></html>`);w.document.close()}
+function printUrl(url){if(!url)return toast('No file to print','error');const w=window.open('','_blank');if(!w)return toast('Allow pop-up to print.','error');w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Print Form</title><style>body{margin:0;padding:20px;font-family:Arial,sans-serif}img{max-width:100%;height:auto;display:block;margin:auto}</style></head><body><img src="${esc(url)}"><script>window.onload=function(){window.print()}<\/script></body></html>`);w.document.close()}
 function safeName(id){return emp(id)?.full_name||'Unknown / Removed'}
 
 async function init(){await loadPublicSettings();const s=readSession();if(s){S.user={id:'direct-'+s.id,email:s.email,employee_id:s.id};renderAuth()}else renderAuth()}
 async function loadPublicSettings(){S.settings={};const data=await q(sb.from('app_settings').select('*'),[]);data.forEach(x=>S.settings[x.setting_key]=x.setting_value);if(S.settings.app_logo_url)localStorage.setItem('VSCORE_APP_LOGO',S.settings.app_logo_url)}
-function renderAuth(active='login'){const l=logo();const saved=readSession();$('#root').innerHTML=`<div class="auth"><div class="auth-card"><div class="hero">${l?`<img class="logo" src="${esc(l)}">`:'<div class="logo">V</div>'}<h1>Welcome to<br>V-POINTS!</h1><h2>Welcome, Ka-Varda!</h2><p class="muted">Official Varda Group employee integration, mission, memo, rewards, and evidence-first ledger.</p><div class="notice"><b>No Proof, No Point.</b><br>Every win needs evidence. Every mistake needs validation.</div></div><div class="auth-panel"><div class="notice success"><b>V-POINTS Access Portal</b><br>Login first. Saved session is optional only.</div><div class="tabs"><button class="tab ${active==='login'?'active':''}" data-a="login">Sign In</button><button class="tab ${active==='activate'?'active':''}" data-a="activate">First Time Activate</button></div><div id="authbox">${active==='activate'?activateForm():loginForm()}</div>${saved?`<br><div class="notice"><b>Previous session:</b> ${esc(saved.email)}<br><br><div class="split"><button id="continue" class="btn green">Continue Previous Session</button><button id="clear" class="btn ghost">Clear Session</button></div></div>`:''}</div></div></div>`;$$('[data-a]').forEach(b=>b.onclick=()=>renderAuth(b.dataset.a));$('#loginForm')?.addEventListener('submit',signIn);$('#activateForm')?.addEventListener('submit',activate);$('#continue')?.addEventListener('click',boot);$('#clear')?.addEventListener('click',()=>{clearSession();S.user=null;S.profile=null;renderAuth()})}
+function renderAuth(active='login'){const l=logo();const saved=readSession();$('#root').innerHTML=`<div class="auth"><div class="auth-card"><div class="hero">${l?`<img class="logo" src="${esc(l)}">`:'<div class="logo">V</div>'}<h1>Welcome to<br>V-POINTS!</h1><h2>Welcome, Ka-Varda!</h2><p class="muted">Official Varda Group employee integration, mission, memo, rewards, and evidence-first ledger.</p><div class="notice"><b>No Proof, No Point.</b><br>Every win needs evidence. Every mistake needs validation.</div></div><div class="auth-panel">${saved?`<div class="notice success"><b>Saved session found:</b><br>${esc(saved.email)}<br><br><button id="continue" class="btn green full">Continue to V-SCORE</button><br><br><button id="clear" class="btn ghost full">Logout / Use Different Account</button></div><br>`:''}<div class="notice success"><b>V-POINTS Access Portal</b><br>Official Varda Group performance, mission, FSQA, memo, policy, and evidence ledger.</div><div class="tabs"><button class="tab ${active==='login'?'active':''}" data-a="login">Sign In</button><button class="tab ${active==='activate'?'active':''}" data-a="activate">First Time Activate</button></div><div id="authbox">${active==='activate'?activateForm():loginForm()}</div></div></div></div>`;$$('[data-a]').forEach(b=>b.onclick=()=>renderAuth(b.dataset.a));$('#loginForm')?.addEventListener('submit',signIn);$('#activateForm')?.addEventListener('submit',activate);$('#continue')?.addEventListener('click',boot);$('#clear')?.addEventListener('click',()=>{clearSession();S.user=null;S.profile=null;renderAuth()})}
 function loginForm(){return `<form id="loginForm"><div class="field"><label>Email</label><input id="loginEmail" type="email" class="input" placeholder="Enter your V-POINTS email" required></div><div class="field"><label>Password</label><input id="loginPass" type="password" class="input" placeholder="Enter password" required></div><button class="btn full">Sign In</button></form>`}
 function activateForm(){return `<form id="activateForm"><div class="field"><label>Email</label><input id="actEmail" type="email" class="input" required></div><div class="field"><label>Temporary Password</label><input id="actTemp" class="input" required></div><div class="field"><label>New Password</label><input id="actPass" class="input" required></div><button class="btn green full">Activate Account</button></form>`}
 async function signIn(e){e.preventDefault();const b=e.submitter;await act(b,{busy:'Checking...',success:'Login Accepted',reset:'Sign In Again'},async()=>{const email=$('#loginEmail').value.trim().toLowerCase(),pass=$('#loginPass').value;const emp=await q(sb.from('employees').select('*').ilike('email',email).maybeSingle(),null);if(!emp)throw new Error('No employee account found. Run SQL V10.6 or create account.');if(emp.is_active===false||String(emp.activation_status).toLowerCase()==='deleted')throw new Error('This account is inactive/deleted.');if(String(emp.login_password_backup||'')!==pass&&String(emp.temp_password||'')!==pass)throw new Error('Incorrect password.');await sb.from('employees').update({activation_status:'activated',is_active:true,last_login_at:new Date().toISOString(),activated_at:emp.activated_at||new Date().toISOString()}).eq('id',emp.id);S.user={id:'direct-'+emp.id,email,employee_id:emp.id};S.profile={...emp,activation_status:'activated',is_active:true};saveSession(S.profile);},boot)}
@@ -7608,6 +7415,11 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   function statusLabel62(st){return ({open:'Open',explain:'For Explanation',action:'For Action',validate:'For Validation',closed:'Closed'}[st]||'Open')}
   function stageIndex62(st){return ({open:1,explain:2,action:3,validate:4,closed:5}[st]||1)}
   function statusPill62(st){return `<span class="v62-status ${st}">${statusLabel62(st)}</span>`}
+  const CLOSED_VISIBLE_MS62=12*60*60*1000;
+  function closedAt62(c){const r=c?.record||{};return r.closed_at||r.resolved_at||r.validated_at||r.completed_at||r.updated_at||c?.closed_at||c?.resolved_at||c?.updated_at||c?.created_at||new Date().toISOString()}
+  function closedAge62(c){return Date.now()-new Date(closedAt62(c)).getTime()}
+  function closedRecent62(c){return c?.status==='closed'&&closedAge62(c)<CLOSED_VISIBLE_MS62}
+  function closedRemaining62(c){const ms=Math.max(0,CLOSED_VISIBLE_MS62-closedAge62(c));const h=Math.floor(ms/3600000),m=Math.ceil((ms%3600000)/60000);return h?`${h}h ${m}m`:`${m}m`}
   function belongs62(c){
     if(owner62())return true;
     if(manager62())return String(c.branch||'')===String(S.profile?.branch||'') || String(c.owner_id||'')===String(S.profile?.id||'') || String(c.employee_id||'')===String(S.profile?.id||'');
@@ -7654,15 +7466,17 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
       const active=(typeof activeMemos==='function'?activeMemos():S.memos||[]); const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));
       active.forEach(m=>{ if(!acked.has(String(m.id)))cases.push({key:caseKey62('memo',m.id),type:'memo',kind:'Memo Acknowledgment',title:m.title||'Mandatory memo',description:m.content||'',employee_id:S.profile?.id,employee_name:S.profile?.full_name,branch:S.profile?.branch,status:'open',raw_status:'unacknowledged',evidence:m.attachment_url,created_at:m.created_at,owner_id:S.profile?.id,record:m,closing_required:true}); });
     }catch(_){ }
-    return cases.filter(belongs62).sort((a,b)=>{const ia=stageIndex62(a.status),ib=stageIndex62(b.status); if(ia!==ib)return ia-ib; return new Date(b.created_at||0)-new Date(a.created_at||0)});
+    return cases.filter(belongs62).filter(c=>c.status!=='closed'||closedRecent62(c)).sort((a,b)=>{const ia=stageIndex62(a.status),ib=stageIndex62(b.status); if(ia!==ib)return ia-ib; return new Date(b.created_at||0)-new Date(a.created_at||0)});
   }
   function counts62(cases){return {open:cases.filter(c=>c.status==='open').length,explain:cases.filter(c=>c.status==='explain').length,action:cases.filter(c=>c.status==='action').length,validate:cases.filter(c=>c.status==='validate').length,closed:cases.filter(c=>c.status==='closed').length,total:cases.length}}
   function caseCard62(c,compact=false){
     const stage=stageIndex62(c.status);
-    return `<div class="v62-case" data-case="${safe62(c.key)}"><div class="v62-case-head"><div><div class="v62-case-title">${safe62(c.title)}</div><div class="v62-case-meta"><span><b>${safe62(c.kind)}</b> · ${safe62(c.employee_name||'-')}</span><span>${safe62(c.branch||'-')} · ${fmt62(c.created_at)}</span>${c.due_at?`<span>Due: ${fmt62(c.due_at)}</span>`:''}</div></div>${statusPill62(c.status)}</div><div class="v62-stage">${[1,2,3,4,5].map(i=>`<div class="${i<=stage?'on':''}"></div>`).join('')}</div>${compact?'':`<div class="v62-muted">${safe62(String(c.description||'').slice(0,220))}</div>${c.evidence?`<div>${img62(c.evidence)}</div>`:''}`}<div class="v62-case-actions">${caseActions62(c,compact)}</div></div>`;
+    const closedNote=c.status==='closed'?`<div class="v62-close-note"><b>This case is already closed.</b><br><span class="small">Auto-hide in ${safe62(closedRemaining62(c))}.</span></div>`:'';
+    return `<div class="v62-case ${c.status==='closed'?'v62-closed-card':''}" data-case="${safe62(c.key)}"><div class="v62-case-head"><div><div class="v62-case-title">${safe62(c.title)}</div><div class="v62-case-meta"><span><b>${safe62(c.kind)}</b> · ${safe62(c.employee_name||'-')}</span><span>${safe62(c.branch||'-')} · ${fmt62(c.created_at)}</span>${c.due_at?`<span>Due: ${fmt62(c.due_at)}</span>`:''}</div></div>${statusPill62(c.status)}</div><div class="v62-stage">${[1,2,3,4,5].map(i=>`<div class="${i<=stage?'on':''}"></div>`).join('')}</div>${closedNote}${compact?'':`<div class="v62-muted">${safe62(String(c.description||'').slice(0,220))}</div>${c.evidence?`<div>${img62(c.evidence)}</div>`:''}`}<div class="v62-case-actions">${caseActions62(c,compact)}</div></div>`;
   }
   function caseActions62(c,compact){
     const b=[];
+    if(c.status==='closed')return `<button class="btn sm ghost" onclick="v62ViewCase('${safe62(c.key)}')">Details</button>`;
     if(c.type==='memo')b.push(`<button class="btn sm yellow" onclick="v62AckMemo('${safe62(c.source_id)}',this)">Acknowledge</button>`);
     else if(c.type==='attendance')b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
     else if(c.type==='task'){
@@ -7684,7 +7498,7 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
   function caseByKey62(key){return allCases62().find(c=>String(c.key)===String(key));}
   function caseCenterPage62(){
     const cases=allCases62(); const c=counts62(cases); const filter=localStorage.getItem('v62_case_filter')||'active';
-    const filtered=filter==='active'?cases.filter(x=>x.status!=='closed'):filter==='all'?cases:cases.filter(x=>x.status===filter);
+    const filtered=filter==='active'?cases.filter(x=>x.status!=='closed'||closedRecent62(x)):filter==='all'?cases:cases.filter(x=>x.status===filter);
     return `<div class="v62-shell"><div class="v62-hero"><h2>Case Center</h2><p>Every problem has an owner, status, proof, and closing action.</p></div><div class="v62-kpis"><div class="v62-kpi"><span>Open</span><b>${c.open}</b></div><div class="v62-kpi"><span>For Action</span><b>${c.action}</b></div><div class="v62-kpi"><span>Validation</span><b>${c.validate}</b></div><div class="v62-kpi"><span>Closed</span><b>${c.closed}</b></div></div><div class="v62-section"><div class="v62-tabs">${[['active','Active'],['open','Open'],['explain','Explanation'],['action','Action'],['validate','Validation'],['closed','Closed'],['all','All']].map(x=>`<button class="v62-tab ${filter===x[0]?'active':''}" data-v62-filter="${x[0]}">${x[1]}</button>`).join('')}</div><div class="v62-card-list">${filtered.map(x=>caseCard62(x,false)).join('')||'<div class="v62-empty">No cases in this filter.</div>'}</div></div></div>`;
   }
   function myActionsPage62(){
@@ -10713,7 +10527,7 @@ init();
     return `<div class="v821-output">${form}<div class="card"><h3>${isExec?'Output Monitoring':'My Output Monitor'}</h3><h4>Today</h4>${todayRows.map(outputCard).join('')||'<div class="empty">No output submitted today yet.</div>'}<h4>Ongoing Carry-over</h4>${oldOngoing.map(outputCard).join('')||'<div class="empty">No unfinished carry-over.</div>'}<details><summary><b>Filed previous outputs</b></summary>${filed.map(outputCard).join('')||'<div class="empty">No filed output.</div>'}</details></div></div>`;
   }
   function fileData(file){return new Promise((res,rej)=>{if(!file)return res(''); if(typeof imageData==='function'){imageData(file,900).then(res).catch(()=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file);});}else{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file);}})}
-  async function submitOutput(ev){ev.preventDefault();const btn=ev.submitter||QS('#v821OutputForm button[type="submit"]');try{btn.disabled=true;btn.textContent='Submitting...';const objectives=QS('#v821Objectives')?.value||'';const done=QS('#v821Done')?.value||'';const remarks=QS('#v821Remarks')?.value||'';if(!done.trim())throw new Error('Please list what you completed today.');const items=[];objectives.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>items.push({task:x,progress:0,status:'ongoing',remarks:''}));done.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>items.push({task:x,progress:100,status:'done',remarks:remarks||''}));const photo=await fileData(QS('#v821Proof')?.files?.[0]);const rec={title:today()+' End-of-Shift Output',task_items:JSON.stringify(items),assigned_to_employee_id:window.S.profile.id,assigned_by_employee_id:window.S.profile.id,branch:window.S.profile.branch,source_type:'daily_output',task_type:'daily_output',status:'shared',proof_url:photo,submitted_at:new Date().toISOString(),merit_points:0};let r=await sb.from('vscore_tasks').insert(rec);if(r.error){delete rec.task_type;delete rec.merit_points;r=await sb.from('vscore_tasks').insert(rec);}if(r.error)throw r.error;safeToast('End-of-shift output submitted.','ok');await loadData(); window.S.tab='tasklist'; renderPage();}catch(e){console.error(e);safeToast(e.message||'Submit failed. Please try again.','error'); if(btn){btn.disabled=false;btn.textContent='Submit End-of-Shift Output';}}}
+  async function submitOutput(ev){if(ev){ev.preventDefault();ev.stopPropagation?.();if(ev.__v821Handled)return;ev.__v821Handled=true;}const form=ev?.target?.id==='v821OutputForm'?ev.target:QS('#v821OutputForm');if(form?.dataset?.submitting==='1')return;if(form?.dataset)form.dataset.submitting='1';const btn=ev?.submitter||QS('#v821OutputForm button[type="submit"]');try{if(btn){btn.disabled=true;btn.textContent='Submitting...';}const objectives=QS('#v821Objectives')?.value||'';const done=QS('#v821Done')?.value||'';const remarks=QS('#v821Remarks')?.value||'';if(!done.trim())throw new Error('Please list what you completed today.');const items=[];objectives.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>items.push({task:x,progress:0,status:'ongoing',remarks:''}));done.split(/\n+/).map(x=>x.trim()).filter(Boolean).forEach(x=>items.push({task:x,progress:100,status:'done',remarks:remarks||''}));const photo=await fileData(QS('#v821Proof')?.files?.[0]);const rec={title:today()+' End-of-Shift Output',task_items:JSON.stringify(items),assigned_to_employee_id:window.S.profile.id,assigned_by_employee_id:window.S.profile.id,branch:window.S.profile.branch,source_type:'daily_output',task_type:'daily_output',status:'shared',proof_url:photo,submitted_at:new Date().toISOString(),merit_points:0};let r=await sb.from('vscore_tasks').insert(rec);if(r.error){delete rec.task_type;delete rec.merit_points;r=await sb.from('vscore_tasks').insert(rec);}if(r.error)throw r.error;safeToast('End-of-shift output submitted.','ok');await loadData(); window.S.tab='tasklist'; renderPage();}catch(e){console.error(e);safeToast(e.message||'Submit failed. Please try again.','error');if(form?.dataset)delete form.dataset.submitting;if(btn){btn.disabled=false;btn.textContent='Submit End-of-Shift Output';}}}
   function addStyle(){if(QS('#v821-style'))return;document.head.insertAdjacentHTML('beforeend',`<style id="v821-style">.v821-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}.v821-folder,.v821-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.05);margin:10px 0}.v821-folder h3,.v821-card h3{margin:0 0 6px;color:#7f1d1d}.v821-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.v821-kpis div{background:#f8fafc;border:1px solid #e5e7eb;border-radius:13px;padding:8px;text-align:center}.v821-kpis span{display:block;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:1000}.v821-kpis b{font-size:20px}.v821-filter{border:1px solid #fed7aa;background:#fff7ed;border-radius:18px;padding:12px;display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}.v821-photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.v821-photos img,.v821-preview img{width:78px;height:58px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb}.v821-line{border:1px solid #e5e7eb;border-radius:13px;padding:9px 10px;background:#f8fafc;margin:7px 0}.v821-line b{display:block}.v821-line span{font-size:12px;color:#64748b}.v821-line small{display:block;color:#64748b}.v821-output{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:14px}@media(max-width:760px){.v821-grid,.v821-output{grid-template-columns:1fr}.v821-filter{grid-template-columns:1fr}.v821-folder,.v821-card{border-radius:16px;padding:12px}.split{gap:7px}.split .btn{flex:1 1 auto}.modal-card{max-width:100vw!important;overflow-x:hidden!important}textarea{min-height:90px}}</style>`)}
   function cleanMenu(){try{const seen={};QSA('.nav button').forEach(b=>{const txt=(b.textContent||'').trim().replace(/\s+/g,' '); if(seen[txt])b.remove(); else seen[txt]=1;});}catch(_){}}
   const oldNav=window.nav; if(typeof oldNav==='function'&&!oldNav.__v821){const wrapped=function(){let n=oldNav.apply(this,arguments)||[];const seen={};n=n.filter(x=>{if(!x)return false;const label=x[1]||x[0];if(seen[label])return false;seen[label]=1;return true;}); if(isMgr()&&!n.some(x=>x[0]==='attendance_monitor'||x[0]==='attendance'))n.push(['attendance_monitor','Attendance Monitor']); if(!isRetail()&&!n.some(x=>x[0]==='tasklist'))n.push(['tasklist','Daily Output']); return n;};wrapped.__v821=true;window.nav=nav=wrapped;}
@@ -10727,74 +10541,1469 @@ init();
 /* ================= END V82.1 ================= */
 
 
-/* ================= V82.3 LOGIN FIRST + CAMERA STABILITY PATCH ================= */
+/* V82.2 CLEAN REPLACE PATCH: removes fighting duplicate buttons/menu logic; no new refresh behavior */
 (function(){
-  function toastSafe(msg,type){try{toast(msg,type||'error')}catch(e){alert(msg)}}
-  // Always keep saved session optional; do not auto-open the app from old localStorage unless user clicks Continue.
-  try{
-    const oldBoot=window.boot;
-    window.forceLoginFirst=function(){try{renderAuth('login')}catch(e){console.warn(e)}};
-  }catch(e){}
+  'use strict';
+  if(window.__VSCORE_V82_2_CLEAN_REPLACE__) return;
+  window.__VSCORE_V82_2_CLEAN_REPLACE__=true;
 
-  // Harden real-camera capture so local file testing does not show a dead black preview or browser "select a file" error.
-  window.v823CameraEnvironmentOK=function(){
-    return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia) && window.isSecureContext && location.protocol!=='file:';
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=(el)=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const isMgr=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return false}};
+  const me=()=>{try{return S?.profile?.id||'me'}catch(_){return 'me'}};
+  const toastOk=(m)=>{try{toast(m,'ok')}catch(_){console.log(m)}};
+
+  // Stop old patches from printing many repeated "loaded" logs.
+  const oldLog=console.log.bind(console);
+  console.log=function(){
+    try{
+      const m=Array.from(arguments).join(' ');
+      if(/V7\d|V8\d|loaded|patch/i.test(m) && /loaded/i.test(m)) return;
+    }catch(_){ }
+    return oldLog.apply(console,arguments);
   };
 
-  if(typeof window.v67StrictAttendanceCamera==='function'){
-    window.v67StrictAttendanceCamera=async function(input,opts={}){
-      if(!input)return;
-      if(!window.v823CameraEnvironmentOK()){
-        toastSafe('Camera testing must be on your HTTPS GitHub Pages link. Local downloaded file cannot open real camera safely.','error');
-        return;
+  function ignoreStore(){
+    const out={};
+    ['vscore_ignored_today_clean','v76_ignored_cases','v75_ignored_cases','v74_ignored_cases'].forEach(k=>{
+      try{Object.assign(out,JSON.parse(localStorage.getItem(k)||'{}')||{})}catch(_){ }
+    });
+    return out;
+  }
+  function saveIgnoreStore(m){
+    localStorage.setItem('vscore_ignored_today_clean',JSON.stringify(m));
+    // keep compatibility with older patches so they do not re-show the same card
+    localStorage.setItem('v76_ignored_cases',JSON.stringify(m));
+    localStorage.setItem('v75_ignored_cases',JSON.stringify(m));
+    localStorage.setItem('v74_ignored_cases',JSON.stringify(m));
+  }
+  function caseKey(card){
+    if(!card) return '';
+    let k=card.getAttribute('data-case')||card.dataset.case||card.dataset.id||card.getAttribute('data-id')||'';
+    if(!k){
+      const t=TXT(card).toLowerCase();
+      if(/no time in|missing time|attendance/.test(t)){
+        const name=(t.match(/([a-z][a-z\s.]{2,40})(?: no time in| missing| attendance)/i)||[])[1]||t.slice(0,60);
+        k='attendance:'+name.replace(/[^a-z0-9]+/g,'_')+':'+new Date().toISOString().slice(0,10);
       }
-      let stream=null,facing=opts.facing||'user';
-      const stop=()=>{try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(_){} stream=null;};
-      const start=async()=>{
-        stop();
-        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}},audio:false});
-        const v=document.getElementById('v823Video'); if(v)v.srcObject=stream;
-        const lbl=document.getElementById('v823Facing'); if(lbl)lbl.textContent=facing==='user'?'Front Camera':'Back Camera';
-      };
+    }
+    return k||('case:'+TXT(card).toLowerCase().slice(0,80).replace(/[^a-z0-9]+/g,'_'));
+  }
+  function ignoreKeys(card,key=''){
+    const set=new Set();
+    const add=v=>{v=String(v||'').trim(); if(v&&v!=='undefined'&&v!=='null')set.add(v)};
+    add(key); add(caseKey(card));
+    if(card){
+      add(card.getAttribute('data-case')); add(card.dataset.case); add(card.dataset.id); add(card.getAttribute('data-id'));
+      $$('button',card).forEach(b=>{
+        const on=b.getAttribute('onclick')||'';
+        if(/IgnoreCase|vscoreCleanIgnoreToday/i.test(on)){
+          Array.from(on.matchAll(/['"]([^'"]+)['"]/g)).forEach(m=>add(m[1]));
+        }
+      });
+      const t=TXT(card).toLowerCase();
+      if(/no time in|missing time|attendance action|attendance/.test(t)){
+        add('attendance_text:'+new Date().toISOString().slice(0,10)+':'+t.replace(/ignore today|open attendance|close case|resolve|refresh/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,120));
+      }
+    }
+    return Array.from(set);
+  }
+  function ignoredCard(card,key=''){
+    const m=ignoreStore();
+    return ignoreKeys(card,key).some(k=>m[k]);
+  }
+
+  window.vscoreCleanIgnoreToday=function(key,card){
+    const m=ignoreStore();
+    ignoreKeys(card,key||('manual:'+Date.now())).forEach(k=>m[k]={by:me(),at:new Date().toISOString()});
+    saveIgnoreStore(m);
+    if(card&&card.remove)card.remove();
+    toastOk('Ignored on your interface only.');
+    setTimeout(()=>{try{cleanInterface()}catch(_){}},20);
+  };
+  // Replace old ignore functions so old buttons all do only one stable action.
+  window.v74IgnoreCase=window.v75IgnoreCase=window.v76IgnoreCase=window.vscoreCleanIgnoreToday;
+
+  function normalizeIgnoreButtons(card){
+    if(!card || !isMgr()) return;
+    const t=TXT(card).toLowerCase();
+    const isAttendance=/^attendance:/.test(caseKey(card))||/no time in|missing time|attendance action/.test(t);
+    if(!isAttendance) return;
+    const key=caseKey(card);
+    const caseLike=card.matches?.('.v62-case,.v76-row,.v74-card')||card.hasAttribute('data-case')||card.querySelector('.v62-case-actions,.v76-actions,.v74-actions')||/no time in|missing time|attendance action/.test(t);
+    if(!caseLike) return;
+    if(ignoredCard(card,key)){ card.remove(); return; }
+
+    let actionBox=card.querySelector('.v62-case-actions,.v76-actions,.v74-actions,.split');
+    if(!actionBox){
+      actionBox=document.createElement('div');
+      actionBox.className='split vscore-clean-actions';
+      card.appendChild(actionBox);
+    }
+    const buttons=$$('button',card).filter(b=>TXT(b)==='Ignore Today');
+    let btn=buttons.find(b=>b.classList.contains('vscore-ignore-one'))||buttons[0]||null;
+    buttons.filter(b=>b!==btn).forEach(b=>b.remove());
+    if(!btn){
+      btn=document.createElement('button');
+      btn.textContent='Ignore Today';
+    }
+    btn.className='btn sm ghost vscore-ignore-one';
+    btn.type='button';
+    btn.onclick=function(ev){ev.preventDefault();ev.stopImmediatePropagation?.();ev.stopPropagation();window.vscoreCleanIgnoreToday(key,card)};
+    if(btn.parentElement!==actionBox||actionBox.firstChild!==btn)actionBox.insertBefore(btn, actionBox.firstChild);
+  }
+
+  function dedupeButtonsWithin(box){
+    const seen=new Set();
+    $$('button',box).forEach(btn=>{
+      const txt=TXT(btn);
+      // Keep buttons that are supposed to repeat only when they are in different cards.
+      const scope = btn.closest('.v62-case,.v76-row,.v74-card,.card,tr') || box;
+      const key = txt+'@@'+(scope.__vscoreScopeId || (scope.__vscoreScopeId=Math.random().toString(36).slice(2)));
+      if((txt==='Ignore Today'||txt==='Attendance Monitor') && seen.has(key)) btn.remove();
+      else seen.add(key);
+    });
+  }
+
+  function cleanMenu(){
+    const nav=$('.nav'); if(!nav) return;
+    const seen=new Set();
+    $$('button',nav).forEach(btn=>{
+      const tab=btn.getAttribute('data-tab')||'';
+      const label=TXT(btn).toLowerCase();
+      const key=(tab||label).replace(/\s+/g,'_');
+      if(!key) return;
+      if(seen.has(key)){ btn.remove(); return; }
+      seen.add(key);
+    });
+    // Force only one Attendance Monitor by label, even if data-tab differs from old patch.
+    const att=$$('button',nav).filter(b=>/attendance monitor/i.test(TXT(b)));
+    att.slice(1).forEach(b=>b.remove());
+  }
+
+  function cleanInterface(){
+    cleanMenu();
+    // no refresh buttons from newer unstable attempts
+    $$('button').forEach(b=>{
+      const t=TXT(b);
+      if(/^Refresh Data$|^Refresh This Page$|^Pull to refresh$/i.test(t)) b.remove();
+    });
+    // remove duplicate attendance navs/cards and normalize ignore buttons.
+    $$('.v62-case,.v76-row,.v74-card,.card').forEach(card=>normalizeIgnoreButtons(card));
+    dedupeButtonsWithin(document.body);
+  }
+  window.vscoreCleanInterface=cleanInterface;
+
+  function wrap(name){
+    const old=window[name];
+    if(typeof old!=='function' || old.__vscoreCleanWrapped) return;
+    const neu=function(){
+      const res=old.apply(this,arguments);
+      setTimeout(cleanInterface,0);
+      setTimeout(cleanInterface,120);
+      return res;
+    };
+    neu.__vscoreCleanWrapped=true;
+    window[name]=neu;
+  }
+  wrap('renderApp');
+  wrap('renderPage');
+
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest('button');
+    if(!btn) return;
+    if(TXT(btn)==='Ignore Today'){
+      const card=btn.closest('.v62-case,.v76-row,.v74-card,.card');
+      if(card){
+        e.preventDefault(); e.stopImmediatePropagation?.(); e.stopPropagation();
+        window.vscoreCleanIgnoreToday(caseKey(card),card);
+      }
+    }
+  },true);
+
+  let timer=null;
+  const mo=new MutationObserver(()=>{
+    clearTimeout(timer);
+    timer=setTimeout(cleanInterface,80);
+  });
+  try{mo.observe(document.body,{childList:true,subtree:true});}catch(_){ }
+
+  window.addEventListener('load',()=>setTimeout(cleanInterface,300));
+  setTimeout(cleanInterface,500);
+})();
+
+/* ================= V83 STAFF-FRIENDLY POINTS + BUTTON SAFETY + CLOSED CASE UX ================= */
+(function(){
+  'use strict';
+  if(window.__VSCORE_V83_STAFF_BUTTON_SAFE__)return;
+  window.__VSCORE_V83_STAFF_BUTTON_SAFE__=true;
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const roleKey=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/\s+/g,'_');
+  const isRetail=()=>{try{return typeof isOwner==='function'&&isOwner()}catch(_){return ['retail_head','head_office_admin','head_office','admin','management','master','hr'].includes(roleKey())}};
+  const isLead=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return isRetail()||['manager','branch_manager','team_leader'].includes(roleKey())}};
+  const go=tab=>{try{S.tab=tab;renderPage();setTimeout(()=>{try{loadData().then(renderPage)}catch(_){}},20)}catch(e){safeToast83('Page did not open. Refresh once.','error')}};
+  function safeToast83(msg,type='ok'){try{toast(msg,type)}catch(_){console[type==='error'?'error':'log'](msg)}}
+  function addStyle83(){
+    if(QS('#v83-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v83-style">
+      .v83-home{display:grid;gap:14px}.v83-hero{background:#fff;border:1px solid #e5e7eb;border-top:5px solid #facc15;border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(15,23,42,.07)}.v83-hero h2{margin:0;color:#7f1d1d;font-size:26px;line-height:1.08}.v83-points{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(220px,.9fr);gap:12px}.v83-point-card{background:linear-gradient(135deg,#fff7ed,#ffffff);border:1px solid #fed7aa;border-radius:18px;padding:16px}.v83-point-num{font-size:46px;line-height:1;color:#991b1b;font-weight:1000}.v83-progress{height:12px;border-radius:999px;background:#e5e7eb;overflow:hidden;margin:10px 0}.v83-progress span{display:block;height:100%;background:linear-gradient(90deg,#ef4444,#facc15,#16a34a)}.v83-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.v83-tile{border:1px solid #e5e7eb;border-radius:16px;padding:13px;background:#fff;text-align:left;box-shadow:0 8px 22px rgba(15,23,42,.05);font-weight:1000;color:#111827}.v83-tile b{display:block;color:#7f1d1d;margin-bottom:5px}.v83-tile span{display:block;color:#64748b;font-size:12px;font-weight:800}.v83-alert{border-left:5px solid #2563eb;background:#eff6ff;color:#1e3a8a;border-radius:14px;padding:12px}.v83-alert.warn{border-color:#f59e0b;background:#fffbeb;color:#92400e}.v83-alert.good{border-color:#22c55e;background:#f0fdf4;color:#14532d}.v83-manager-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:12px}.v83-safe-missing{outline:2px solid #f59e0b!important;outline-offset:2px}.v62-closed-card{border-color:#bbf7d0!important;background:#f8fffb!important}.v62-closed-card .v62-stage div{background:#22c55e!important}
+      @media(max-width:860px){.v83-points,.v83-actions,.v83-manager-strip{grid-template-columns:1fr}.v83-point-num{font-size:38px}.v83-hero{border-radius:16px;padding:13px}.v83-tile{min-height:64px}}
+    </style>`);
+  }
+  function pointInfo83(){
+    const p=Number(window.S?.profile?.current_points??100);
+    let rulesArr=[];try{rulesArr=typeof rules==='function'?rules():[]}catch(_){}
+    rulesArr=(rulesArr||[]).slice().sort((a,b)=>Number(a.min_points)-Number(b.min_points));
+    const cur=[...rulesArr].reverse().find(r=>p>=Number(r.min_points))||{label:'Starting Standing',description:'Keep completing actions.',min_points:0,color:'blue'};
+    const next=rulesArr.find(r=>Number(r.min_points)>p);
+    const prevMin=Number(cur.min_points||0),nextMin=Number(next?.min_points||Math.max(160,p+20));
+    const pct=Math.max(0,Math.min(100,((p-prevMin)/Math.max(1,nextMin-prevMin))*100));
+    return {points:p,current:cur,next,remaining:next?Math.max(0,Number(next.min_points)-p):0,pct};
+  }
+  function openTasks83(){
+    const id=String(window.S?.profile?.id||'');
+    return (window.S?.tasks||[]).filter(t=>String(t.assigned_to_employee_id)===id&&!['approved','closed','cancelled','done'].includes(String(t.status||'').toLowerCase())).length;
+  }
+  function memoDue83(){
+    try{const active=(typeof activeMemos==='function'?activeMemos():(S.memos||[]).filter(m=>m.is_active!==false));const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));return active.filter(m=>!acked.has(String(m.id))).length}catch(_){return 0}
+  }
+  function staffHome83(){
+    addStyle83();
+    const p=window.S?.profile||{},info=pointInfo83(),tasks=openTasks83(),memos=memoDue83();
+    const next=info.next?`${info.remaining.toFixed(0).replace(/\\.0$/,'')} pts to ${E(info.next.label)}`:'Top standing reached';
+    return `<div class="v83-home"><div class="v83-hero"><h2>Hi, ${E(String(p.full_name||'Ka-Varda').split(' ')[0])}</h2></div><div class="v83-points"><div class="v83-point-card"><div class="kpi">My V-Points</div><div class="v83-point-num">${info.points.toFixed(2).replace(/\\.00$/,'')}</div><span class="pill ${E(info.current.color||'blue')}">${E(info.current.label||'Standing')}</span><div class="v83-progress"><span style="width:${info.pct}%"></span></div><div class="small muted">${next}</div></div><div class="v83-point-card"><div class="kpi">Today</div>${tasks||memos?`<div class="v83-alert warn"><b>${tasks+memos} action${tasks+memos===1?'':'s'} pending</b></div>`:'<div class="v83-alert good"><b>No required action pending</b></div>'}<br><button class="btn blue full" onclick="v83Go('my_actions')">Open My Actions</button></div></div><div class="v83-actions"><button class="v83-tile" onclick="v83Go('attendance')"><b>Time Clock</b><span>Time in / out</span></button><button class="v83-tile" onclick="v83Go('missions')"><b>Missions</b><span>${tasks} open</span></button><button class="v83-tile" onclick="v83Go('memos')"><b>Memos</b><span>${memos} unread</span></button><button class="v83-tile" onclick="v83Go('training')"><b>Training</b><span>Learning</span></button><button class="v83-tile" onclick="v83Go('records')"><b>Records</b><span>Points history</span></button><button class="v83-tile" onclick="v83Go('rewards')"><b>Rewards</b><span>Claims</span></button><button class="v83-tile" onclick="v83Go('concern')"><b>Report</b><span>Concern</span></button><button class="v83-tile" onclick="v83Go('profile')"><b>Profile</b><span>My info</span></button></div></div>`;
+  }
+  function managerStrip83(){
+    if(!isLead()||!QS('#page'))return;
+    const page=QS('#page');
+    if(page.querySelector('.v83-manager-strip'))return;
+    page.insertAdjacentHTML('afterbegin',`<div class="v83-manager-strip"><button class="btn sm blue" onclick="v83Go('case_center')">Case Center</button><button class="btn sm green" onclick="v83Go('attendance')">Attendance</button><button class="btn sm orange" onclick="v83Go('missions')">Missions</button><button class="btn sm yellow" onclick="v83Go('memos')">Memos</button><button class="btn sm dark" onclick="v83Go('employees')">Staff</button></div>`);
+  }
+  function buttonAudit83(root=document){
+    QSA('button',root).forEach(btn=>{
+      if(btn.dataset.v83Audited==='1')return;
+      btn.dataset.v83Audited='1';
+      if(!btn.getAttribute('type')&&!btn.closest('form'))btn.type='button';
+      const txt=(btn.textContent||btn.getAttribute('aria-label')||'Button').replace(/\s+/g,' ').trim();
+      if(txt&&!btn.getAttribute('aria-label'))btn.setAttribute('aria-label',txt);
+      if(txt&&!btn.title)btn.title=txt;
+      if(btn.dataset.tab&&!btn.onclick)btn.onclick=()=>go(btn.dataset.tab);
+      if(btn.dataset.v62Filter&&!btn.onclick)btn.onclick=()=>{localStorage.setItem('v62_case_filter',btn.dataset.v62Filter);renderPage();};
+    });
+  }
+  function enhance83(){addStyle83();buttonAudit83(document);managerStrip83();}
+  window.v83Go=go;
+  const oldEmpDash83=window.empDash;
+  window.empDash=empDash=function(){if(!isLead())return staffHome83();return oldEmpDash83?oldEmpDash83.apply(this,arguments):staffHome83()};
+  const oldOwnerDash83=window.ownerDash;
+  window.ownerDash=ownerDash=function(){const html=oldOwnerDash83?oldOwnerDash83.apply(this,arguments):'';setTimeout(enhance83,0);return html};
+  const oldRenderPage83=window.renderPage;
+  window.renderPage=renderPage=function(){const r=oldRenderPage83.apply(this,arguments);setTimeout(enhance83,40);return r};
+  const oldRenderApp83=window.renderApp;
+  window.renderApp=renderApp=function(){const r=oldRenderApp83.apply(this,arguments);setTimeout(enhance83,80);return r};
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest&&e.target.closest('button');
+    if(!btn||btn.disabled||btn.dataset.tab||btn.classList.contains('tab')||btn.classList.contains('v62-tab'))return;
+    const label=(btn.textContent||'').toLowerCase();
+    if(!/submit|save|approve|validate|close case|acknowledge|accept|create|share|claim|delete|remove|activate|sign in/.test(label))return;
+    if(btn.dataset.v83Busy==='1'){e.preventDefault();e.stopPropagation();return;}
+    btn.dataset.v83Busy='1';
+    setTimeout(()=>{delete btn.dataset.v83Busy},1400);
+  },true);
+  window.addEventListener('error',e=>{if(String(e.message||'').includes('ResizeObserver'))return;console.warn('V83 background issue:',e.message||e)});
+  window.addEventListener('unhandledrejection',e=>{console.warn('V83 background promise:',(e.reason&&e.reason.message)||e.reason||e)});
+  window.addEventListener('load',()=>setTimeout(enhance83,500));
+})();
+/* ================= END V83 ================= */
+
+/* ================= V84 TERMS CLOSE + CLEAR AFTER SUBMIT ================= */
+(function(){
+  'use strict';
+  if(window.__VSCORE_V84_TERMS_CLEAR__)return;
+  window.__VSCORE_V84_TERMS_CLEAR__=true;
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const today=()=>new Date().toISOString().slice(0,10);
+  function addStyle84(){
+    if(QS('#v84-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v84-style">
+      #termsGate .modal-card{width:min(760px,94vw)!important;max-height:88vh!important;display:flex;flex-direction:column;overflow:hidden!important}
+      #termsGate .terms-scroll{height:auto!important;max-height:52vh!important;overflow:auto!important}
+      .v84-terms-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #e5e7eb;padding:12px 0 0;margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      @media(max-width:640px){.v84-terms-actions{grid-template-columns:1fr}.v84-terms-actions .btn{width:100%}}
+    </style>`);
+  }
+  function termsKey84(kind){return `VSCORE_TERMS_${kind}_${S?.profile?.id||'anon'}_V84`}
+  function hasAccepted84(){
+    try{
+      if(localStorage.getItem(termsKey84('ACCEPTED'))==='1')return true;
+      return (S.termsRows||[]).some(t=>String(t.accepted_version||'')==='V16'||String(t.accepted_version||'')==='V84');
+    }catch(_){return false}
+  }
+  function skippedToday84(){try{return localStorage.getItem(termsKey84('SKIP'))===today()}catch(_){return false}}
+  async function acceptTerms84(btn){
+    if(btn){btn.disabled=true;btn.textContent='Saving...'}
+    try{
+      localStorage.setItem(termsKey84('ACCEPTED'),'1');
+      S.termsRows=S.termsRows||[];
+      if(!S.termsRows.some(t=>String(t.accepted_version||'')==='V84'))S.termsRows.push({employee_id:S.profile?.id,accepted_version:'V84',accepted_at:new Date().toISOString()});
       try{
-        if(typeof modal==='function') modal(`<div class="v67-camera"><div class="split" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Take Real Camera Photo</h2><span class="pill blue" id="v823Facing">Front Camera</span></div><button class="btn sm dark" id="v823Close">Close</button></div><br><video id="v823Video" autoplay playsinline muted style="width:100%;max-height:360px;background:#111;border-radius:16px;object-fit:cover"></video><canvas id="v823Canvas" style="display:none"></canvas><div class="split" style="margin-top:12px"><button class="btn ghost" id="v823Flip">Flip</button><button class="btn green" id="v823Capture">Capture</button></div><p class="muted small"><b>Real camera only.</b> Use the GitHub HTTPS link and allow camera permission.</p></div>`);
-        else document.body.insertAdjacentHTML('beforeend',`<div class="modal"><div class="modal-card v67-camera"><h2>Take Real Camera Photo</h2><video id="v823Video" autoplay playsinline muted style="width:100%;max-height:360px;background:#111;border-radius:16px;object-fit:cover"></video><canvas id="v823Canvas" style="display:none"></canvas><div class="split"><button class="btn ghost" id="v823Flip">Flip</button><button class="btn green" id="v823Capture">Capture</button><button class="btn dark" id="v823Close">Close</button></div></div></div>`);
-        await start();
-        const close=()=>{stop();try{if(typeof closeModal==='function')closeModal();else document.querySelector('.modal')?.remove()}catch(_){}};
-        document.getElementById('v823Close').onclick=close;
-        document.getElementById('v823Flip').onclick=async()=>{facing=facing==='user'?'environment':'user';try{await start()}catch(e){toastSafe('This device did not allow switching camera.','error')}};
-        document.getElementById('v823Capture').onclick=()=>{
-          const v=document.getElementById('v823Video'), c=document.getElementById('v823Canvas');
-          if(!v || v.readyState<2 || !(v.videoWidth>0)) {toastSafe('Camera not ready yet. Wait 1 second, then tap Capture again.','error');return;}
-          c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
-          c.toBlob(async blob=>{
-            if(!blob){toastSafe('Photo capture failed. Please retake.','error');return;}
-            const file=new File([blob],(opts.prefix||'camera')+'_'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
-            try{const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){console.warn('attach failed',e)}
-            close();
-            try{await opts.onFile?.(file)}catch(e){console.error(e);toastSafe(e.message||String(e),'error')}
-          },'image/jpeg',0.82);
-        };
-      }catch(e){stop();try{if(typeof closeModal==='function')closeModal();}catch(_){} toastSafe('Camera permission blocked. Open the HTTPS GitHub link and allow camera access.','error');}
+        const r=await sb.from('vscore_terms_acceptance').upsert({employee_id:S.profile.id,accepted_version:'V84',accepted_at:new Date().toISOString(),user_agent:navigator.userAgent},{onConflict:'employee_id,accepted_version'});
+        if(r.error)console.warn('terms save skipped',r.error.message);
+      }catch(e){console.warn('terms save skipped',e.message)}
+      QS('#termsGate')?.remove();
+      try{toast('Terms accepted.','ok')}catch(_){}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='Accept & Continue'}
+    }
+  }
+  function closeTerms84(){
+    try{localStorage.setItem(termsKey84('SKIP'),today())}catch(_){}
+    QS('#termsGate')?.remove();
+    try{toast('Terms closed for now.','ok')}catch(_){}
+  }
+  window.showTermsGate=function(){
+    addStyle84();
+    if(!S.profile||QS('#termsGate')||hasAccepted84()||skippedToday84())return;
+    const body=typeof termsText==='function'?termsText():'<p>Please review company privacy and terms.</p>';
+    document.body.insertAdjacentHTML('beforeend',`<div id="termsGate" class="modal"><div class="modal-card"><div class="split" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Privacy and Terms</h2><button class="btn sm ghost" id="termsCloseTop" type="button">Close</button></div><p class="muted">Please review. You can accept now or close and continue for today.</p><div id="termsScroll" class="terms-scroll">${body}<p><b>End of Terms.</b></p></div><div class="v84-terms-actions"><button id="acceptTerms" class="btn green full" type="button">Accept & Continue</button><button id="termsCloseBottom" class="btn ghost full" type="button">Close for Now</button></div></div></div>`);
+    QS('#acceptTerms').onclick=e=>acceptTerms84(e.currentTarget);
+    QS('#termsCloseTop').onclick=closeTerms84;
+    QS('#termsCloseBottom').onclick=closeTerms84;
+  };
+  window.v84AcceptTerms=acceptTerms84;
+  window.v84CloseTerms=closeTerms84;
+  function shouldClearForm84(form,btn,labels){
+    if(!form)return false;
+    const id=String(form.id||'').toLowerCase();
+    if(/login|activate|auth|profile|search|filter|preview|weekly|quiz|exam/.test(id))return false;
+    if(form.closest('#termsGate'))return false;
+    const label=[btn?.textContent,labels?.toast,labels?.success,labels?.reset,form.id,form.className].join(' ').toLowerCase();
+    if(/sign in|login|activate|profile|refresh|print|export|preview|search|filter|acknowledge|approve|validate|delete|remove|close case/.test(label))return false;
+    return /submit|send|share|post|publish|create|upload|save|file|report|assign|add|comment|claim/.test(label)||!!form.querySelector('textarea,input[type="file"]');
+  }
+  function clearForm84(form){
+    if(!form||!form.isConnected)return;
+    try{form.reset()}catch(_){}
+    QSA('textarea,input',form).forEach(el=>{
+      if(el.readOnly||el.disabled)return;
+      const type=String(el.type||'text').toLowerCase();
+      if(['submit','button','reset','hidden','checkbox','radio','range','color','date','datetime-local','time'].includes(type))return;
+      try{el.value=''}catch(_){}
+    });
+    QSA('.v47-upload-preview,.v74-photo-grid,.v821-preview,.feed-preview,.v49-preview,.v51-preview',form).forEach(x=>{x.innerHTML='';x.classList.add('hidden')});
+  }
+  document.addEventListener('submit',e=>{window.__v84LastSubmitForm=e.target},true);
+  if(typeof act==='function'&&!window.__v84ActClearPatched){
+    window.__v84ActClearPatched=true;
+    const base=act;
+    act=async function(btn,labels,fn,after){
+      const form=btn?.closest?.('form')||window.__v84LastSubmitForm||null;
+      const clear=shouldClearForm84(form,btn,labels);
+      const result=await base.call(this,btn,labels,fn,after);
+      if(clear)setTimeout(()=>clearForm84(form),80);
+      return result;
+    };
+    window.act=act;
+  }
+  function clearNearbySend84(btn){
+    const box=btn?.closest?.('.chat-compose,.comment-input-row,.split,.field,.card,.modal-card');
+    if(!box)return;
+    QSA('textarea,input',box).forEach(el=>{
+      const type=String(el.type||'text').toLowerCase();
+      if(el.readOnly||el.disabled||['button','submit','reset','hidden','checkbox','radio','file'].includes(type))return;
+      if(/search|filter|email|password/i.test(el.id||el.name||''))return;
+      el.value='';
+    });
+  }
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('button');
+    if(!btn)return;
+    const txt=(btn.textContent||'').toLowerCase();
+    if(/\bsend\b|comment|reply|post/.test(txt))setTimeout(()=>clearNearbySend84(btn),900);
+  },true);
+  setTimeout(()=>{if(QS('#termsGate')&&!QS('#termsCloseTop')){QS('#termsGate')?.remove();showTermsGate()}},600);
+})();
+/* ================= END V84 ================= */
+
+/* ================= V85 COMPANY ROLE POLICY FINAL =================
+   Final rule layer: staff act on their own work, branch leaders monitor/validate
+   their assigned branch work, and retail/executive users make final decisions.
+*/
+(function(){
+  'use strict';
+  if(window.__VSCORE_V85_COMPANY_ROLE_POLICY__)return;
+  window.__VSCORE_V85_COMPANY_ROLE_POLICY__=true;
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt85=d=>{try{return typeof fmt==='function'?fmt(d):(d?new Date(d).toLocaleString():'-')}catch(_){return d||'-'}};
+  const money85=n=>{try{return typeof money==='function'?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n||0)}};
+  const me85=()=>String(window.S?.profile?.id||'');
+  const role85=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos85=()=>String(window.S?.profile?.position||'').toUpperCase();
+  const retailRoles85=new Set(['retail_head','national_retail_head','national_head','head_office_admin','head_office','executive','executive_management','admin','management','master','hr']);
+  const branchRoles85=new Set(['manager','branch_manager','team_leader','fsqa_officer','branch_leader']);
+  const closed85=new Set(['approved','closed','cancelled','done','completed','validated','resolved_true','resolved_false','closed_/_deducted','closed / deducted']);
+
+  function toast85(msg,type='ok'){try{toast(msg,type)}catch(_){console.log(msg)}}
+  function addStyle85(){
+    if(QS('#v85-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v85-style">
+      .v85-dash{display:grid;gap:14px}.v85-hero{background:#fff;border:1px solid #e5e7eb;border-left:6px solid #b91c1c;border-radius:16px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.05)}.v85-hero h2{margin:0;color:#7f1d1d;font-size:25px;line-height:1.1}.v85-hero p{margin:6px 0 0;color:#475569}.v85-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.v85-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:13px}.v85-kpi span{display:block;color:#64748b;font-size:12px;font-weight:1000;text-transform:uppercase}.v85-kpi b{display:block;color:#7f1d1d;font-size:28px;margin-top:4px}.v85-panel{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px}.v85-panel h3{margin:0 0 10px;color:#7f1d1d}.v85-actions{display:flex;gap:8px;flex-wrap:wrap}.v85-actions .btn{flex:1 1 auto}.v85-note{display:inline-flex;align-items:center;border-radius:12px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:1000;padding:8px 10px}.v85-blocked{opacity:.55!important;cursor:not-allowed!important;filter:grayscale(.1)}.v85-hidden{display:none!important}.v85-memo-head{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin:8px 0}.v85-progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}.v85-progress span{display:block;height:100%;background:#16a34a}
+      @media(max-width:860px){.v85-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v85-hero{border-radius:14px;padding:13px}.v85-hero h2{font-size:22px}.v85-actions .btn{width:100%}}
+      @media(max-width:560px){.v85-grid{grid-template-columns:1fr}.v85-kpi b{font-size:25px}}
+    </style>`);
+  }
+
+  function isRetail85(){
+    const r=role85(),p=pos85();
+    return retailRoles85.has(r)||/NATIONAL RETAIL|RETAIL HEAD|HEAD OFFICE|EXECUTIVE|NATIONAL HEAD|HR \/ COMPLIANCE/.test(p);
+  }
+  function isBranch85(){
+    if(isRetail85())return false;
+    const r=role85(),p=pos85();
+    return branchRoles85.has(r)||/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|MANAGER/.test(p);
+  }
+  function isStaff85(){return !isRetail85()&&!isBranch85()}
+  function roleName85(){return isRetail85()?'Retail / Executive':isBranch85()?'Branch Leader / Manager':'Staff'}
+  function parseArr85(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.map(String).filter(Boolean);
+    let s=String(v).trim();
+    for(let i=0;i<2;i++){try{if(/%[0-9A-F]{2}/i.test(s))s=decodeURIComponent(s)}catch(_){}}
+    try{const j=JSON.parse(s); if(Array.isArray(j))return j.map(String).filter(Boolean); if(j&&Array.isArray(j.branches))return j.branches.map(String).filter(Boolean)}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function normBranch85(v){return String(v||'').trim().toLowerCase()}
+  function emp85(id){
+    try{return (typeof emp==='function'?emp(id):null)||[...(window.S?.allEmployees||[]),...(window.S?.employees||[])].find(e=>String(e.id)===String(id))||{full_name:'-',branch:'-',role:'employee'}}
+    catch(_){return {full_name:'-',branch:'-',role:'employee'}}
+  }
+  function allBranches85(){
+    const defaults=(typeof defaultBranches!=='undefined'?defaultBranches:[])||[];
+    const fromB=(window.S?.branches||[]).map(b=>b.branch_name||b.name||b.branch).filter(Boolean);
+    const fromE=[...(window.S?.allEmployees||[]),...(window.S?.employees||[])].map(e=>e.branch).filter(Boolean);
+    return [...new Set([...defaults,...fromB,...fromE].filter(Boolean))].sort();
+  }
+  function settingAccess85(id=me85()){
+    const set=window.S?.settings||{},keys=['branch_access_'+id,'manager_branch_access_'+id,'assigned_branches_'+id,'manager_branches_'+id];
+    let out=[]; keys.forEach(k=>out.push(...parseArr85(set[k])));
+    try{out.push(...parseArr85(localStorage.getItem('v77_branch_access_'+id)||localStorage.getItem('branch_access_'+id)||localStorage.getItem('v77_branch_access_'+id)))}catch(_){}
+    return out;
+  }
+  function branchesFor85(e){
+    if(!e)return [];
+    return [...new Set([e.branch,...parseArr85(e.assigned_branches),...parseArr85(e.managed_branches),...parseArr85(e.access_branches),...parseArr85(e.branch_access),...parseArr85(e.branch_scope),...settingAccess85(e.id)].filter(Boolean))];
+  }
+  function allowedBranches85(){
+    if(isRetail85())return allBranches85();
+    const p=window.S?.profile||{};
+    const out=[p.branch,...parseArr85(p.assigned_branches),...parseArr85(p.managed_branches),...parseArr85(p.access_branches),...parseArr85(p.branch_access),...parseArr85(p.branch_scope),...settingAccess85(p.id)];
+    return [...new Set(out.filter(Boolean))];
+  }
+  function branchAllowed85(branch){
+    if(isRetail85())return true;
+    const n=normBranch85(branch);
+    if(!n)return true;
+    return allowedBranches85().some(b=>normBranch85(b)===n);
+  }
+  function staffLevelEmp85(e){
+    const r=String(e?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+    const p=String(e?.position||'').toUpperCase();
+    return !retailRoles85.has(r)&&!branchRoles85.has(r)&&!/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|RETAIL|HEAD OFFICE|EXECUTIVE|HR|MANAGER/.test(p);
+  }
+  function branchManagedEmp85(e){return branchAllowed85(e?.branch)&&staffLevelEmp85(e)}
+  function task85(id){return (window.S?.tasks||[]).find(t=>String(t.id)===String(id))}
+  function taskStatus85(t){return String(t?.status||'assigned').toLowerCase()}
+  function taskClosed85(t){return closed85.has(taskStatus85(t))}
+  function taskBranch85(t){return t?.branch||emp85(t?.assigned_to_employee_id).branch||emp85(t?.assigned_by_employee_id).branch||''}
+  function taskAssigned85(t){return String(t?.assigned_to_employee_id||'')===me85()}
+  function taskGiven85(t){return String(t?.assigned_by_employee_id||'')===me85()}
+  function canViewTask85(t){if(!t)return false; if(isRetail85())return true; if(taskAssigned85(t)||taskGiven85(t))return true; return isBranch85()&&branchAllowed85(taskBranch85(t))}
+  function canAcceptProof85(t){return !!t&&!isRetail85()&&taskAssigned85(t)&&!taskClosed85(t)}
+  function canBranchValidate85(t){return !!t&&isBranch85()&&taskGiven85(t)&&!taskAssigned85(t)&&branchAllowed85(taskBranch85(t))&&!taskClosed85(t)}
+  function canCancelMission85(t){return !!t&&!taskClosed85(t)&&(isRetail85()||(isBranch85()&&taskGiven85(t)&&branchAllowed85(taskBranch85(t))))}
+  function submittedMission85(t){return ['submitted','pending_merit','for_validation','for_retail_review','under_review'].includes(taskStatus85(t))}
+  function caseFromKey85(key){
+    const raw=String(key||''),parts=raw.split(':'),type=parts.shift(),id=parts.join(':');
+    if(type==='task'){const t=task85(id);return t?{type,id,branch:taskBranch85(t),employee_id:t.assigned_to_employee_id,owner_id:t.assigned_by_employee_id,record:t}:null}
+    if(type==='violation'){const v=(S.violations||[]).find(x=>String(x.id)===String(id));return v?{type,id,branch:v.branch||emp85(v.employee_id).branch,employee_id:v.employee_id,owner_id:v.reported_by,record:v}:null}
+    if(type==='report'){const r=(S.reports||[]).find(x=>String(x.id)===String(id));return r?{type,id,branch:r.branch||emp85(r.reported_employee_id).branch,employee_id:r.reported_employee_id,owner_id:r.reporter_employee_id,reporter_id:r.reporter_employee_id,record:r}:null}
+    if(type==='fsqa'){const f=(S.fsqa||[]).find(x=>String(x.id)===String(id));return f?{type,id,branch:f.branch,owner_id:f.created_by,record:f}:null}
+    if(type==='attendance'){const employeeId=id.split('_')[0];return {type,id,branch:emp85(employeeId).branch,employee_id:employeeId,owner_id:employeeId,record:null}}
+    if(type==='memo')return {type,id,branch:S.profile?.branch,employee_id:S.profile?.id,owner_id:S.profile?.id,record:(S.memos||[]).find(m=>String(m.id)===String(id))};
+    return null;
+  }
+  function canManageCase85(c){if(!c)return false; if(isRetail85())return true; if(isBranch85())return branchAllowed85(c.branch); return false}
+
+  function nav85(){
+    if(isRetail85())return [
+      ['dashboard','Management Command Center'],['case_center','Case Center'],['employees','Employee Universe'],['accounts','Account Backup'],['attendance','Attendance Monitor'],['tasklist','Tasklist Monitor'],['missions','Missions / Actions'],['approvals','Merit Approvals'],['violations','Violations'],['fsqa','FSQA'],['memos','Memo Monitoring'],['training','Training Monitoring'],['policies','Policy Basis'],['forms','Forms Library'],['reports','Private Reports'],['news','News Feed'],['ratings','Customer Service Ratings'],['general_control','General Control'],['rewards','Rewards'],['audit','Audit Trail'],['settings','Settings']
+    ];
+    if(isBranch85())return [
+      ['dashboard','Branch Dashboard'],['my_actions','My Actions'],['attendance','Time Clock'],['tasklist','End-of-Shift Output'],['employees','Branch Staff'],['missions','Missions / Actions'],['case_center','Case Center'],['violations','Staff Issues'],['fsqa','FSQA'],['memos','Memo Hub'],['training','Training Monitor'],['policies','Varda Policies'],['forms','Forms'],['news','News Feed'],['ratings','Customer Service Ratings'],['achievement','File Achievement'],['concern','Report Concern'],['records','My Records'],['rewards','Rewards'],['chat','Chat'],['profile','Profile']
+    ];
+    return [
+      ['dashboard','Home'],['my_actions','My Actions'],['attendance','Time Clock'],['tasklist','End-of-Shift Output'],['missions','My Missions'],['memos','Memos / Alerts'],['training','My Training'],['policies','Varda Policies'],['forms','Forms'],['news','News Feed'],['ratings','Customer Service QR'],['achievement','File Achievement'],['concern','Report Concern'],['records','My Records'],['rewards','Rewards'],['chat','Chat'],['profile','Profile']
+    ];
+  }
+
+  function activeMemos85(){
+    try{return typeof activeMemos==='function'?activeMemos():(S.memos||[]).filter(m=>m.is_active!==false)}catch(_){return []}
+  }
+  function memoDue85(){
+    if(isRetail85())return 0;
+    const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));
+    return activeMemos85().filter(m=>!acked.has(String(m.id))).length;
+  }
+  function ackPercent85(){
+    const mem=activeMemos85();
+    const emps=(S.employees||[]).filter(e=>e.is_active!==false);
+    const total=mem.length*emps.length;
+    if(!total)return 100;
+    let done=0;
+    mem.forEach(m=>emps.forEach(e=>{if((S.allAcks||[]).some(a=>String(a.memo_id)===String(m.id)&&String(a.employee_id)===String(e.id)))done++}));
+    return Math.round((done/total)*100);
+  }
+  function pointInfo85(){
+    const p=Number(S.profile?.current_points??100);
+    let st={label:'Good Standing',color:'green'};
+    try{st=typeof standing==='function'?standing(p):st}catch(_){}
+    return {points:p,standing:st};
+  }
+  function retailDash85(){
+    addStyle85();
+    const tasks=(S.tasks||[]),need=tasks.filter(submittedMission85),openTasks=tasks.filter(t=>!taskClosed85(t)).length;
+    const openReports=(S.reports||[]).filter(r=>!closed85.has(String(r.status||'').toLowerCase())).length;
+    const openViol=(S.violations||[]).filter(v=>!closed85.has(String(v.status||'pending_validation').toLowerCase())).length;
+    const branches=[...new Set((S.employees||[]).map(e=>e.branch).filter(Boolean))];
+    return `<div class="v85-dash"><div class="v85-hero"><h2>Retail / Executive Control</h2><p>Monitoring, validation, final point approval, final case closing, and branch control.</p></div><div class="v85-grid"><div class="v85-kpi"><span>Need approval</span><b>${need.length}</b></div><div class="v85-kpi"><span>Open missions</span><b>${openTasks}</b></div><div class="v85-kpi"><span>Open cases</span><b>${openReports+openViol}</b></div><div class="v85-kpi"><span>Memo ack</span><b>${ackPercent85()}%</b></div></div><div class="grid two"><div class="v85-panel"><h3>Approval Queue</h3>${need.slice(0,6).map(t=>`<div class="notice"><b>${E(t.title||'Mission')}</b><br><span class="small muted">Assigned to ${E(emp85(t.assigned_to_employee_id).full_name)} - ${E(taskBranch85(t)||'-')} - ${E(t.status||'')}</span><br><br><button class="btn sm blue" onclick="v73MissionSummary('${E(t.id)}')">Review Summary</button> <button class="btn sm green" onclick="approveTask('${E(t.id)}',this)">Final Approve</button></div>`).join('')||'<div class="empty">No mission proofs waiting for final approval.</div>'}</div><div class="v85-panel"><h3>Branch Folders</h3>${branches.slice(0,10).map(b=>`<div class="notice"><b>${E(b)}</b><br><span class="small muted">${(S.employees||[]).filter(e=>e.branch===b).length} employees</span></div>`).join('')||'<div class="empty">No branch folders yet.</div>'}</div></div><div class="v85-panel"><h3>Quick Controls</h3><div class="v85-actions"><button class="btn blue" onclick="v85Go('attendance')">Attendance Monitor</button><button class="btn green" onclick="v85Go('tasklist')">Output Monitor</button><button class="btn yellow" onclick="v85Go('memos')">Memo Summary</button><button class="btn orange" onclick="v85Go('case_center')">Case Center</button><button class="btn dark" onclick="v85Go('employees')">Accounts</button></div></div></div>`;
+  }
+  function branchDash85(){
+    addStyle85();
+    const allowed=allowedBranches85();
+    const tasks=(S.tasks||[]).filter(t=>branchAllowed85(taskBranch85(t)));
+    const assignedToMe=tasks.filter(t=>taskAssigned85(t)&&!taskClosed85(t));
+    const givenByMe=tasks.filter(t=>taskGiven85(t)&&!taskClosed85(t));
+    const proof=givenByMe.filter(submittedMission85);
+    const staff=(S.employees||[]).filter(branchManagedEmp85);
+    const pts=pointInfo85();
+    return `<div class="v85-dash"><div class="v85-hero"><h2>Branch Leader Workspace</h2><p>Own compliance plus branch monitoring, mission assignment, proof validation, and recommendations for Retail.</p></div><div class="v85-grid"><div class="v85-kpi"><span>My V-Points</span><b>${money85(pts.points)}</b></div><div class="v85-kpi"><span>My actions</span><b>${assignedToMe.length+memoDue85()}</b></div><div class="v85-kpi"><span>Proof to validate</span><b>${proof.length}</b></div><div class="v85-kpi"><span>My staff</span><b>${staff.length}</b></div></div><div class="grid two"><div class="v85-panel"><h3>Branch Scope</h3>${allowed.map(b=>`<span class="pill blue">${E(b)}</span>`).join(' ')||'<div class="empty">No branch assigned.</div>'}<br><br><div class="v85-actions"><button class="btn blue" onclick="v85Go('attendance')">Attendance</button><button class="btn green" onclick="v85Go('tasklist')">Output</button><button class="btn yellow" onclick="v85Go('memos')">Memos</button><button class="btn orange" onclick="v85Go('missions')">Missions</button></div></div><div class="v85-panel"><h3>My Required Actions</h3>${assignedToMe.slice(0,5).map(t=>`<div class="notice"><b>${E(t.title||'Mission')}</b><br><span class="small muted">${E(t.status||'assigned')}</span><br><button class="btn sm blue" onclick="proofTask('${E(t.id)}')">Submit Proof</button></div>`).join('')||'<div class="empty">No assigned mission proof pending.</div>'}${memoDue85()?`<br><button class="btn yellow full" onclick="v85Go('memos')">${memoDue85()} memo needs acknowledgment</button>`:''}</div></div></div>`;
+  }
+
+  window.v85Go=function(tab){try{S.tab=tab;renderPage();setTimeout(()=>{try{loadData().then(renderPage)}catch(_){}},20)}catch(e){toast85('Page did not open. Refresh once.','error')}};
+  window.vscoreRolePolicy85={isRetail:isRetail85,isBranch:isBranch85,isStaff:isStaff85,allowedBranches:allowedBranches85};
+
+  const oldNav85=window.nav;
+  window.nav=nav=function(){return nav85()};
+
+  const oldEmpDash85=window.empDash;
+  const oldOwnerDash85=window.ownerDash;
+  window.empDash=empDash=function(){if(isRetail85())return retailDash85(); if(isBranch85())return branchDash85(); return oldEmpDash85?oldEmpDash85.apply(this,arguments):''};
+  window.ownerDash=ownerDash=function(){if(isRetail85())return retailDash85(); if(isBranch85())return branchDash85(); return oldOwnerDash85?oldOwnerDash85.apply(this,arguments):''};
+
+  const oldTarget85=window.targetEmployees;
+  if(typeof oldTarget85==='function'){
+    window.targetEmployees=targetEmployees=function(){
+      let arr=[];
+      try{arr=oldTarget85.apply(this,arguments)||[]}catch(_){arr=[]}
+      if(isRetail85())return arr;
+      if(isBranch85())return arr.filter(branchManagedEmp85);
+      return [];
+    };
+  }
+  const oldAssign85=window.assignMission;
+  if(typeof oldAssign85==='function'){
+    window.assignMission=assignMission=async function(e){
+      if(e?.preventDefault)e.preventDefault();
+      if(isStaff85())return toast85('Staff cannot assign missions. Please report the concern to your leader.','error');
+      if(isBranch85()){
+        const targets=(typeof targetEmployees==='function'?targetEmployees():[]);
+        if(!targets.length)return toast85('Branch leaders can assign only staff under their assigned branch.','error');
+      }
+      return oldAssign85.apply(this,arguments);
     };
   }
 
-  // Prevent old camera/file picker from triggering when real camera is required.
-  window.v60ManualGallery=function(){toastSafe('Gallery is disabled for Time In/Out. Use real camera on the HTTPS app link.','error')};
+  const oldCreateStaff85=window.createStaff;
+  if(typeof oldCreateStaff85==='function'){
+    window.createStaff=createStaff=async function(e){
+      if(e?.preventDefault)e.preventDefault();
+      const pos=QS('#staffPosition')?.value||'';
+      const branch=QS('#staffBranch')?.value||S.profile?.branch||'';
+      const newRole=(typeof posToRole==='function'?posToRole(pos):String(pos).toLowerCase());
+      if(isStaff85())return toast85('Staff cannot create accounts.','error');
+      if(isBranch85()){
+        if(!branchAllowed85(branch))return toast85('You can create staff only under your assigned branch.','error');
+        if(!staffLevelEmp85({role:newRole,position:pos}))return toast85('Branch leaders can create staff accounts only. Manager, FSQA, Retail, and Head Office accounts need Retail.','error');
+      }
+      return oldCreateStaff85.apply(this,arguments);
+    };
+  }
 
-  // Keep duplicate Ignore Today to one button after rendering.
-  window.v823CleanActionButtons=function(){try{
-    document.querySelectorAll('.case-card,.v821-card,.card').forEach(card=>{
-      const btns=[...card.querySelectorAll('button')].filter(b=>(b.textContent||'').trim()==='Ignore Today');
+  const oldAccept85=window.acceptTask;
+  if(typeof oldAccept85==='function'){
+    window.acceptTask=acceptTask=async function(id,btn){
+      const t=task85(id);
+      if(!t)return toast85('Mission not found. Please refresh once.','error');
+      if(!canAcceptProof85(t))return toast85(isRetail85()?'Retail monitors missions. The assigned person must accept.':'Only the assigned person can accept this mission.','error');
+      return oldAccept85.apply(this,arguments);
+    };
+  }
+  const oldProof85=window.proofTask;
+  if(typeof oldProof85==='function'){
+    window.proofTask=proofTask=function(id){
+      const t=task85(id);
+      if(!t)return toast85('Mission not found. Please refresh once.','error');
+      if(!canAcceptProof85(t))return toast85(isRetail85()?'Retail monitors missions. The assigned person must submit proof.':'Only the assigned person can submit proof for this mission.','error');
+      return oldProof85.apply(this,arguments);
+    };
+  }
+  const oldApprove85=window.approveTask;
+  if(typeof oldApprove85==='function'){
+    window.approveTask=approveTask=async function(id,btn){
+      const t=task85(id);
+      if(!t)return toast85('Mission not found.','error');
+      if(isRetail85())return oldApprove85.apply(this,arguments);
+      if(canBranchValidate85(t))return window.v76BranchValidateMission?window.v76BranchValidateMission(id,btn):toast85('Validated for Retail approval.','ok');
+      return toast85('Final mission approval and point decision is for Retail / Executive only.','error');
+    };
+  }
+  const oldValidate85=window.v76BranchValidateMission;
+  window.v76BranchValidateMission=async function(id,btn){
+    const t=task85(id);
+    if(!t)return toast85('Mission not found.','error');
+    if(!canBranchValidate85(t))return toast85('Only the branch leader who assigned this mission can validate it before Retail approval.','error');
+    return oldValidate85?oldValidate85.apply(this,arguments):toast85('Mission validated for Retail approval.','ok');
+  };
+  const oldForward85=window.v73ForwardRetail;
+  if(typeof oldForward85==='function'){
+    window.v73ForwardRetail=async function(id,btn){
+      const t=task85(id);
+      if(!canBranchValidate85(t))return toast85('Only the branch leader who assigned this mission can forward it to Retail.','error');
+      return oldForward85.apply(this,arguments);
+    };
+  }
+  const oldFollow85=window.v73FollowMission;
+  if(typeof oldFollow85==='function'){
+    window.v73FollowMission=async function(id,btn){
+      const t=task85(id);
+      if(!(isRetail85()||(isBranch85()&&taskGiven85(t)&&branchAllowed85(taskBranch85(t)))))return toast85('Only Retail or the mission creator can follow up this mission.','error');
+      return oldFollow85.apply(this,arguments);
+    };
+  }
+  const oldCancelTask85=window.cancelTask;
+  if(typeof oldCancelTask85==='function'){
+    window.cancelTask=cancelTask=async function(id,btn){
+      const t=task85(id);
+      if(!canCancelMission85(t))return toast85('Only Retail or the branch leader who assigned this mission can cancel it.','error');
+      return oldCancelTask85.apply(this,arguments);
+    };
+  }
+  const oldMissionActions85=window.missionActions;
+  if(typeof oldMissionActions85==='function'){
+    window.missionActions=missionActions=function(t,manage){
+      const id=E(t?.id),st=taskStatus85(t);
+      if(!canViewTask85(t))return '<span class="small muted">Spectator only</span>';
+      let out='';
+      if(canAcceptProof85(t)){
+        if(st==='assigned')out+=`<button class="btn sm green acceptTask" data-id="${id}">Accept</button> <button class="btn sm ghost disagreeTask" data-id="${id}">Disagree</button> `;
+        if(!submittedMission85(t)&&!taskClosed85(t))out+=`<button class="btn sm blue proofTask" data-id="${id}">Submit Proof</button> `;
+        if(submittedMission85(t))out+=`<button class="btn sm ghost" onclick="v73MissionSummary('${id}')">View Submitted Summary</button> `;
+        return out||'<span class="pill green">Waiting for reviewer</span>';
+      }
+      if(isRetail85()){
+        out+=`<button class="btn sm ghost" onclick="v73MissionSummary('${id}')">Review Summary</button> `;
+        if(submittedMission85(t))out+=`<button class="btn sm green approveTask" data-id="${id}">Approve / Close</button> <button class="btn sm dark" onclick="v73CloseMissionNoPoints('${id}',this)">Close No Points</button> `;
+        if(canCancelMission85(t))out+=`<button class="btn sm dark cancelTask" data-id="${id}">Cancel Mission</button>`;
+        return out||'<span class="v85-note">Monitoring only</span>';
+      }
+      if(isBranch85()){
+        out+=`<button class="btn sm ghost" onclick="v73MissionSummary('${id}')">View Summary</button> `;
+        if(canBranchValidate85(t)&&submittedMission85(t))out+=`<button class="btn sm blue" onclick="v73ForwardRetail('${id}',this)">Validate / Forward to Retail</button> `;
+        if(taskGiven85(t)&&!taskClosed85(t))out+=`<button class="btn sm yellow" onclick="v73FollowMission('${id}',this)">Follow Up</button> <button class="btn sm dark cancelTask" data-id="${id}">Cancel Mission</button>`;
+        return out||'<span class="v85-note">Spectator / follow-up only</span>';
+      }
+      return '<span class="small muted">No action</span>';
+    };
+  }
+
+  const oldAck85=window.ackMemo;
+  if(typeof oldAck85==='function'){
+    window.ackMemo=ackMemo=async function(id,btn){
+      if(isRetail85()){showMemoAcks(id);return;}
+      return oldAck85.apply(this,arguments);
+    };
+    window.v62AckMemo=async function(id,btn){return ackMemo(id,btn)};
+  }
+  const oldShowLock85=window.showMemoLock;
+  if(typeof oldShowLock85==='function'){
+    window.showMemoLock=showMemoLock=function(){if(isRetail85()){QS('#memoLock')?.remove();return;} return oldShowLock85.apply(this,arguments)};
+  }
+  window.showMemoAcks=showMemoAcks=function(id){
+    const m=(S.memos||[]).find(x=>String(x.id)===String(id));
+    const active=(S.allEmployees||S.employees||[]).filter(e=>e.is_active!==false&&String(e.activation_status||'').toLowerCase()!=='deleted');
+    let audience=isRetail85()?active:active.filter(e=>branchAllowed85(e.branch));
+    if(isStaff85())audience=active.filter(e=>String(e.id)===me85());
+    const ackMap=new Map((S.allAcks||[]).filter(a=>String(a.memo_id)===String(id)).map(a=>[String(a.employee_id),a]));
+    const done=audience.filter(e=>ackMap.has(String(e.id))).length;
+    const pct=audience.length?Math.round(done/audience.length*100):100;
+    const rows=audience.map(e=>{const a=ackMap.get(String(e.id));return `<tr><td>${E(e.full_name||'-')}</td><td>${E(e.branch||'-')}</td><td>${a?'<span class="pill green">Acknowledged</span>':'<span class="pill yellow">Pending</span>'}</td><td>${a?fmt85(a.acknowledged_at):'-'}</td></tr>`}).join('');
+    modal(`<h2>Memo Acknowledgment Summary</h2><h3>${E(m?.title||'Memo')}</h3><div class="v85-memo-head"><b>${done} of ${audience.length} acknowledged (${pct}%)</b><div class="v85-progress"><span style="width:${pct}%"></span></div></div><table><thead><tr><th>Name</th><th>Branch</th><th>Status</th><th>Date / Time</th></tr></thead><tbody>${rows||'<tr><td colspan="4"><div class="empty">No staff in this scope.</div></td></tr>'}</tbody></table><br><button class="btn dark" onclick="closeModal()">Close</button>`);
+  };
+
+  function retailOnlyWrap85(name,label){
+    const old=window[name];
+    if(typeof old!=='function')return;
+    window[name]=async function(){
+      if(!isRetail85())return toast85(label||'Retail / Executive final approval is required.','error');
+      return old.apply(this,arguments);
+    };
+    try{eval(name+'=window[name]')}catch(_){}
+  }
+  retailOnlyWrap85('approveAch','Only Retail / Executive can final approve merit points.');
+  retailOnlyWrap85('validateDirectVio','Only Retail / Executive can final validate demerit points.');
+  retailOnlyWrap85('resolveReport','Only Retail / Executive can final close private reports and decide points.');
+  retailOnlyWrap85('createStanding','Only Retail / Executive can edit standing rules.');
+  retailOnlyWrap85('deleteRule','Only Retail / Executive can edit standing rules.');
+  const oldEditRule85=window.editRule;
+  if(typeof oldEditRule85==='function'){window.editRule=editRule=function(){if(!isRetail85())return toast85('Only Retail / Executive can edit standing rules.','error'); return oldEditRule85.apply(this,arguments)}}
+
+  const oldSubmitDirectVio85=window.submitDirectViolation;
+  if(typeof oldSubmitDirectVio85==='function'){
+    window.submitDirectViolation=submitDirectViolation=async function(e){
+      if(e?.preventDefault)e.preventDefault();
+      if(isStaff85())return toast85('Staff should use Report Concern. Direct violation recommendations are for branch leaders and Retail.','error');
+      const empId=QS('#dvEmp')?.value; const eobj=emp85(empId);
+      if(isBranch85()&&!branchManagedEmp85(eobj))return toast85('Branch leaders can report staff issues only within their assigned branch scope.','error');
+      return oldSubmitDirectVio85.apply(this,arguments);
+    };
+  }
+  const oldSubmitFsqa85=window.submitFsqa;
+  if(typeof oldSubmitFsqa85==='function'){
+    window.submitFsqa=submitFsqa=async function(e){
+      if(e?.preventDefault)e.preventDefault();
+      const branch=QS('#fsqaBranch')?.value||S.profile?.branch||'';
+      if(isStaff85())return toast85('FSQA reports are for branch leaders, FSQA, and Retail.','error');
+      if(isBranch85()&&!branchAllowed85(branch))return toast85('You can save FSQA reports only for your assigned branch.','error');
+      return oldSubmitFsqa85.apply(this,arguments);
+    };
+  }
+  retailOnlyWrap85('deleteFsqa','Only Retail / Executive can remove FSQA records.');
+  const oldAssignFsqa85=window.v73AssignFsqaMission;
+  if(typeof oldAssignFsqa85==='function'){
+    window.v73AssignFsqaMission=function(id){
+      const f=(S.fsqa||[]).find(x=>String(x.id)===String(id));
+      if(isStaff85())return toast85('Staff cannot assign FSQA missions.','error');
+      if(isBranch85()&&!branchAllowed85(f?.branch))return toast85('You can assign FSQA action only inside your branch scope.','error');
+      return oldAssignFsqa85.apply(this,arguments);
+    };
+  }
+
+  const oldCloseCase85=window.v62CloseCase;
+  if(typeof oldCloseCase85==='function'){
+    window.v62CloseCase=async function(key,btn){
+      if(!isRetail85())return toast85('Final case closing is for Retail / Executive only. Branch leaders may validate and recommend.','error');
+      return oldCloseCase85.apply(this,arguments);
+    };
+  }
+  ['v62RequestExplanation','v62SetCorrectiveAction','v62MoveValidation'].forEach(name=>{
+    const old=window[name];
+    if(typeof old!=='function')return;
+    window[name]=async function(key,btn){
+      const c=caseFromKey85(key);
+      if(isStaff85())return toast85('Staff cannot manage cases. Submit your own explanation or report a concern.','error');
+      if(isBranch85()&&!canManageCase85(c))return toast85('This case is outside your assigned branch scope.','error');
+      return old.apply(this,arguments);
+    };
+  });
+  const oldEmployeeExplain85=window.v62EmployeeExplain;
+  if(typeof oldEmployeeExplain85==='function'){
+    window.v62EmployeeExplain=async function(key,btn){
+      const c=caseFromKey85(key);
+      if(c&&String(c.employee_id||c.owner_id||c.reporter_id||'')!==me85()&&!isBranch85()&&!isRetail85())return toast85('You can submit explanation only for your own case.','error');
+      return oldEmployeeExplain85.apply(this,arguments);
+    };
+  }
+
+  function disable85(btn,reason){
+    if(!btn||btn.dataset.v85Blocked==='1')return;
+    btn.dataset.v85Blocked='1';
+    btn.dataset.v85Reason=reason;
+    btn.disabled=true;
+    btn.classList.add('v85-blocked');
+    btn.title=reason;
+  }
+  function buttonTaskId85(btn){
+    const on=btn.getAttribute('onclick')||'',data=btn.dataset?.id||'';
+    const m=on.match(/['"]([^'"]+)['"]/);
+    return data||(m?m[1]:'');
+  }
+  function decorateAccountForm85(root=document){
+    const pos=QS('#staffPosition',root);
+    if(pos&&!pos.dataset.v85){
+      pos.dataset.v85='1';
+      if(isRetail85()){
+        ['FSQA OFFICER','BRANCH LEADER','NATIONAL RETAIL HEAD','EXECUTIVE MANAGEMENT'].forEach(x=>{if(!QSA('option',pos).some(o=>o.value===x||o.textContent===x))pos.insertAdjacentHTML('beforeend',`<option>${E(x)}</option>`)});
+      }
+    }
+    if(pos&&isBranch85()){
+      QSA('option',pos).forEach(o=>{if(!staffLevelEmp85({position:o.value||o.textContent,role:(typeof posToRole==='function'?posToRole(o.value||o.textContent):'employee')}))o.remove()});
+    }
+    const dv=QS('label[for="dvPoints"], #dvPoints',root);
+    const dvInput=QS('#dvPoints',root);
+    if(dvInput&&isBranch85()){
+      const label=dvInput.closest('.field')?.querySelector('label');
+      if(label)label.textContent='Recommended Demerit Points';
+    }
+  }
+  function decorateButtons85(root=document){
+    addStyle85();
+    decorateAccountForm85(root);
+    QSA('.nav button',document).forEach(b=>{
+      const allowed=new Set(nav85().map(x=>x[0]));
+      if(b.dataset.tab&&!allowed.has(b.dataset.tab))b.remove();
+    });
+    QSA('.v62-case',root).forEach(card=>{
+      const key=card.getAttribute('data-case')||'';
+      if(isRetail85()&&key.startsWith('attendance:'+me85()+'_'))card.remove();
+    });
+    QSA('button',root).forEach(btn=>{
+      if(btn.closest('#termsGate'))return;
+      const txt=(btn.textContent||'').replace(/\s+/g,' ').trim();
+      const low=txt.toLowerCase();
+      const on=btn.getAttribute('onclick')||'';
+      const id=buttonTaskId85(btn);
+      const t=(on.includes('Task')||on.includes('Mission')||btn.className.includes('Task')||btn.className.includes('Mission'))?task85(id):null;
+      if((on.includes('acceptTask')||btn.classList.contains('acceptTask'))&&t&&!canAcceptProof85(t))disable85(btn,'Only the assigned person can accept this mission.');
+      if((on.includes('proofTask')||btn.classList.contains('proofTask'))&&t&&!canAcceptProof85(t))disable85(btn,'Only the assigned person can submit proof.');
+      if((on.includes('approveTask')||btn.classList.contains('approveTask'))&&t&&!isRetail85()&&!canBranchValidate85(t))disable85(btn,'Retail final approval is required.');
+      if((on.includes('v73ForwardRetail')||on.includes('v76BranchValidateMission'))&&t&&!canBranchValidate85(t))disable85(btn,'Only the mission creator can validate before Retail.');
+      if((on.includes('cancelTask')||btn.classList.contains('cancelTask'))&&t&&!canCancelMission85(t))disable85(btn,'Only Retail or the mission creator can cancel this mission.');
+      if(isRetail85()&&(/^(acknowledge|accept|submit proof|submit end-of-shift output)$/i.test(txt)||on.includes('ackMemo')||on.includes('acceptTask')||on.includes('proofTask')||on.includes('submitOutput')))disable85(btn,'Retail dashboard is monitoring and approval only.');
+      if(isStaff85()&&(/approve|validate|close case|create account|assign mission|deduct|standing rule|delete memo|remove/i.test(low)||on.includes('v62CloseCase')||on.includes('validateDirectVio')||on.includes('approveAch')||on.includes('resolveReport')))disable85(btn,'This action is for branch leaders or Retail only.');
+      if(isBranch85()&&(/retail approve|approve \/ close|approve merit|validate & deduct|final close|close case|standing rule/i.test(low)||on.includes('validateDirectVio')||on.includes('approveAch')||on.includes('resolveReport')||on.includes('v62CloseCase')))disable85(btn,'Retail / Executive final approval is required.');
+    });
+  }
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest&&e.target.closest('button[data-v85-blocked="1"]');
+    if(!btn)return;
+    e.preventDefault(); e.stopImmediatePropagation?.(); e.stopPropagation();
+    toast85(btn.dataset.v85Reason||'This action is not available for your role.','error');
+  },true);
+
+  const oldRenderPage85=window.renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle85();
+    try{
+      const allowed=new Set(nav85().map(x=>x[0]));
+      if(S?.tab&&!allowed.has(S.tab))S.tab='dashboard';
+    }catch(_){}
+    const r=oldRenderPage85?oldRenderPage85.apply(this,arguments):undefined;
+    setTimeout(()=>decorateButtons85(QS('#page')||document),60);
+    setTimeout(()=>decorateButtons85(document),260);
+    return r;
+  };
+  const oldRenderApp85=window.renderApp;
+  window.renderApp=renderApp=function(){
+    const r=oldRenderApp85?oldRenderApp85.apply(this,arguments):undefined;
+    setTimeout(()=>decorateButtons85(document),120);
+    setTimeout(()=>decorateButtons85(document),500);
+    return r;
+  };
+  const oldBind85=window.bind;
+  if(typeof oldBind85==='function'){
+    window.bind=bind=function(){const r=oldBind85.apply(this,arguments); setTimeout(()=>decorateButtons85(document),80); return r};
+  }
+  const mo85=new MutationObserver(()=>{if(window.__v85q)return;window.__v85q=true;setTimeout(()=>{window.__v85q=false;decorateButtons85(document)},120)});
+  try{mo85.observe(document.documentElement,{childList:true,subtree:true})}catch(_){}
+  window.addEventListener('load',()=>setTimeout(()=>decorateButtons85(document),600));
+  console.log('V85 company role policy final loaded:',roleName85());
+})();
+/* ================= END V85 ================= */
+
+/* ================= V86 STABLE ATTENDANCE HIDE NOTICE =================
+   One owner for No Time In / Missing Time Out attendance cards.
+   Older layers may still try to add Ignore Today, so this layer keeps exactly
+   one stable Hide Notice button and stores the hidden card in every old store.
+*/
+(function(){
+  'use strict';
+  if(window.__VSCORE_V86_ATTENDANCE_HIDE_NOTICE__)return;
+  window.__VSCORE_V86_ATTENDANCE_HIDE_NOTICE__=true;
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=el=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+  const me=()=>String(window.S?.profile?.id||'');
+  const role=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const stores=['vscore_attendance_hidden_v86','vscore_ignored_today_clean','v76_ignored_cases','v75_ignored_cases','v74_ignored_cases'];
+  const branchRoles=new Set(['manager','branch_manager','team_leader','fsqa_officer','branch_leader']);
+  const retailRoles=new Set(['retail_head','national_retail_head','head_office_admin','head_office','executive','executive_management','admin','management','master','hr']);
+
+  function isRetail(){const r=role();const p=String(S?.profile?.position||'').toUpperCase();return retailRoles.has(r)||/RETAIL HEAD|HEAD OFFICE|EXECUTIVE|NATIONAL HEAD|HR/.test(p)}
+  function isBranch(){const r=role();const p=String(S?.profile?.position||'').toUpperCase();return !isRetail()&&(branchRoles.has(r)||/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|MANAGER/.test(p))}
+  function canHideAttendance(){return isRetail()||isBranch()}
+  function toast86(msg,type='ok'){try{toast(msg,type)}catch(_){console.log(msg)}}
+  function readStore(){
+    const out={};
+    stores.forEach(k=>{try{Object.assign(out,JSON.parse(localStorage.getItem(k)||'{}')||{})}catch(_){}});
+    return out;
+  }
+  function writeStore(m){stores.forEach(k=>{try{localStorage.setItem(k,JSON.stringify(m))}catch(_){}})}
+  function addStyle(){
+    if(QS('#v86-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v86-style">
+      .vscore-hide-notice{background:#f8fafc!important;color:#334155!important;border:1px solid #cbd5e1!important}
+      .vscore-hide-notice:before{content:'Hide';font-weight:1000;margin-right:4px}
+    </style>`);
+  }
+  function dataKey(card){
+    if(!card)return '';
+    return card.getAttribute('data-case')||card.dataset?.case||card.dataset?.id||card.getAttribute('data-id')||'';
+  }
+  function textKey(card){
+    const t=TXT(card).toLowerCase().replace(/ignore today|hide notice|open time clock|open attendance|details|close case|refresh/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,150);
+    return t?'attendance_text:'+today()+':'+t:'';
+  }
+  function attendanceIdFromKey(k){
+    const m=String(k||'').match(/^attendance:([^_:]+(?:-[^_:]+)*|[^_]+)_/);
+    return m?m[1]:'';
+  }
+  function buttonKeys(card){
+    const out=[];
+    QSA('button',card).forEach(b=>{
+      const on=b.getAttribute('onclick')||'';
+      if(/IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(on)){
+        Array.from(on.matchAll(/['"]([^'"]+)['"]/g)).forEach(m=>out.push(m[1]));
+      }
+    });
+    return out;
+  }
+  function keysFor(card,key=''){
+    const set=new Set();
+    const add=v=>{v=String(v||'').trim(); if(v&&v!=='undefined'&&v!=='null')set.add(v)};
+    add(key); add(dataKey(card)); add(textKey(card));
+    buttonKeys(card).forEach(add);
+    const dk=dataKey(card)||key;
+    if(/^attendance:/.test(dk)){
+      add(dk);
+      const bits=dk.slice('attendance:'.length).split('_');
+      if(bits.length>=2)add('attendance:'+bits[0]+'_'+today());
+    }
+    if(card&&/no time in|missing time out|missing time|attendance action/i.test(TXT(card)))add('attendance_notice:'+today()+':'+textKey(card));
+    return Array.from(set);
+  }
+  function isAttendanceCard(card){
+    if(!card)return false;
+    const k=dataKey(card);
+    if(/^attendance:/.test(k))return true;
+    return /no time in|missing time out|missing time|attendance action/i.test(TXT(card));
+  }
+  function isOwnAttendance(card){
+    const id=attendanceIdFromKey(dataKey(card));
+    return id&&id===me();
+  }
+  function isHidden(card,key=''){
+    const m=readStore();
+    return keysFor(card,key).some(k=>m[k]);
+  }
+  function saveHidden(card,key=''){
+    const m=readStore();
+    keysFor(card,key).forEach(k=>{m[k]={by:me(),at:new Date().toISOString(),kind:'attendance_notice'}});
+    writeStore(m);
+  }
+  function isHideButton(btn){
+    const t=TXT(btn).toLowerCase();
+    const on=btn.getAttribute('onclick')||'';
+    return t==='ignore today'||t==='hide notice'||btn.classList.contains('vscore-ignore-one')||btn.classList.contains('vscore-hide-notice')||btn.classList.contains('v74-ignore')||btn.classList.contains('v75-ignore')||btn.classList.contains('v76-ignore')||/IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(on);
+  }
+  window.vscoreHideAttendanceNotice=function(key,card){
+    if(!card&&key){
+      card=QSA('.v62-case,.v76-row,.v74-card,.card,[data-case]').find(c=>keysFor(c,key).includes(String(key)));
+    }
+    saveHidden(card,key);
+    if(card&&card.remove)card.remove();
+    toast86('Attendance notice hidden for today.','ok');
+    setTimeout(()=>{try{cleanAll()}catch(_){}},20);
+  };
+  window.vscoreCleanIgnoreToday=window.v74IgnoreCase=window.v75IgnoreCase=window.v76IgnoreCase=function(key,card){return window.vscoreHideAttendanceNotice(key,card)};
+
+  function actionBox(card){
+    let box=card.querySelector('.v62-case-actions,.v76-actions,.v74-actions,.v85-actions,.split');
+    if(!box){
+      box=document.createElement('div');
+      box.className='split vscore-attendance-actions';
+      card.appendChild(box);
+    }
+    return box;
+  }
+  function normalize(card){
+    if(!isAttendanceCard(card))return;
+    if(isHidden(card)){card.remove();return;}
+
+    const buttons=QSA('button',card).filter(isHideButton);
+    const shouldHaveButton=canHideAttendance()&&!isOwnAttendance(card);
+
+    if(!shouldHaveButton){
+      buttons.forEach(b=>b.remove());
+      return;
+    }
+
+    const box=actionBox(card);
+    let btn=buttons.find(b=>b.classList.contains('vscore-hide-notice'))||buttons[0]||null;
+    buttons.filter(b=>b!==btn).forEach(b=>b.remove());
+    if(!btn){
+      btn=document.createElement('button');
+      box.insertBefore(btn,box.firstChild);
+    }
+    btn.type='button';
+    btn.textContent='Notice';
+    btn.className='btn sm ghost vscore-hide-notice vscore-ignore-one v74-ignore v75-ignore v76-ignore';
+    btn.removeAttribute('onclick');
+    btn.onclick=function(ev){
+      ev.preventDefault();
+      ev.stopImmediatePropagation?.();
+      ev.stopPropagation();
+      window.vscoreHideAttendanceNotice(dataKey(card),card);
+      return false;
+    };
+    if(btn.parentElement!==box)box.insertBefore(btn,box.firstChild);
+    if(box.firstElementChild!==btn)box.insertBefore(btn,box.firstChild);
+  }
+  function cleanAll(){
+    addStyle();
+    QSA('.v62-case,.v76-row,.v74-card,.card,[data-case]').forEach(normalize);
+    QSA('.v62-case,.v76-row,.v74-card,.card,[data-case]').forEach(card=>{
+      const btns=QSA('button',card).filter(isHideButton);
       btns.slice(1).forEach(b=>b.remove());
     });
-  }catch(e){}}
-  const oldRP=window.renderPage;
-  if(typeof oldRP==='function'&&!oldRP.__v823){
-    const wr=function(){const r=oldRP.apply(this,arguments);setTimeout(window.v823CleanActionButtons,120);return r};wr.__v823=true;window.renderPage=renderPage=wr;
   }
-  setTimeout(window.v823CleanActionButtons,1000);
-})();
-/* ================= END V82.3 ================= */
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest&&e.target.closest('button');
+    if(!btn||!isHideButton(btn))return;
+    const card=btn.closest('.v62-case,.v76-row,.v74-card,.card,[data-case]');
+    if(!card||!isAttendanceCard(card))return;
+    e.preventDefault();
+    e.stopImmediatePropagation?.();
+    e.stopPropagation();
+    window.vscoreHideAttendanceNotice(dataKey(card),card);
+  },true);
 
+  function wrap(name){
+    const old=window[name];
+    if(typeof old!=='function'||old.__v86AttendanceWrapped)return;
+    const neu=function(){
+      const r=old.apply(this,arguments);
+      setTimeout(cleanAll,0);
+      setTimeout(cleanAll,80);
+      setTimeout(cleanAll,350);
+      return r;
+    };
+    neu.__v86AttendanceWrapped=true;
+    window[name]=neu;
+    try{eval(name+'=neu')}catch(_){}
+  }
+  wrap('renderPage');
+  wrap('renderApp');
+  wrap('bind');
+  const mo=new MutationObserver(()=>{if(window.__v86q)return;window.__v86q=true;setTimeout(()=>{window.__v86q=false;cleanAll()},70)});
+  try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(_){}
+  window.addEventListener('load',()=>setTimeout(cleanAll,500));
+  setTimeout(cleanAll,700);
+  console.log('V86 stable attendance hide notice loaded');
+})();
+/* ================= END V86 ================= */
+
+/* ================= V87 SPEC RESTORE: MEMO, NEWS, ACCOUNT BACKUP ================= */
+(function(){
+  'use strict';
+  if(window.__VSCORE_V87_SPEC_RESTORE__)return;
+  window.__VSCORE_V87_SPEC_RESTORE__=true;
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt87=d=>{try{return typeof fmt==='function'?fmt(d):(d?new Date(d).toLocaleString():'-')}catch(_){return d||'-'}};
+  const me87=()=>String(S?.profile?.id||'');
+  const role87=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const retailRoles87=new Set(['retail_head','national_retail_head','head_office_admin','head_office','executive','executive_management','admin','management','master','hr']);
+  const branchRoles87=new Set(['manager','branch_manager','team_leader','fsqa_officer','branch_leader']);
+  const isRetail87=()=>retailRoles87.has(role87())||/RETAIL HEAD|HEAD OFFICE|EXECUTIVE|NATIONAL HEAD|HR/.test(String(S?.profile?.position||'').toUpperCase());
+  const isBranch87=()=>!isRetail87()&&(branchRoles87.has(role87())||/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|MANAGER/.test(String(S?.profile?.position||'').toUpperCase()));
+  const toast87=(m,t='ok')=>{try{toast(m,t)}catch(_){console.log(m)}};
+
+  function addStyle87(){
+    if(QS('#v87-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v87-style">
+      .v87-card-list{display:grid;gap:10px}.v87-account{border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:12px}.v87-account h4{margin:0;color:#111827}.v87-account p{margin:6px 0;color:#64748b;font-size:13px}.v87-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.v87-actions .btn{flex:1 1 auto}.v87-memo{cursor:pointer;border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:13px;margin:10px 0}.v87-memo:hover{border-color:#93c5fd;background:#f8fbff}.v87-memo h4{margin:0 0 6px;color:#7f1d1d}.v87-pillrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.v87-filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.v87-small{font-size:12px;color:#64748b}
+      @media(max-width:760px){.v87-filters{grid-template-columns:1fr}.v87-actions .btn{width:100%}.v87-account,.v87-memo{border-radius:12px;padding:11px}}
+    </style>`);
+  }
+  function parseArr87(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.map(String).filter(Boolean);
+    let s=String(v).trim();
+    try{const j=JSON.parse(s); if(Array.isArray(j))return j.map(String).filter(Boolean)}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function settingAccess87(id=me87()){
+    const set=S?.settings||{},keys=['branch_access_'+id,'manager_branch_access_'+id,'assigned_branches_'+id,'manager_branches_'+id];
+    let out=[]; keys.forEach(k=>out.push(...parseArr87(set[k])));
+    return out;
+  }
+  function allowedBranches87(){
+    if(isRetail87())return [];
+    const p=S?.profile||{};
+    return [...new Set([p.branch,...parseArr87(p.assigned_branches),...parseArr87(p.managed_branches),...parseArr87(p.access_branches),...parseArr87(p.branch_access),...settingAccess87(p.id)].filter(Boolean))];
+  }
+  function branchAllowed87(branch){
+    if(isRetail87())return true;
+    const allowed=allowedBranches87().map(x=>String(x).toLowerCase());
+    return allowed.includes(String(branch||'').toLowerCase());
+  }
+  function staffLevel87(e){
+    const r=String(e?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+    const p=String(e?.position||'').toUpperCase();
+    return !retailRoles87.has(r)&&!branchRoles87.has(r)&&!/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|RETAIL|HEAD OFFICE|EXECUTIVE|HR|MANAGER/.test(p);
+  }
+  function empRow87(id){return [...(S.accountBackupRows||[]),...(S.allEmployees||[]),...(S.employees||[])].find(e=>String(e.id)===String(id))||{}}
+  function canControlAccount87(e){
+    if(!e||!e.id||String(e.id)===me87())return false;
+    if(isRetail87())return true;
+    return isBranch87()&&staffLevel87(e)&&branchAllowed87(e.branch);
+  }
+  function status87(e){
+    const st=String(e.activation_status||'').toLowerCase();
+    if(st==='permanent_deleted'||e.hidden_from_monitoring===true)return '<span class="pill red">Removed Backup</span>';
+    if(e.is_active===false||st==='inactive'||st==='deleted')return '<span class="pill red">Login Disabled</span>';
+    if(st==='activated')return '<span class="pill green">Activated</span>';
+    return '<span class="pill yellow">Not Activated</span>';
+  }
+  function accountRows87(){
+    let rows=[...(S.accountBackupRows&&S.accountBackupRows.length?S.accountBackupRows:S.allEmployees||[])];
+    if(isBranch87())rows=rows.filter(e=>staffLevel87(e)&&branchAllowed87(e.branch));
+    return rows;
+  }
+  async function refreshAccountBackup87(){
+    if(!isRetail87()&&!isBranch87())return;
+    try{
+      let qry=sb.from('employees').select('*').order('full_name');
+      const rows=await q(qry,[]);
+      S.accountBackupRows=Array.isArray(rows)?rows:[];
+    }catch(e){console.warn('account backup load skipped',e.message||e)}
+  }
+  const oldLoadData87=window.loadData;
+  if(typeof oldLoadData87==='function'){
+    window.loadData=loadData=async function(){
+      const r=await oldLoadData87.apply(this,arguments);
+      await refreshAccountBackup87();
+      return r;
+    };
+  }
+
+  window.accountsPage=accountsPage=function(){
+    addStyle87();
+    if(!isRetail87()&&!isBranch87())return '<div class="empty">No access.</div>';
+    const rows=accountRows87();
+    const branches=[...new Set(rows.map(e=>e.branch).filter(Boolean))].sort();
+    return `<div class="card"><h3>${isRetail87()?'Account Backup':'Branch Staff Access'}</h3><p class="muted">Kick/disable login keeps the account in backup. Permanent remove hides it from active monitoring but keeps an audit trail.</p><div class="v87-filters"><div class="field"><label>Branch</label><select id="v87AcctBranch"><option value="">All Branches</option>${branches.map(b=>`<option>${E(b)}</option>`).join('')}</select></div><div class="field"><label>Status</label><select id="v87AcctStatus"><option value="">All Status</option><option value="active">Active</option><option value="inactive">Disabled / Removed</option><option value="not_activated">Not Activated</option></select></div><div class="field"><label>Search</label><input id="v87AcctSearch" class="input" placeholder="Name, email, branch"></div></div><div id="v87AcctList">${acctList87(rows)}</div></div>`;
+  };
+  function acctList87(rows){
+    return `<div class="v87-card-list">${rows.map(e=>`<div class="v87-account" data-branch="${E(e.branch||'')}" data-status="${E(e.is_active===false||e.hidden_from_monitoring===true?'inactive':String(e.activation_status||'not_activated').toLowerCase())}" data-search="${E(String((e.full_name||'')+' '+(e.email||'')+' '+(e.branch||'')).toLowerCase())}"><h4>${E(e.full_name||'-')}</h4><p><b>Email/Login:</b> ${E(e.email||'-')}<br><b>Password Backup:</b> ${E(e.login_password_backup||e.temp_password||'-')}<br><b>Branch:</b> ${E(e.branch||'-')}<br><b>Position:</b> ${E(e.position||'-')}<br><b>Status:</b> ${status87(e)}</p><div class="v87-actions">${accountActions87(e)}</div></div>`).join('')||'<div class="empty">No accounts in this scope.</div>'}</div>`;
+  }
+  function accountActions87(e){
+    if(String(e.id)===me87())return '<span class="v87-small">Current account</span>';
+    if(!canControlAccount87(e))return '<span class="v87-small">View only</span>';
+    const inactive=e.is_active===false||e.hidden_from_monitoring===true||['inactive','deleted','permanent_deleted'].includes(String(e.activation_status||'').toLowerCase());
+    let out=inactive?`<button class="btn sm green v87RestoreAcct" data-id="${E(e.id)}">Restore Login</button>`:`<button class="btn sm orange v87KickAcct" data-id="${E(e.id)}">Kick / Disable Login</button>`;
+    if(isRetail87())out+=` <button class="btn sm dark v87DeleteAcct" data-id="${E(e.id)}">Permanent Remove</button>`;
+    return out;
+  }
+  function filterAccounts87(){
+    const branch=QS('#v87AcctBranch')?.value||'',status=QS('#v87AcctStatus')?.value||'',qv=String(QS('#v87AcctSearch')?.value||'').toLowerCase();
+    QSA('#v87AcctList .v87-account').forEach(card=>{
+      const okBranch=!branch||card.dataset.branch===branch;
+      const okStatus=!status||(status==='active'?!['inactive','not_activated'].includes(card.dataset.status):(status==='inactive'?card.dataset.status==='inactive':card.dataset.status!=='active'&&card.dataset.status!=='inactive'));
+      const okSearch=!qv||String(card.dataset.search||'').includes(qv);
+      card.classList.toggle('v85-hidden',!(okBranch&&okStatus&&okSearch));
+    });
+  }
+  async function updateAccount87(id,patch,btn,labels,action){
+    const e=empRow87(id);
+    if(!canControlAccount87(e))return toast87('You cannot control this account.','error');
+    await act(btn,labels,async()=>{
+      let r=await sb.from('employees').update(patch).eq('id',id);
+      if(r.error){
+        const simple={is_active:patch.is_active,activation_status:patch.activation_status,hidden_from_monitoring:patch.hidden_from_monitoring};
+        r=await sb.from('employees').update(simple).eq('id',id);
+      }
+      if(r.error)throw r.error;
+      try{await auditEvent(action,'employees',`${e.full_name||id}: ${patch.kick_reason||patch.deletion_reason||''}`)}catch(_){}
+    },async()=>{await loadData();renderPage();});
+  }
+  window.v87KickAccount=async function(id,btn){
+    const reason=prompt('Reason for disabling login / kicking this account?','No longer active / temporary hold');
+    if(!reason)return;
+    await updateAccount87(id,{is_active:false,activation_status:'inactive',hidden_from_monitoring:false,kick_reason:reason,kicked_by:me87(),kicked_at:new Date().toISOString()},btn,{busy:'Disabling...',success:'Disabled',reset:'Kick / Disable Login',toast:'Account login disabled.'},'account_login_disabled');
+  };
+  window.v87RestoreAccount=async function(id,btn){
+    if(!confirm('Restore this account login?'))return;
+    await updateAccount87(id,{is_active:true,activation_status:'activated',hidden_from_monitoring:false,restored_by:me87(),restored_at:new Date().toISOString()},btn,{busy:'Restoring...',success:'Restored',reset:'Restore Login',toast:'Account restored.'},'account_restored');
+  };
+  window.v87PermanentRemove=async function(id,btn){
+    if(!isRetail87())return toast87('Only Retail / Executive can permanently remove accounts.','error');
+    const e=empRow87(id);
+    if(String(e.id)===me87())return toast87('You cannot remove your own account.','error');
+    const reason=prompt('Reason for permanent removal?','resigned / AWOL / terminated / duplicate');
+    if(!reason)return;
+    if(!confirm('Final confirmation: permanently remove from active monitoring and login?'))return;
+    await updateAccount87(id,{is_active:false,hidden_from_monitoring:true,activation_status:'permanent_deleted',deletion_reason:reason,deleted_at:new Date().toISOString(),permanent_deleted_at:new Date().toISOString(),permanent_deleted_by:me87()},btn,{busy:'Removing...',success:'Removed',reset:'Permanent Remove',toast:'Account moved to removed backup.'},'account_permanent_removed');
+  };
+  window.deleteAccount=function(id,btn){return window.v87PermanentRemove(id,btn)};
+
+  const oldMemoList87=window.memoList;
+  window.memoList=memoList=function(){
+    addStyle87();
+    const memos=S.memos||[];
+    return memos.map(m=>{
+      const acks=(S.allAcks||[]).filter(a=>String(a.memo_id)===String(m.id));
+      const myAck=(S.acks||[]).find(a=>String(a.memo_id)===String(m.id));
+      if(isRetail87()||isBranch87()){
+        return `<div class="v87-memo v87MemoCard" data-id="${E(m.id)}"><h4>${E(m.title||'Memo')}</h4><div>${E(m.content||'')}</div>${typeof img==='function'?img(m.attachment_url):''}<div class="v87-pillrow"><span class="pill blue">${acks.length} acknowledged</span><span class="pill yellow">Tap to view names</span><span class="v87-small">${fmt87(m.created_at)}</span></div><div class="v87-actions"><button class="btn sm blue v87MemoSummary" data-id="${E(m.id)}">View Acknowledgment Summary</button>${isRetail87()||String(m.published_by||'')===me87()?`<button class="btn sm dark delMemo" data-id="${E(m.id)}">Delete / Hide Memo</button>`:''}</div></div>`;
+      }
+      return `<div class="v87-memo"><h4>${E(m.title||'Memo')}</h4><div>${E(m.content||'')}</div>${typeof img==='function'?img(m.attachment_url):''}<p class="v87-small">${fmt87(m.created_at)}</p>${myAck?'<span class="pill green">Acknowledged</span>':`<button class="btn sm yellow ackMemo" data-id="${E(m.id)}">Acknowledge</button>`}</div>`;
+    }).join('')||'<div class="empty">No memos.</div>';
+  };
+  window.memosPage=memosPage=function(){
+    const canManage=isRetail87()||isBranch87();
+    const form=canManage?`<div class="card"><h3>Publish Memo</h3><p class="muted">Publish to your team, then tap any memo to see who acknowledged and who is pending.</p><form id="memoForm"><div class="field"><label>Title</label><input id="memoTitle" class="input" required></div><div class="field"><label>Content</label><textarea id="memoContent" required></textarea></div><div class="field"><label>Picture / Attachment</label><input id="memoFile" type="file" accept="image/*" class="input"></div><div class="field"><label>Validity Days</label><input id="memoDays" type="number" min="1" max="30" value="7" class="input"></div><button class="btn yellow full">Publish Memo</button></form></div>`:'';
+    return `<div class="grid ${canManage?'two':''}">${form}<div class="card"><h3>${canManage?'Memo Hub':'My Memos'}</h3><p class="muted">${canManage?'Tap memo card or View Acknowledgment Summary.':'Read and acknowledge required memos.'}</p>${memoList()}</div></div>`;
+  };
+
+  function bind87(root=document){
+    QSA('.v87KickAcct',root).forEach(b=>b.onclick=()=>v87KickAccount(b.dataset.id,b));
+    QSA('.v87RestoreAcct',root).forEach(b=>b.onclick=()=>v87RestoreAccount(b.dataset.id,b));
+    QSA('.v87DeleteAcct',root).forEach(b=>b.onclick=()=>v87PermanentRemove(b.dataset.id,b));
+    ['#v87AcctBranch','#v87AcctStatus','#v87AcctSearch'].forEach(sel=>QS(sel,root)?.addEventListener(sel.includes('Search')?'input':'change',filterAccounts87));
+    QSA('.v87MemoSummary',root).forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();showMemoAcks(b.dataset.id)});
+    QSA('.v87MemoCard',root).forEach(card=>card.onclick=e=>{if(e.target.closest('button,img,a,input,select,textarea'))return;showMemoAcks(card.dataset.id)});
+    QSA('.memoAcks',root).forEach(b=>b.onclick=()=>showMemoAcks(b.dataset.id));
+  }
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest&&e.target.closest('button');
+    if(!btn)return;
+    const txt=String(btn.textContent||'').toLowerCase();
+    if(/memo summary|memo acknowledgment summary|see who acknowledged/.test(txt)&&isRetail87()&&(S.memos||[]).length){
+      const card=btn.closest('.v87MemoCard');
+      if(card)return;
+      const id=btn.dataset.id||(S.memos||[])[0]?.id;
+      if(id){e.preventDefault();e.stopImmediatePropagation?.();e.stopPropagation();showMemoAcks(id)}
+    }
+  },true);
+  const oldBind87=window.bind;
+  if(typeof oldBind87==='function')window.bind=bind=function(){const r=oldBind87.apply(this,arguments);setTimeout(()=>bind87(document),40);return r};
+  const oldRenderPage87=window.renderPage;
+  if(typeof oldRenderPage87==='function')window.renderPage=renderPage=function(){addStyle87();const r=oldRenderPage87.apply(this,arguments);setTimeout(()=>bind87(document),80);setTimeout(()=>bind87(document),300);return r};
+  const oldRenderApp87=window.renderApp;
+  if(typeof oldRenderApp87==='function')window.renderApp=renderApp=function(){const r=oldRenderApp87.apply(this,arguments);setTimeout(()=>bind87(document),120);return r};
+  setTimeout(()=>bind87(document),600);
+  console.log('V87 spec restore loaded: memo direct, news nav, account backup controls');
+})();
+/* ================= END V87 ================= */
+
+/* ================= V88 NEWS FEED ALWAYS VISIBLE ================= */
+(function(){
+  'use strict';
+  if(window.__VSCORE_V88_NEWS_VISIBLE__)return;
+  window.__VSCORE_V88_NEWS_VISIBLE__=true;
+  const QS=(s,r=document)=>r.querySelector(s);
+  function addStyle88(){
+    if(QS('#v88-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v88-style">
+      .sidebar{overflow-y:auto!important;max-height:100vh!important}
+      .sidebar .nav{overflow-y:auto!important;min-height:0!important;padding-bottom:22px!important}
+      .sidebar .nav button[data-tab="news"]{background:rgba(250,204,21,.18)!important;border:1px solid rgba(250,204,21,.42)!important;color:#fef3c7!important;font-weight:1000!important}
+    </style>`);
+  }
+  const oldNav88=window.nav;
+  window.nav=nav=function(){
+    let n=oldNav88?oldNav88.apply(this,arguments):[];
+    n=(n||[]).filter(Boolean);
+    n=n.filter(x=>x[0]!=='news');
+    const first=n.length?n[0]:['dashboard','Home'];
+    return [first,['news','VARDA News Feed'],...n.slice(1)];
+  };
+  const oldRenderApp88=window.renderApp;
+  if(typeof oldRenderApp88==='function')window.renderApp=renderApp=function(){addStyle88();const r=oldRenderApp88.apply(this,arguments);setTimeout(addStyle88,80);return r};
+  const oldRenderPage88=window.renderPage;
+  if(typeof oldRenderPage88==='function')window.renderPage=renderPage=function(){addStyle88();return oldRenderPage88.apply(this,arguments)};
+  window.addEventListener('load',()=>setTimeout(addStyle88,300));
+  addStyle88();
+  console.log('V88 news feed always visible loaded');
+})();
+/* ================= END V88 ================= */
+
+/* ================= V89 FINAL COMPACT SMOOTH APP POLISH =================
+   Last non-destructive pass: keep all restored features, simplify the phone UI,
+   remove duplicate visual controls, and make buttons/menu easier to tap.
+*/
+(function(){
+  'use strict';
+  if(window.__VSCORE_V89_FINAL_POLISH__)return;
+  window.__VSCORE_V89_FINAL_POLISH__=true;
+  window.VSCORE_FINAL_BUILD='V89_FINAL_COMPACT_SMOOTH';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=el=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+
+  function addStyle89(){
+    if(QS('#v89-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v89-style">
+      html,body,#root{max-width:100%;overflow-x:hidden!important}
+      body{background:#f6f7fb!important}
+      .app{min-height:100vh;max-width:100vw;overflow:hidden}
+      .sidebar{width:260px!important;max-width:82vw!important;overflow-y:auto!important;max-height:100vh!important}
+      .brand{padding:12px 12px!important;gap:9px!important}
+      .brand .logo{width:38px!important;height:38px!important;min-width:38px!important}
+      .nav{display:grid!important;gap:5px!important;padding:8px!important;overflow-y:auto!important;padding-bottom:24px!important}
+      .nav button{min-height:40px!important;border-radius:10px!important;padding:9px 10px!important;text-align:left!important;line-height:1.15!important;white-space:normal!important}
+      .nav button[data-tab="news"]{order:-98}
+      .nav button[data-tab="dashboard"]{order:-99}
+      .main{min-width:0!important;padding:14px!important}
+      .topbar{border-radius:14px!important;padding:12px!important;margin-bottom:12px!important;gap:10px!important}
+      .topbar h2{font-size:18px!important;line-height:1.15!important;overflow-wrap:anywhere!important}
+      #page>.split:first-child{margin-bottom:10px!important}
+      #page>.split:first-child #pageRef,.topbar #refresh{display:none!important}
+      .card,.notice,.v62-section,.v76-panel,.v85-panel,.v821-card,.v87-account,.v87-memo,.feed-card{border-radius:12px!important;padding:12px!important;box-shadow:0 5px 16px rgba(15,23,42,.04)!important}
+      .grid{gap:10px!important}.grid.two,.grid.three{align-items:start}
+      .btn,button,input,select,textarea{font-size:14px!important}
+      .btn,button{min-height:40px;border-radius:10px!important;line-height:1.15!important;white-space:normal!important}
+      .btn.sm{min-height:34px!important;padding:7px 9px!important;font-size:12px!important}
+      textarea{min-height:88px!important}
+      table{font-size:13px!important}
+      .modal-card{width:min(760px,94vw)!important;max-height:90vh!important;overflow:auto!important;border-radius:16px!important;padding:14px!important}
+      .thumb,.avatar{object-fit:cover}
+      .v89-hidden-control{display:none!important}
+      @media(max-width:860px){
+        .app{display:block!important}
+        .sidebar{position:relative!important;width:100%!important;max-width:100%!important;max-height:42vh!important;border-radius:0 0 14px 14px!important}
+        .nav{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+        .main{padding:10px!important}
+        .topbar{margin:8px 0 10px!important}
+        .topbar>.split{display:none!important}
+        .grid.two,.grid.three,.v83-actions,.v83-points,.v76-kpis,.v85-grid,.v821-output{grid-template-columns:1fr!important}
+        .split{gap:7px!important}
+        .split .btn,.v87-actions .btn,.v85-actions .btn,.v76-actions .btn,.v62-case-actions .btn{flex:1 1 auto!important}
+        .card h3,.notice h3{font-size:16px!important}
+      }
+      @media(max-width:520px){
+        .nav{grid-template-columns:1fr!important}
+        .btn,button{width:auto}
+      }
+    </style>`);
+  }
+
+  function dedupeNav89(){
+    const nav=QS('.sidebar .nav');
+    if(!nav)return;
+    const seen=new Set();
+    QSA('button',nav).forEach(btn=>{
+      const key=(btn.dataset.tab||TXT(btn)).toLowerCase();
+      if(!key)return;
+      if(seen.has(key)){btn.remove();return}
+      seen.add(key);
+      if(btn.dataset.tab&&!btn.onclick)btn.onclick=()=>{S.tab=btn.dataset.tab;renderPage();try{loadData().then(renderPage)}catch(_){}};
+    });
+  }
+  function dedupeActions89(root=document){
+    QSA('.card,.notice,.v62-case,.v76-row,.v87-account,.v87-memo,.feed-card,.modal-card',root).forEach(scope=>{
+      const seen=new Set();
+      QSA('button',scope).forEach(btn=>{
+        if(btn.closest('.nav'))return;
+        const label=TXT(btn), on=btn.getAttribute('onclick')||'', data=btn.dataset.id||btn.dataset.tab||'';
+        const key=[label,on,data].join('|').toLowerCase();
+        if(!label)return;
+        if(seen.has(key))btn.remove(); else seen.add(key);
+      });
+    });
+  }
+  function buttonBasics89(root=document){
+    QSA('button',root).forEach(btn=>{
+      if(!btn.getAttribute('type')&&!btn.closest('form'))btn.type='button';
+      const label=TXT(btn)||btn.getAttribute('aria-label')||btn.title||'Button';
+      if(!btn.getAttribute('aria-label'))btn.setAttribute('aria-label',label);
+      if(!btn.title)btn.title=label;
+      if(/^Refresh Data$|^Refresh This Page$|^Pull to refresh$/i.test(label)){
+        btn.classList.add('v89-hidden-control');
+      }
+    });
+  }
+  function compactClean89(root=document){
+    addStyle89();
+    dedupeNav89();
+    buttonBasics89(root);
+    dedupeActions89(root);
+    try{window.vscoreCleanInterface&&window.vscoreCleanInterface()}catch(_){}
+  }
+
+  const oldNav89=window.nav;
+  if(typeof oldNav89==='function'){
+    window.nav=nav=function(){
+      let n=oldNav89.apply(this,arguments)||[];
+      const out=[],seen=new Set();
+      n.forEach(item=>{
+        if(!item||!item[0])return;
+        const key=String(item[0]).toLowerCase();
+        if(seen.has(key))return;
+        seen.add(key);
+        out.push(item);
+      });
+      if(!seen.has('news')){
+        const first=out.shift()||['dashboard','Home'];
+        out.unshift(first,['news','VARDA News Feed']);
+      }
+      return out;
+    };
+  }
+  const oldRenderPage89=window.renderPage;
+  if(typeof oldRenderPage89==='function'){
+    window.renderPage=renderPage=function(){
+      addStyle89();
+      const r=oldRenderPage89.apply(this,arguments);
+      setTimeout(()=>compactClean89(QS('#page')||document),60);
+      setTimeout(()=>compactClean89(document),260);
+      return r;
+    };
+  }
+  const oldRenderApp89=window.renderApp;
+  if(typeof oldRenderApp89==='function'){
+    window.renderApp=renderApp=function(){
+      addStyle89();
+      const r=oldRenderApp89.apply(this,arguments);
+      setTimeout(()=>compactClean89(document),100);
+      setTimeout(()=>compactClean89(document),400);
+      return r;
+    };
+  }
+  const oldBind89=window.bind;
+  if(typeof oldBind89==='function'){
+    window.bind=bind=function(){const r=oldBind89.apply(this,arguments);setTimeout(()=>compactClean89(document),50);return r};
+  }
+  const mo89=new MutationObserver(()=>{if(window.__v89q)return;window.__v89q=true;setTimeout(()=>{window.__v89q=false;compactClean89(document)},120)});
+  try{mo89.observe(document.documentElement,{childList:true,subtree:true})}catch(_){}
+  window.addEventListener('load',()=>setTimeout(()=>compactClean89(document),500));
+  setTimeout(()=>compactClean89(document),800);
+  console.log('V89 final compact smooth app polish loaded');
+})();
+/* ================= END V89 ================= */
 </script></body></html>
