@@ -13135,7 +13135,7 @@ init();
       const extra=String(QS('#v95Extra')?.value||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).map(x=>({task:x,done:true,remarks:''}));
       const remarks=String(QS('#v95Remarks')?.value||'').trim();
       const rows=[...selected,...extra].filter(x=>x.task);
-      if(!rows.some(x=>x.done))throw new Error('Please check at least one completed item or add new completed work.');
+      if(!rows.some(x=>x.done))throw new Error('Please check at least one completed objective.');
       rows.forEach(x=>{if(x.done&&remarks)x.remarks=remarks});
       const file=QS('#v95OutputProof')?.files?.[0];
       if(!file)throw new Error('Daily proof photo is required.');
@@ -14026,4 +14026,2303 @@ init();
   console.log('V100 automatic employee number loaded');
 })();
 /* ================= END V100 ================= */
+/* ================= V101 FOCUS HOME INTERFACE ================= */
+(function(){
+  if(window.__VPOINTS_V101_FOCUS_HOME__)return;
+  window.__VPOINTS_V101_FOCUS_HOME__=true;
+  window.VSCORE_FINAL_BUILD='V101_FOCUS_HOME_INTERFACE';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money101=n=>{try{return typeof money==='function'?money(n):Number(n||0).toFixed(0)}catch(_){return String(n||0)}};
+  const role101=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos101=()=>String(window.S?.profile?.position||'').toUpperCase();
+  const isRetail101=()=>{try{return typeof vscoreRolePolicy85?.isRetail==='function'?vscoreRolePolicy85.isRetail():false}catch(_){return ['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role101())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos101())}};
+  const isBranch101=()=>{try{return typeof vscoreRolePolicy85?.isBranch==='function'?vscoreRolePolicy85.isBranch():false}catch(_){return !isRetail101()&&(['manager','branch_manager','team_leader','fsqa_officer','branch_leader'].includes(role101())||/TEAM LEADER|BRANCH|FSQA|MANAGER/.test(pos101()))}};
+  const isManager101=()=>isRetail101()||isBranch101();
+  const me101=()=>String(window.S?.profile?.id||'');
+  const cleanStatus101=s=>String(s||'').toLowerCase().replace(/\s+/g,'_');
+  const closed101=new Set(['approved','closed','cancelled','canceled','done','completed','resolved','false_report','ignored','archived']);
+  function addStyle101(){
+    if(QS('#v101-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v101-style">
+      .v101-shell{min-height:calc(100svh - 28px);display:grid;gap:12px;background:#eef2f7;border-radius:24px;padding:10px;color:#111827}
+      .v101-head{background:#fff;border:1px solid #e5e7eb;border-top:5px solid #facc15;border-radius:20px;padding:14px;box-shadow:0 12px 28px rgba(15,23,42,.08)}
+      .v101-headline{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+      .v101-kicker{font-size:11px;font-weight:1000;color:#64748b;text-transform:uppercase}
+      .v101-head h1{margin:2px 0 3px;color:#7f1d1d;font-size:26px;line-height:1.05}
+      .v101-head p{margin:0;color:#64748b;font-weight:800;line-height:1.25}
+      .v101-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+      .v101-mini span{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:8px 7px;min-width:0;color:#64748b;font-size:10px;font-weight:1000}
+      .v101-mini b{display:block;color:#111827;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .v101-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+      .v101-actions button{border-radius:12px;min-height:36px;padding:7px 10px;font-size:12px;font-weight:1000}
+      .v101-section{font-size:11px;font-weight:1000;text-transform:uppercase;color:#64748b;padding:0 4px}
+      .v101-focus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+      .v101-card{min-height:92px;border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:11px;display:grid;align-content:space-between;text-align:left;box-shadow:0 8px 18px rgba(15,23,42,.06);touch-action:manipulation}
+      .v101-card:active,.v101-tool:active{filter:brightness(.98);transform:none!important}
+      .v101-card.primary{border-color:#bfdbfe;background:linear-gradient(135deg,#eff6ff,#fff)}
+      .v101-card.warn{border-color:#fde68a;background:linear-gradient(135deg,#fff7ed,#fff)}
+      .v101-card.good{border-color:#bbf7d0;background:linear-gradient(135deg,#f0fdf4,#fff)}
+      .v101-card.dark{border-color:#cbd5e1;background:linear-gradient(135deg,#111827,#334155);color:#fff}
+      .v101-ico{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:#111827;color:#fff;font-weight:1000;font-size:12px}
+      .v101-card.primary .v101-ico{background:#2563eb}.v101-card.warn .v101-ico{background:#f59e0b}.v101-card.good .v101-ico{background:#16a34a}.v101-card.dark .v101-ico{background:#facc15;color:#111827}
+      .v101-title{font-size:14px;font-weight:1000;line-height:1.1;color:inherit}
+      .v101-sub{font-size:11px;color:#64748b;font-weight:850;line-height:1.2;margin-top:3px}.v101-card.dark .v101-sub{color:#e5e7eb}
+      .v101-badge{justify-self:start;display:inline-flex;border-radius:999px;background:#f1f5f9;color:#334155;font-size:10px;font-weight:1000;padding:4px 7px;margin-top:8px}
+      .v101-card.dark .v101-badge{background:rgba(255,255,255,.16);color:#fff}
+      .v101-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+      .v101-tool{min-height:62px;border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:7px 5px;text-align:center;color:#111827;box-shadow:0 5px 14px rgba(15,23,42,.05);touch-action:manipulation}
+      .v101-tool b{display:block;font-size:11.5px;line-height:1.12;overflow:hidden;text-overflow:ellipsis;color:#111827}
+      .v101-tool small{display:block;font-size:9.5px;color:#64748b;font-weight:800;margin-top:3px;line-height:1.08}
+      .v101-tool span{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:10px;background:#e0e7ff;color:#1e3a8a;font-size:10px;font-weight:1000;margin-bottom:5px}
+      .v101-tool:nth-child(3n) span{background:#dcfce7;color:#166534}.v101-tool:nth-child(4n) span{background:#ffedd5;color:#9a3412}.v101-tool:nth-child(5n) span{background:#fee2e2;color:#991b1b}
+      .v101-bottom{display:grid;grid-template-columns:1fr 1fr;gap:8px}.v101-bottom button{min-height:42px;border-radius:14px;font-weight:1000}
+      body.v92-at-launcher .v101-shell{max-width:440px;margin:0 auto}
+      @media(max-width:380px){.v101-shell{padding:8px;border-radius:18px}.v101-head h1{font-size:23px}.v101-card{min-height:86px;padding:9px}.v101-tools{gap:6px}.v101-tool{min-height:58px}.v101-mini{grid-template-columns:1fr 1fr 1fr}}
+    </style>`);
+  }
+  const meta101={
+    app_menu:['Home','Focus','HM'],dashboard:['Dashboard','Summary','DB'],attendance:['Time Clock','In / Out','TC'],tasklist:['Shift Output','Daily output','SO'],taskmonitor:['Output','Monitor','OM'],my_actions:['My Actions','Pending','MY'],missions:['Missions','Proof','MS'],memos:['Memos','Read','ME'],training:['Training','Learn','TR'],news:['News Feed','Updates','NF'],policies:['Policies','Basis','PO'],forms:['Forms','Docs','FO'],concern:['Report','Concern','RC'],records:['Records','History','MR'],ratings:['Service QR','Rating','QR'],rewards:['Rewards','Claim','RW'],profile:['Profile','Account','PF'],employees:['Staff','Accounts','ST'],accounts:['Backup','Access','AC'],case_center:['Case Center','Cases','CC'],approvals:['Approvals','Points','AP'],violations:['Violations','Reports','VI'],fsqa:['FSQA','Quality','FS'],reports:['Private Reports','Confidential','PR'],audit:['Audit Trail','Logs','AU'],settings:['Settings','Control','SE']
+  };
+  function navMap101(){
+    const map=new Map();
+    try{(typeof nav==='function'?nav():[]).forEach(x=>{if(x&&x[0])map.set(String(x[0]),String(x[1]||x[0]))})}catch(_){}
+    return map;
+  }
+  function tools101(){
+    const map=navMap101();
+    const staff=['dashboard','attendance','tasklist','my_actions','missions','memos','training','news','policies','forms','concern','records','ratings','rewards','profile'];
+    const branch=['dashboard','attendance','tasklist','my_actions','employees','accounts','missions','case_center','memos','training','fsqa','violations','news','policies','forms','concern','records','ratings','rewards','profile'];
+    const retail=['dashboard','case_center','approvals','attendance','tasklist','missions','memos','employees','accounts','ratings','news','violations','fsqa','policies','forms','reports','audit','settings','rewards','training'];
+    const order=isRetail101()?retail:(isBranch101()?branch:staff);
+    const seen=new Set();
+    return order.filter(tab=>!seen.has(tab)&&(seen.add(tab),true)).filter(tab=>tab!=='app_menu').map(tab=>{
+      const m=meta101[tab]||[map.get(tab)||tab,tab,tab.slice(0,2).toUpperCase()];
+      return {tab,title:map.get(tab)||m[0],sub:m[1],ico:m[2]};
+    });
+  }
+  function pendingMemos101(){
+    try{
+      if(isRetail101())return 0;
+      const acked=new Set((S.acks||[]).map(a=>String(a.memo_id)));
+      return (S.memos||[]).filter(m=>m.is_required!==false&&!acked.has(String(m.id))).length;
+    }catch(_){return 0}
+  }
+  function openMissions101(){
+    const id=me101();
+    return (S.tasks||[]).filter(t=>String(t.assigned_to_employee_id)===id&&!closed101.has(cleanStatus101(t.status))).length;
+  }
+  function proofQueue101(){
+    const statuses=new Set(['submitted','pending_merit','for_validation','proof_submitted']);
+    const id=me101();
+    let arr=(S.tasks||[]).filter(t=>statuses.has(cleanStatus101(t.status)));
+    if(isBranch101())arr=arr.filter(t=>String(t.assigned_by_employee_id)===id||String(t.branch||'')===String(S.profile?.branch||''));
+    return arr.length;
+  }
+  function openCases101(){
+    const reports=(S.reports||[]).filter(r=>!closed101.has(cleanStatus101(r.status))).length;
+    const vio=(S.violations||[]).filter(v=>!closed101.has(cleanStatus101(v.status))).length;
+    return reports+vio;
+  }
+  function pendingTraining101(){
+    try{
+      const mods=(S.trainingModules||[]).filter(m=>m.is_active!==false);
+      const done=new Set((S.trainingCompletions||[]).filter(c=>String(c.employee_id)===me101()&&String(c.status||'')==='completed').map(c=>String(c.module_id)));
+      return mods.filter(m=>!done.has(String(m.id))).length;
+    }catch(_){return 0}
+  }
+  function outputDue101(){
+    const today=new Date().toISOString().slice(0,10);
+    return !(S.tasks||[]).some(t=>String(t.assigned_to_employee_id)===me101()&&String(t.source_type||'').includes('tasklist')&&String(t.created_at||'').slice(0,10)===today);
+  }
+  function focusItems101(){
+    const p=S.profile||{};
+    if(isRetail101()){
+      return [
+        {tab:'case_center',title:'Review Cases',sub:'Final story and evidence',ico:'CC',tone:'dark',badge:openCases101()+' open'},
+        {tab:'approvals',title:'Final Approvals',sub:'Merit and demerit points',ico:'AP',tone:'primary',badge:proofQueue101()+' waiting'},
+        {tab:'attendance',title:'Attendance',sub:'Branch time records',ico:'TC',tone:'good',badge:'Monitor'},
+        {tab:'tasklist',title:'Output Monitor',sub:'Daily staff output',ico:'OM',tone:'warn',badge:'Today'},
+        {tab:'employees',title:'Staff Accounts',sub:'Create and assign branches',ico:'ST',tone:'primary',badge:(S.employees||[]).length+' staff'},
+        {tab:'ratings',title:'Service Ratings',sub:'Private and public feedback',ico:'QR',tone:'good',badge:'Ratings'}
+      ];
+    }
+    if(isBranch101()){
+      return [
+        {tab:'attendance',title:'Team Attendance',sub:'Time in and out monitor',ico:'TC',tone:'dark',badge:'Branch'},
+        {tab:'tasklist',title:'Output Review',sub:'Daily task output',ico:'SO',tone:'primary',badge:'Today'},
+        {tab:'missions',title:'Mission Proofs',sub:'Validate assigned work',ico:'MS',tone:'warn',badge:proofQueue101()+' waiting'},
+        {tab:'memos',title:'Memo Follow-up',sub:'Acknowledgment status',ico:'ME',tone:'good',badge:pendingMemos101()+' mine'},
+        {tab:'employees',title:'Staff Accounts',sub:'Create branch staff',ico:'ST',tone:'primary',badge:(S.employees||[]).length+' staff'},
+        {tab:'case_center',title:'Case Center',sub:'Reports and evidence',ico:'CC',tone:'dark',badge:openCases101()+' open'}
+      ];
+    }
+    return [
+      {tab:'attendance',title:'Time In / Out',sub:'Start or close shift',ico:'TC',tone:'dark',badge:'Today'},
+      {tab:'tasklist',title:'Shift Output',sub:'Send daily proof',ico:'SO',tone:'primary',badge:outputDue101()?'Due':'Sent'},
+      {tab:'missions',title:'My Missions',sub:'Accept and submit proof',ico:'MS',tone:'warn',badge:openMissions101()+' active'},
+      {tab:'memos',title:'Memos',sub:'Read and acknowledge',ico:'ME',tone:'good',badge:pendingMemos101()+' pending'},
+      {tab:'training',title:'Training',sub:'Complete assigned learning',ico:'TR',tone:'primary',badge:pendingTraining101()+' pending'},
+      {tab:'ratings',title:'Service QR',sub:'Customer feedback',ico:'QR',tone:'good',badge:money101(p.customer_service_points||0)+' pts'}
+    ];
+  }
+  function focusHome101(){
+    addStyle101();
+    const p=S.profile||{};
+    const name=String(p.full_name||'Ka-Varda').split(/\s+/).filter(Boolean)[0]||'Ka-Varda';
+    const roleName=isRetail101()?'Retail Control':(isBranch101()?'Branch Leader':'Staff');
+    const items=focusItems101(), tools=tools101();
+    const alerts=isRetail101()?openCases101()+proofQueue101():pendingMemos101()+openMissions101()+pendingTraining101();
+    return `<div class="v101-shell">
+      <div class="v101-head">
+        <div class="v101-headline"><div><div class="v101-kicker">Today Focus</div><h1>V-Points</h1><p>${E(name)} - ${E(roleName)}<br>${E(p.branch||'Varda Group')}</p></div><div class="v101-actions"><button type="button" class="btn ghost" id="v101Refresh">Refresh</button><button type="button" class="btn dark" id="v101Logout">Logout</button></div></div>
+        <div class="v101-mini"><span><b>${E(money101(p.current_points??100))}</b>V-Points</span><span><b>${E(String(alerts))}</b>Focus</span><span><b>${E(String(tools.length))}</b>Tools</span></div>
+      </div>
+      <div class="v101-section">Do First</div>
+      <div class="v101-focus">${items.map(x=>`<button type="button" class="v101-card ${E(x.tone||'')}" data-v101-tab="${E(x.tab)}"><span class="v101-ico">${E(x.ico)}</span><div><div class="v101-title">${E(x.title)}</div><div class="v101-sub">${E(x.sub)}</div><span class="v101-badge">${E(x.badge||'Open')}</span></div></button>`).join('')}</div>
+      <div class="v101-section">All Tools</div>
+      <div class="v101-tools">${tools.map(x=>`<button type="button" class="v101-tool" data-v101-tab="${E(x.tab)}"><span>${E(x.ico)}</span><b>${E(x.title)}</b><small>${E(x.sub)}</small></button>`).join('')}</div>
+      <div class="v101-bottom"><button type="button" class="btn ghost" id="v101RefreshBottom">Refresh Data</button><button type="button" class="btn dark" id="v101LogoutBottom">Logout</button></div>
+    </div>`;
+  }
+  function go101(tab){
+    tab=String(tab||'').trim();
+    if(!tab)return;
+    try{localStorage.setItem('v92_last_tab',tab)}catch(_){}
+    document.body.classList.remove('v50-menu-open','v58-more-open','v64-menu-open');
+    if(typeof v92Go==='function'&&tab!=='app_menu')return v92Go(tab);
+    if(window.S)S.tab=tab;
+    try{renderPage()}catch(e){try{toast('Page did not open. Try again.','error')}catch(_){console.warn(e)}}
+  }
+  function wire101(root=document){
+    QSA('[data-v101-tab]',root).forEach(b=>{if(!b.__v101){b.__v101=true;b.onclick=ev=>{ev.preventDefault();go101(b.dataset.v101Tab)}}});
+    const refresh=QS('#v101Refresh',root), refresh2=QS('#v101RefreshBottom',root);
+    [refresh,refresh2].filter(Boolean).forEach(btn=>{if(btn.__v101)return;btn.__v101=true;btn.onclick=async ev=>{const b=ev.currentTarget;try{b.textContent='Refreshing...';if(typeof loadData==='function')await loadData();b.textContent=b.id==='v101Refresh'?'Refresh':'Refresh Data';renderPage()}catch(e){b.textContent=b.id==='v101Refresh'?'Refresh':'Refresh Data';try{toast('Refresh failed.','error')}catch(_){}}}});
+    const out=QS('#v101Logout',root), out2=QS('#v101LogoutBottom',root);
+    [out,out2].filter(Boolean).forEach(btn=>{if(btn.__v101)return;btn.__v101=true;btn.onclick=()=>{try{typeof logout==='function'?logout():location.reload()}catch(_){location.reload()}}});
+  }
+  document.addEventListener('click',ev=>{
+    const btn=ev.target?.closest?.('[data-v101-tab]');
+    if(!btn)return;
+    ev.preventDefault();ev.stopImmediatePropagation();ev.stopPropagation();
+    go101(btn.dataset.v101Tab);
+  },true);
+  const oldRenderPage101=window.renderPage;
+  window.renderPage=renderPage=function(){
+    addStyle101();
+    if(String(window.S?.tab||'')==='app_menu'){
+      try{document.body.classList.add('v92-at-launcher','v93-phone-app')}catch(_){}
+      const page=QS('#page');
+      if(page){page.innerHTML=focusHome101();wire101(page)}
+      return;
+    }
+    const out=oldRenderPage101?oldRenderPage101.apply(this,arguments):undefined;
+    setTimeout(()=>wire101(document),80);
+    return out;
+  };
+  const oldShowLauncher101=window.v92ShowLauncher;
+  window.v92ShowLauncher=function(){if(window.S)S.tab='app_menu';try{renderPage()}catch(e){if(typeof oldShowLauncher101==='function')oldShowLauncher101()}};
+  setTimeout(()=>{try{if(String(S?.tab||'')==='app_menu')renderPage()}catch(_){}},250);
+  console.log('V101 focus home interface loaded');
+})();
+/* ================= END V101 ================= */
+/* ================= V102 INPUT SAMPLE PLACEHOLDERS ================= */
+(function(){
+  if(window.__VPOINTS_V102_INPUT_SAMPLES__)return;
+  window.__VPOINTS_V102_INPUT_SAMPLES__=true;
+  window.VSCORE_FINAL_BUILD='V102_INPUT_SAMPLE_PLACEHOLDERS';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  function addStyle102(){
+    if(QS('#v102-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v102-style">
+      input::placeholder,textarea::placeholder{color:#94a3b8!important;opacity:1!important;font-weight:700}
+      textarea::placeholder{line-height:1.35}
+    </style>`);
+  }
+  function labelText102(el){
+    const field=el.closest?.('.field');
+    const direct=field?.querySelector?.('label')?.textContent||'';
+    const safeId=String(el.id||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+    const byFor=safeId?document.querySelector(`label[for="${safeId}"]`)?.textContent||'':'';
+    return [direct,byFor,el.getAttribute('aria-label')||'',el.name||'',el.id||'',el.className||''].join(' ').toLowerCase().replace(/\s+/g,' ').trim();
+  }
+  function isTextBase102(el){
+    const tag=String(el.tagName||'').toLowerCase();
+    if(tag==='textarea')return true;
+    if(tag!=='input')return false;
+    const type=String(el.type||'text').toLowerCase();
+    return ['text','email','password','search','url','tel','number'].includes(type);
+  }
+  function sample102(el){
+    const c=labelText102(el);
+    const type=String(el.type||'').toLowerCase();
+    const multi=String(el.tagName||'').toLowerCase()==='textarea';
+    if(/search|filter/.test(c))return 'Search staff, branch, status, or title';
+    if(/full name|real name|staff name|employee name|customer name|chat name/.test(c))return 'e.g. Maria Santos';
+    if(/email|login email|account email/.test(c))return 'e.g. maria.santos@company.com';
+    if(/password|temporary password|new password/.test(c))return 'e.g. Varda12345';
+    if(/employee number|employee no|staff number/.test(c))return 'Auto generated, e.g. VG-2026-001';
+    if(/student|customer id|identifier/.test(c))return 'e.g. 2026-00123';
+    if(/facebook|website|url|link/.test(c)||type==='url')return 'e.g. https://facebook.com/yourprofile';
+    if(/phone|contact|mobile/.test(c)||type==='tel')return 'e.g. 0917 123 4567';
+    if(/age/.test(c))return 'e.g. 25';
+    if(/points|merit|demerit|score|percent|rating/.test(c)||type==='number')return 'e.g. 2';
+    if(/agency/.test(c))return 'e.g. Varda Group / Agency Name';
+    if(/address/.test(c))return 'e.g. Brgy. 1, Batangas City';
+    if(/branch|store/.test(c))return 'e.g. LPU Main Batangas';
+    if(/position/.test(c))return 'e.g. Front Staff';
+    if(/mission title|task title|selftitle/.test(c))return 'e.g. Deep clean kitchen storage';
+    if(/memo title/.test(c))return 'e.g. Uniform and grooming reminder';
+    if(/training title|module title/.test(c))return 'e.g. Food Safety Basics';
+    if(/reward name|reward title/.test(c))return 'e.g. Free meal voucher';
+    if(/policy title|violation.*title|rule title/.test(c))return 'e.g. No hairnet / improper grooming';
+    if(/form title|form name/.test(c))return 'e.g. Leave Request Form';
+    if(/category/.test(c))return 'e.g. Grooming / FSQA / Attendance';
+    if(/source|basis/.test(c))return 'e.g. Company SOP / FSQA checklist';
+    if(/evidence requirement/.test(c))return 'e.g. Photo proof required';
+    if(/caption|post|news/.test(c))return 'e.g. Finished prep table cleaning with proof photo';
+    if(/message|chat/.test(c))return 'e.g. Team, please check the new memo today';
+    if(/comment|feedback|customer comment/.test(c))return 'e.g. Fast service and friendly staff';
+    if(/reason|explanation|disagree/.test(c))return 'e.g. I was assigned to another urgent task';
+    if(/findings|audit|fsqa/.test(c))return multi?'e.g. Chiller temperature checked\nLabels updated\nCleaning completed':'e.g. Chiller temperature checked';
+    if(/checklist|task items|task checklist|what i completed|completed today|daily output|shift output|selfitems|missionitems/.test(c)){
+      return 'Cook lunch\nCook dinner\nCreate ingredients form';
+    }
+    if(/details|description|content|memo content|policy description|training content/.test(c)){
+      return multi?'e.g. Write the complete details here\nAdd clear steps or proof needed\nMention deadline if needed':'e.g. Write the complete details here';
+    }
+    if(/remarks|notes|proof/.test(c))return multi?'e.g. Completed and attached proof photo\nChecked by team leader':'e.g. Completed with proof photo';
+    if(multi)return 'e.g. Write the required details here';
+    return 'e.g. Type the required information here';
+  }
+  function applySamples102(root=document){
+    addStyle102();
+    QSA('input,textarea',root).forEach(el=>{
+      if(!isTextBase102(el))return;
+      if(el.readOnly&&!/employee number/i.test(labelText102(el)))return;
+      if(el.dataset.v102Sample==='1')return;
+      const ph=sample102(el);
+      if(!el.dataset.v102OldPlaceholder)el.dataset.v102OldPlaceholder=el.getAttribute('placeholder')||'';
+      el.setAttribute('placeholder',ph);
+      el.dataset.v102Sample='1';
+    });
+  }
+  const oldBind102=window.bind;
+  window.bind=bind=function(){const out=oldBind102?oldBind102.apply(this,arguments):undefined;setTimeout(()=>applySamples102(document),50);return out};
+  const oldRenderPage102=window.renderPage;
+  window.renderPage=renderPage=function(){const out=oldRenderPage102?oldRenderPage102.apply(this,arguments):undefined;setTimeout(()=>applySamples102(document),80);setTimeout(()=>applySamples102(document),260);return out};
+  const oldModal102=window.modal;
+  if(typeof oldModal102==='function'){
+    window.modal=modal=function(){const out=oldModal102.apply(this,arguments);setTimeout(()=>applySamples102(document),60);return out};
+  }
+  document.addEventListener('focusin',()=>setTimeout(()=>applySamples102(document),20),true);
+  setTimeout(()=>applySamples102(document),300);
+  console.log('V102 input sample placeholders loaded');
+})();
+/* ================= END V102 ================= */
+/* ================= V103 SHIFT OUTPUT OBJECTIVE CLEANER ================= */
+(function(){
+  if(window.__VPOINTS_V103_OUTPUT_CLEANER__)return;
+  window.__VPOINTS_V103_OUTPUT_CLEANER__=true;
+  window.VSCORE_FINAL_BUILD='V103_SHIFT_OUTPUT_OBJECTIVE_CLEANER';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  function me103(){return String(window.S?.profile?.id||'anon')}
+  function key103(){return 'vpoints_daily_objectives_'+me103()}
+  function cleanObjective103(raw){
+    let s=String(raw||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+    s=s.replace(/^[\s\-*•·]+/,'').replace(/^\d+[\).:\-]\s*/,'').trim();
+    if(!s||/^(code|codes|sds|sdsds|progress|status|remarks|null|undefined)$/i.test(s))return '';
+    return s;
+  }
+  function cleanList103(arr){
+    const out=[],seen=new Set();
+    (arr||[]).forEach(x=>{const s=cleanObjective103(x),k=s.toLowerCase();if(s&&!seen.has(k)){seen.add(k);out.push(s)}});
+    return out;
+  }
+  function cleanText103(raw){
+    return cleanList103(String(raw||'').split(/\r?\n+/)).join('\n');
+  }
+  function cleanStored103(){
+    try{
+      const raw=localStorage.getItem(key103());
+      if(!raw)return;
+      const arr=JSON.parse(raw);
+      if(Array.isArray(arr))localStorage.setItem(key103(),JSON.stringify(cleanList103(arr)));
+    }catch(_){}
+  }
+  function cleanTemplateTextareas103(root=document){
+    QSA('#v96Template,#v95Template',root).forEach(t=>{
+      t.spellcheck=false;
+      t.setAttribute('placeholder','Cook lunch\nCook dinner\nCreate ingredients form');
+      if(t.dataset.v103Focused==='1')return;
+      const cleaned=cleanText103(t.value);
+      if(cleaned!==t.value)t.value=cleaned;
+      if(!t.__v103Focus){
+        t.__v103Focus=true;
+        t.addEventListener('focus',()=>t.dataset.v103Focused='1');
+        t.addEventListener('blur',()=>{t.dataset.v103Focused='0';t.value=cleanText103(t.value)});
+      }
+    });
+  }
+  function cleanChecklist103(root=document){
+    const seen=new Set();
+    QSA('label.v95-check',root).forEach(label=>{
+      const cb=QS('input.v96Done,input.v95Done',label);
+      const span=QS('span',label);
+      if(!cb||!span)return;
+      const cleaned=cleanObjective103(span.textContent||cb.value);
+      const k=cleaned.toLowerCase();
+      if(!cleaned||seen.has(k)){label.remove();return}
+      seen.add(k);
+      cb.value=cleaned;
+      span.textContent=cleaned;
+    });
+  }
+  function cleanOutputInputs103(root=document){
+    cleanStored103();
+    cleanTemplateTextareas103(root);
+    cleanChecklist103(root);
+    QSA('#v96Extra,#v95Extra',root).forEach(t=>{
+      t.setAttribute('placeholder','Cook lunch\nCook dinner\nCreate ingredients form');
+      t.spellcheck=false;
+      if(!t.__v103Extra){
+        t.__v103Extra=true;
+        t.addEventListener('blur',()=>{t.value=cleanText103(t.value)});
+      }
+    });
+  }
+  document.addEventListener('click',ev=>{
+    const save=ev.target?.closest?.('#v96SaveTemplate,#v95SaveTemplate');
+    if(!save)return;
+    const t=QS('#v96Template')||QS('#v95Template');
+    if(t)t.value=cleanText103(t.value);
+  },true);
+  document.addEventListener('submit',ev=>{
+    if(ev.target?.id==='v96OutputForm'||ev.target?.id==='v95OutputForm'){
+      cleanOutputInputs103(document);
+      const extra=QS('#v96Extra')||QS('#v95Extra');
+      if(extra)extra.value=cleanText103(extra.value);
+    }
+  },true);
+  const oldRenderPage103=window.renderPage;
+  window.renderPage=renderPage=function(){
+    const out=oldRenderPage103?oldRenderPage103.apply(this,arguments):undefined;
+    setTimeout(()=>cleanOutputInputs103(document),90);
+    setTimeout(()=>cleanOutputInputs103(document),300);
+    return out;
+  };
+  const oldBind103=window.bind;
+  window.bind=bind=function(){
+    const out=oldBind103?oldBind103.apply(this,arguments):undefined;
+    setTimeout(()=>cleanOutputInputs103(document),80);
+    return out;
+  };
+  setTimeout(()=>cleanOutputInputs103(document),250);
+  console.log('V103 shift output objective cleaner loaded');
+})();
+/* ================= END V103 ================= */
+/* ================= V104 CLEAN FOCUS MENU NO DUPLICATES ================= */
+(function(){
+  if(window.__VPOINTS_V104_CLEAN_FOCUS_MENU__)return;
+  window.__VPOINTS_V104_CLEAN_FOCUS_MENU__=true;
+  window.VSCORE_FINAL_BUILD='V104_CLEAN_FOCUS_MENU_NO_DUPLICATES';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  function addStyle104(){
+    if(QS('#v104-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v104-style">
+      .v101-shell.v104-clean{gap:10px}
+      .v101-shell.v104-clean .v101-focus{gap:8px}
+      .v101-shell.v104-clean .v101-card{min-height:86px;padding:10px}
+      .v101-shell.v104-clean .v101-tools{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+      .v101-shell.v104-clean .v101-tool{min-height:50px;border-radius:12px;padding:6px 4px;box-shadow:0 4px 11px rgba(15,23,42,.045)}
+      .v101-shell.v104-clean .v101-tool span{width:23px;height:23px;border-radius:9px;font-size:9px;margin-bottom:4px}
+      .v101-shell.v104-clean .v101-tool b{font-size:10.5px;line-height:1.05}
+      .v101-shell.v104-clean .v101-tool small{font-size:8.8px;margin-top:2px}
+      .v104-note{font-size:10px;color:#64748b;font-weight:850;margin:-5px 4px 0}
+      @media(max-width:430px){.v101-shell.v104-clean .v101-tools{grid-template-columns:repeat(3,minmax(0,1fr))}.v101-shell.v104-clean .v101-card{min-height:84px}}
+    </style>`);
+  }
+  function cleanFocusMenu104(root=document){
+    addStyle104();
+    const shell=QS('.v101-shell',root);
+    if(!shell)return;
+    shell.classList.add('v104-clean');
+    const focusTabs=new Set(QSA('.v101-focus [data-v101-tab]',shell).map(b=>String(b.dataset.v101Tab||'')));
+    let removed=0;
+    QSA('.v101-tools [data-v101-tab]',shell).forEach(btn=>{
+      const tab=String(btn.dataset.v101Tab||'');
+      if(focusTabs.has(tab)){btn.remove();removed++}
+    });
+    QSA('.v101-section',shell).forEach(sec=>{
+      if(String(sec.textContent||'').trim().toLowerCase()==='all tools')sec.textContent='Other Tools';
+    });
+    const otherCount=QSA('.v101-tools [data-v101-tab]',shell).length;
+    const mini=QSA('.v101-mini span b',shell)[2];
+    if(mini)mini.textContent=String(otherCount);
+    if(removed&&!QS('.v104-note',shell)){
+      const toolsSection=QSA('.v101-section',shell).find(x=>String(x.textContent||'').trim()==='Other Tools');
+      if(toolsSection)toolsSection.insertAdjacentHTML('afterend','<div class="v104-note">Highlighted actions stay above. Other company tools are still available here.</div>');
+    }
+  }
+  const oldRenderPage104=window.renderPage;
+  window.renderPage=renderPage=function(){
+    const out=oldRenderPage104?oldRenderPage104.apply(this,arguments):undefined;
+    cleanFocusMenu104(document);
+    setTimeout(()=>cleanFocusMenu104(document),50);
+    setTimeout(()=>cleanFocusMenu104(document),180);
+    return out;
+  };
+  const oldBind104=window.bind;
+  window.bind=bind=function(){const out=oldBind104?oldBind104.apply(this,arguments):undefined;setTimeout(()=>cleanFocusMenu104(document),80);return out};
+  setTimeout(()=>cleanFocusMenu104(document),250);
+  console.log('V104 clean focus menu loaded');
+})();
+/* ================= END V104 ================= */
+/* ================= V105 PRODUCTION READY CLIENT CLEANUP ================= */
+(function(){
+  if(window.__VPOINTS_V105_PRODUCTION_READY__)return;
+  window.__VPOINTS_V105_PRODUCTION_READY__=true;
+  window.VSCORE_FINAL_BUILD='V105_PRODUCTION_READY_CLIENT_CLEANUP';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const TERMS_VERSION='V105_COMPANY_USE_AGREEMENT';
+  let installPrompt105=null;
+  let cleanQueued105=false;
+
+  function addStyle105(){
+    if(QS('#v105-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v105-style">
+      .field:has(#v96Extra),.field:has(#v95Extra){display:none!important}
+      .v105-install-card{margin:0 0 14px;padding:14px;border:1px solid rgba(99,102,241,.24);background:linear-gradient(135deg,#f8fafc,#eef2ff);border-radius:18px;box-shadow:0 10px 24px rgba(15,23,42,.08)}
+      .v105-install-head{display:flex;gap:10px;align-items:flex-start}.v105-install-icon{width:38px;height:38px;border-radius:14px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:1000;flex:0 0 auto}.v105-install-card h3{margin:0 0 4px;color:#111827}.v105-install-card p{margin:0;color:#64748b;line-height:1.35}.v105-install-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+      #termsGate.v105-terms{z-index:99999}#termsGate.v105-terms .modal-card{width:min(780px,94vw)!important;max-height:90svh!important;display:flex;flex-direction:column;overflow:hidden!important;border-radius:22px!important}.v105-terms-scroll{max-height:50svh;overflow:auto;border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#f8fafc;line-height:1.5}.v105-terms-scroll h4{margin:0 0 8px;color:#7f1d1d}.v105-terms-scroll p{margin:0 0 10px}.v105-terms-scroll ul{margin:8px 0 10px 18px;padding:0}.v105-terms-scroll li{margin:0 0 6px}.v105-agree{display:flex;gap:10px;align-items:flex-start;margin:12px 0;padding:12px;border:1px solid #dbeafe;background:#eff6ff;border-radius:14px;font-weight:850;color:#0f172a}.v105-agree input{width:20px;height:20px;flex:0 0 auto}.v105-terms-actions{position:sticky;bottom:0;background:#fff;border-top:1px solid #e5e7eb;padding-top:12px}
+      @media(max-width:520px){.v105-install-actions{grid-template-columns:1fr}.v105-install-card{border-radius:16px;padding:12px}}
+    </style>`);
+  }
+
+  window.addEventListener?.('beforeinstallprompt',ev=>{
+    ev.preventDefault();
+    installPrompt105=ev;
+    setTimeout(injectInstallPrompt105,40);
+  });
+
+  function showInstallHelp105(){
+    const html=`<h2>Install V-Points App</h2>
+      <p class="muted">Add V-Points to your phone home screen for faster daily access.</p>
+      <div class="notice"><b>Android / Chrome</b><br>Open the V-Points link, tap the browser menu, then choose <b>Install App</b> or <b>Add to Home screen</b>.</div>
+      <div class="notice"><b>iPhone / Safari</b><br>Open the V-Points link in Safari, tap <b>Share</b>, then choose <b>Add to Home Screen</b>.</div>
+      <button class="btn dark full" onclick="closeModal()">Close</button>`;
+    if(typeof modal==='function')modal(html);else alert('Open the V-Points link on your phone and choose Add to Home Screen or Install App from the browser menu.');
+  }
+
+  window.v105InstallApp=async function(){
+    if(installPrompt105){
+      try{
+        installPrompt105.prompt();
+        await installPrompt105.userChoice;
+      }catch(_){}
+      installPrompt105=null;
+      return;
+    }
+    showInstallHelp105();
+  };
+  window.v105InstallHelp=showInstallHelp105;
+
+  function injectInstallPrompt105(){
+    addStyle105();
+    const panel=QS('.auth-panel');
+    if(!panel||QS('#v105InstallCard',panel))return;
+    panel.insertAdjacentHTML('afterbegin',`<div id="v105InstallCard" class="v105-install-card">
+      <div class="v105-install-head"><div class="v105-install-icon">VP</div><div><h3>Install V-Points App</h3><p>Add V-Points to your home screen for quick time clock, missions, memos, and alerts.</p></div></div>
+      <div class="v105-install-actions"><button type="button" class="btn blue full" id="v105InstallNow">Install App</button><button type="button" class="btn ghost full" id="v105InstallHow">How to Add</button></div>
+    </div>`);
+    QS('#v105InstallNow',panel).onclick=()=>window.v105InstallApp();
+    QS('#v105InstallHow',panel).onclick=showInstallHelp105;
+  }
+
+  function termsContent105(){
+    return `<h4>V-Points Privacy and Use Agreement</h4>
+      <p><b>V-Points is the official company system</b> for time clock, daily output, missions, memos, training, reports, ratings, policies, rewards, communication, and V-Points records.</p>
+      <p>By using V-Points, you agree that your work-related activity in the app may be recorded, reviewed, validated, stored, exported, or audited by authorized company management for operations, HR, FSQA, compliance, coaching, recognition, safety, and investigation purposes.</p>
+      <p>The app may collect and process work information such as your profile, branch, position, attendance, timestamps, proof photos, task output, mission proof, memo acknowledgments, training completion, reports, comments, ratings, chat messages, and system activity.</p>
+      <ul>
+        <li>Use the app only for truthful, work-related, respectful, and appropriate content.</li>
+        <li>Do not upload fake proof, false reports, unrelated personal photos, confidential customer information, or disrespectful messages.</li>
+        <li>Keep your account private. Actions made through your account may be treated as your own submission.</li>
+        <li>V-Points, merits, demerits, ratings, rewards, and case actions are subject to company validation and policy review.</li>
+        <li>Photos and evidence may include time, location, and device information when needed for validation.</li>
+      </ul>
+      <p>Continuing means you understand and agree to use V-Points as a company work system and follow company policy while using it.</p>`;
+  }
+
+  window.termsText=termsText=function(){return termsContent105()};
+  function termsKey105(){return `VPOINTS_TERMS_${S?.profile?.id||'anon'}_${TERMS_VERSION}`}
+  function hasAcceptedTerms105(){
+    try{
+      if(localStorage.getItem(termsKey105())==='1')return true;
+      return (S.termsRows||[]).some(t=>String(t.accepted_version||'')===TERMS_VERSION);
+    }catch(_){return false}
+  }
+  async function acceptTerms105(btn){
+    if(btn){btn.disabled=true;btn.textContent='Saving agreement...'}
+    try{
+      localStorage.setItem(termsKey105(),'1');
+      S.termsRows=S.termsRows||[];
+      if(!S.termsRows.some(t=>String(t.accepted_version||'')===TERMS_VERSION)){
+        S.termsRows.push({employee_id:S.profile?.id,accepted_version:TERMS_VERSION,accepted_at:new Date().toISOString()});
+      }
+      try{
+        const r=await sb.from('vscore_terms_acceptance').upsert({employee_id:S.profile.id,accepted_version:TERMS_VERSION,accepted_at:new Date().toISOString(),user_agent:navigator.userAgent},{onConflict:'employee_id,accepted_version'});
+        if(r.error)console.warn('Agreement saved locally only:',r.error.message);
+      }catch(e){console.warn('Agreement saved locally only:',e.message)}
+      QS('#termsGate')?.remove();
+      try{toast('Agreement accepted.','ok')}catch(_){}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='Agree and Continue'}
+    }
+  }
+  window.showTermsGate=showTermsGate=function(){
+    addStyle105();
+    if(!S.profile||QS('#termsGate')||hasAcceptedTerms105())return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="termsGate" class="modal v105-terms"><div class="modal-card">
+      <h2 style="margin:0">Privacy and Use Agreement</h2>
+      <p class="muted">Please review and agree before continuing to V-Points.</p>
+      <div id="termsScroll" class="v105-terms-scroll">${termsContent105()}<p><b>End of Agreement.</b></p></div>
+      <label class="v105-agree"><input type="checkbox" id="v105TermsCheck"> <span>I have read, understood, and agree to use V-Points as an official company work system.</span></label>
+      <div class="v105-terms-actions"><button id="acceptTerms" class="btn green full" type="button" disabled>Agree and Continue</button></div>
+    </div></div>`);
+    const check=QS('#v105TermsCheck'),btn=QS('#acceptTerms');
+    check.onchange=()=>{btn.disabled=!check.checked};
+    btn.onclick=e=>acceptTerms105(e.currentTarget);
+  };
+
+  function cleanShiftOutput105(root=document){
+    QSA('#v96Extra,#v95Extra',root).forEach(t=>{
+      const field=t.closest?.('.field');
+      if(field)field.remove();else t.remove();
+    });
+    QSA('label',root).forEach(label=>{
+      if(/add new or changed work today/i.test(label.textContent||'')){
+        const field=label.closest?.('.field');
+        if(field)field.remove();
+      }
+    });
+  }
+
+  const replacements105=[
+    [/No employee account found\. Run SQL V[\d.]+ or create account\./g,'No employee account found. Please contact your manager or Retail admin.'],
+    [/Use V[\d.]+ index and run [A-Z0-9_]+\.sql once\./g,'Please refresh once. If the issue continues, contact your system administrator.'],
+    [/Loading clean dashboard\./g,'Preparing your workspace.'],
+    [/Security Preparation Before Live Use/g,'Security and Access Summary'],
+    [/Use proper Supabase Auth for final deployment\./g,'Use approved account access for company users.'],
+    [/Supabase rows loaded/g,'Records loaded'],
+    [/Supabase Storage/g,'secure file storage'],
+    [/Google Drive Apps Script bridge/g,'Google Drive connection'],
+    [/Apps Script bridge/g,'Google Drive connection'],
+    [/Drive bridge/g,'Google Drive connection'],
+    [/Apps Script/g,'Google Drive connection'],
+    [/GitHub Pages/g,'public app link'],
+    [/SQL_UPDATE_[A-Z0-9_]+\.sql/g,'system setup'],
+    [/Run SQL V[\d.]+/g,'Contact your system administrator'],
+    [/schema cache/gi,'system setup'],
+    [/before live use/gi,'security review'],
+    [/deployment/gi,'launch'],
+    [/developer/gi,'system administrator']
+  ];
+  function replaceTextNode105(node){
+    let text=node.nodeValue||'',next=text;
+    replacements105.forEach(([a,b])=>{next=next.replace(a,b)});
+    if(next!==text)node.nodeValue=next;
+  }
+  function replaceVisibleText105(root=document.body){
+    if(!root)return;
+    if(typeof document.createTreeWalker==='function'&&typeof NodeFilter!=='undefined'){
+      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){
+        const p=node.parentElement;
+        if(!p||/SCRIPT|STYLE|TEXTAREA|INPUT/.test(p.tagName))return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }});
+      const nodes=[];
+      while(walker.nextNode())nodes.push(walker.currentNode);
+      nodes.forEach(replaceTextNode105);
+    }
+    QSA('[placeholder],[title]',root).forEach(el=>{
+      ['placeholder','title'].forEach(attr=>{
+        const old=el.getAttribute(attr);if(!old)return;
+        let next=old;replacements105.forEach(([a,b])=>{next=next.replace(a,b)});
+        if(next!==old)el.setAttribute(attr,next);
+      });
+    });
+  }
+  function cleanProduction105(root=document){
+    addStyle105();
+    cleanShiftOutput105(root);
+    replaceVisibleText105(root.body||root);
+  }
+  function queueClean105(){
+    if(cleanQueued105)return;
+    cleanQueued105=true;
+    setTimeout(()=>{cleanQueued105=false;cleanProduction105(document)},60);
+  }
+
+  const oldSignIn105=window.signIn;
+  if(typeof oldSignIn105==='function'){
+    window.signIn=signIn=async function(e){
+      e.preventDefault();
+      const b=e.submitter;
+      await act(b,{busy:'Checking...',success:'Login Accepted',reset:'Sign In Again'},async()=>{
+        const email=QS('#loginEmail').value.trim().toLowerCase(),pass=QS('#loginPass').value;
+        const empRow=await q(sb.from('employees').select('*').ilike('email',email).maybeSingle(),null);
+        if(!empRow)throw new Error('No employee account found. Please contact your manager or Retail admin.');
+        if(empRow.is_active===false||String(empRow.activation_status).toLowerCase()==='deleted')throw new Error('This account is inactive. Please contact your manager or Retail admin.');
+        if(String(empRow.login_password_backup||'')!==pass&&String(empRow.temp_password||'')!==pass)throw new Error('Incorrect password.');
+        await sb.from('employees').update({activation_status:'activated',is_active:true,last_login_at:new Date().toISOString(),activated_at:empRow.activated_at||new Date().toISOString()}).eq('id',empRow.id);
+        S.user={id:'direct-'+empRow.id,email,employee_id:empRow.id};
+        S.profile={...empRow,activation_status:'activated',is_active:true};
+        saveSession(S.profile);
+      },boot);
+    };
+  }
+
+  const oldRenderAuth105=window.renderAuth;
+  if(typeof oldRenderAuth105==='function'){
+    window.renderAuth=renderAuth=function(){
+      const out=oldRenderAuth105.apply(this,arguments);
+      setTimeout(injectInstallPrompt105,20);
+      setTimeout(cleanProduction105,80);
+      return out;
+    };
+  }
+  const oldRenderPage105=window.renderPage;
+  if(typeof oldRenderPage105==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRenderPage105.apply(this,arguments);
+      cleanProduction105(document);
+      setTimeout(cleanProduction105,90);
+      setTimeout(cleanProduction105,260);
+      return out;
+    };
+  }
+  const oldBind105=window.bind;
+  if(typeof oldBind105==='function'){
+    window.bind=bind=function(){
+      const out=oldBind105.apply(this,arguments);
+      setTimeout(cleanProduction105,70);
+      return out;
+    };
+  }
+  const oldModal105=window.modal;
+  if(typeof oldModal105==='function'){
+    window.modal=modal=function(){
+      const out=oldModal105.apply(this,arguments);
+      setTimeout(cleanProduction105,30);
+      return out;
+    };
+  }
+  if(typeof MutationObserver!=='undefined'){
+    const mo=new MutationObserver(queueClean105);
+    setTimeout(()=>{if(document.body)mo.observe(document.body,{childList:true,subtree:true})},120);
+  }
+  document.addEventListener('click',()=>setTimeout(cleanProduction105,80),true);
+  document.addEventListener('submit',()=>setTimeout(cleanProduction105,120),true);
+  setTimeout(()=>{injectInstallPrompt105();cleanProduction105(document)},250);
+  console.log('V105 production ready client cleanup loaded');
+})();
+/* ================= END V105 ================= */
+/* ================= V106 FIRST USE APP COACH ================= */
+(function(){
+  if(window.__VPOINTS_V106_APP_COACH__)return;
+  window.__VPOINTS_V106_APP_COACH__=true;
+  window.VSCORE_FINAL_BUILD='V106_FIRST_USE_APP_COACH';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const TERMS_VERSION='V105_COMPANY_USE_AGREEMENT';
+  let running106=false, step106=0, retry106=0, target106=null;
+
+  function addStyle106(){
+    if(QS('#v106-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v106-style">
+      #v106GuideBtn{position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6300;border:0;border-radius:999px;background:#111827;color:#fff;padding:10px 13px;font-weight:1000;box-shadow:0 12px 28px rgba(15,23,42,.26);min-height:42px}
+      #v106Coach{position:fixed;inset:0;z-index:99980;pointer-events:none}
+      #v106Spot{position:fixed;z-index:99981;border:3px solid #facc15;border-radius:18px;box-shadow:0 0 0 9999px rgba(15,23,42,.50),0 0 0 7px rgba(250,204,21,.24),0 0 28px rgba(250,204,21,.95);pointer-events:auto;cursor:pointer;animation:v106Pulse 1.1s ease-in-out infinite alternate}
+      .v106-glow{position:relative!important;z-index:99982!important;box-shadow:0 0 0 4px rgba(250,204,21,.42),0 0 30px rgba(250,204,21,.65)!important}
+      .v106-card{position:fixed;z-index:99983;width:min(340px,calc(100vw - 24px));background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:14px;box-shadow:0 22px 70px rgba(15,23,42,.28);pointer-events:auto}
+      .v106-card:before{content:"";position:absolute;width:18px;height:18px;background:#fff;border-left:1px solid #e5e7eb;border-top:1px solid #e5e7eb;transform:rotate(45deg);left:30px;top:-10px}
+      .v106-card.above:before{top:auto;bottom:-10px;border:0;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+      .v106-kicker{font-size:11px;color:#64748b;text-transform:uppercase;font-weight:1000;letter-spacing:.04em}
+      .v106-card h3{margin:3px 0 6px;color:#7f1d1d;font-size:19px;line-height:1.1}
+      .v106-card p{margin:0;color:#475569;font-weight:800;line-height:1.38}
+      .v106-progress{display:grid;grid-template-columns:repeat(var(--v106-count,8),1fr);gap:4px;margin:12px 0}
+      .v106-progress span{height:5px;border-radius:999px;background:#e5e7eb}.v106-progress span.on{background:#2563eb}
+      .v106-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.v106-actions .wide{grid-column:1/-1}
+      .v106-hand{position:fixed;z-index:99984;width:44px;height:44px;border-radius:999px;background:#facc15;color:#111827;display:grid;place-items:center;font-weight:1000;box-shadow:0 14px 35px rgba(15,23,42,.30);pointer-events:auto;cursor:pointer;animation:v106Tap 1s ease-in-out infinite}
+      @keyframes v106Pulse{from{filter:brightness(1)}to{filter:brightness(1.18)}}
+      @keyframes v106Tap{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(8px) scale(.96)}}
+      @media(max-width:560px){
+        #v106GuideBtn{left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));font-size:12px;min-height:38px;padding:8px 11px}
+        .v106-card{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;width:auto!important;border-radius:18px}
+        .v106-card:before{display:none}
+      }
+    </style>`);
+  }
+
+  function coachKey106(){return `VPOINTS_COACH_DONE_${S?.profile?.id||'anon'}_V106`}
+  function termsAccepted106(){
+    try{
+      const key=`VPOINTS_TERMS_${S?.profile?.id||'anon'}_${TERMS_VERSION}`;
+      return localStorage.getItem(key)==='1'||(S.termsRows||[]).some(t=>String(t.accepted_version||'')===TERMS_VERSION);
+    }catch(_){return true}
+  }
+  function done106(){try{return localStorage.getItem(coachKey106())==='1'}catch(_){return false}}
+  function markDone106(){try{localStorage.setItem(coachKey106(),'1')}catch(_){} QS('#v106GuideBtn')?.remove()}
+  function firstName106(){return String(S?.profile?.full_name||'Ka-Varda').trim().split(/\s+/)[0]||'Ka-Varda'}
+  function role106(){return String(S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_')}
+  function retail106(){return ['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr'].includes(role106())}
+  function manager106(){return retail106()||['manager','branch_manager','team_leader','fsqa_officer'].includes(role106())}
+
+  function canOpen106(tab){
+    if(!tab)return true;
+    if(['profile','attendance','tasklist','news','policies','training','missions','memos','dashboard','app_menu'].includes(tab))return true;
+    return !!QS(`[data-tab="${tab}"],[data-v101-tab="${tab}"]`);
+  }
+  function go106(tab,cb){
+    if(!tab){setTimeout(()=>cb&&cb(),80);return}
+    try{
+      if(typeof window.v92Go==='function')window.v92Go(tab);
+      else{S.tab=tab;if(typeof renderPage==='function')renderPage()}
+    }catch(_){
+      try{S.tab=tab;renderPage()}catch(__){}
+    }
+    setTimeout(()=>cb&&cb(),650);
+  }
+  function visible106(el){
+    if(!el)return false;
+    const r=el.getBoundingClientRect?.();
+    if(r&&(r.width<2||r.height<2))return false;
+    const pos=typeof getComputedStyle==='function'?String(getComputedStyle(el).position||''):'';
+    return el.offsetParent!==null||pos==='fixed';
+  }
+  function targetFor106(step){
+    if(typeof step.target==='function')return step.target();
+    const selectors=Array.isArray(step.target)?step.target:[step.target];
+    for(const s of selectors.filter(Boolean)){
+      const el=QS(s);
+      if(el&&visible106(el))return el;
+    }
+    return null;
+  }
+  function currentSteps106(){return steps106().filter(s=>canOpen106(s.tab))}
+  function currentStep106(){return currentSteps106()[step106]||null}
+  function steps106(){
+    if(retail106())return [
+      {title:'Welcome to V-Points',body:`Hi ${firstName106()}, this quick coach will show the command center basics. It appears once, and you can open it again with the Guide button.`,tab:'app_menu'},
+      {title:'Command Center',body:'This home screen is your shortcut menu. Use it to move fast between monitoring, approvals, missions, messages, and staff tools.',target:'.v101-shell,.topbar',tab:'app_menu'},
+      {title:'Staff Accounts',body:'Create and manage staff or leader accounts here. Employee numbers are generated automatically for new staff.',target:['#staffForm','#employeeForm','[data-v101-tab="accounts"]','[data-tab="accounts"]'],tab:'accounts'},
+      {title:'Attendance Monitoring',body:'Open Time Clock to review IN and OUT records, proof photos, hours rendered, and attendance text data.',target:['#attProof59','#attProof','.v95-kpis','.v95-card','[data-v101-tab="attendance"]','[data-tab="attendance"]'],tab:'attendance'},
+      {title:'Missions and Actions',body:'Assign missions, check proof, and monitor progress. Points still need proper validation before they become final.',target:['#missionForm','.v95-card','[data-v101-tab="missions"]','[data-tab="missions"]'],tab:'missions'},
+      {title:'Case Center',body:'Reports and cases should be reviewed here with evidence, action history, and final closing controls.',target:['#caseCenter','.v95-card','[data-v101-tab="case_center"]','[data-tab="case_center"]'],tab:'case_center'},
+      {title:'News and Recognition',body:'Use the News Feed and ratings to celebrate valid 4-5 star feedback and keep positive work visible.',target:['#newsForm','#toggleNewsPost','.feed-toolbar','[data-v101-tab="news"]','[data-tab="news"]'],tab:'news'},
+      {title:'You are ready',body:'Use Menu anytime to change workspace. The Guide button can replay this coaching whenever needed.',tab:'app_menu',final:true}
+    ];
+    if(manager106())return [
+      {title:'Welcome to V-Points',body:`Hi ${firstName106()}, this quick coach will show the daily staff and leader flow.`,tab:'app_menu'},
+      {title:'Update Your Profile',body:'Start with your own profile. Keep your name, photo, ID, and contact details updated so records are clear.',target:['#profileForm','.cred-card','[data-v101-tab="profile"]','[data-tab="profile"]'],tab:'profile'},
+      {title:'Time Clock',body:'Use Time Clock for your own IN and OUT, and review staff attendance when you are managing your branch.',target:['#attProof59','#attProof','.v95-kpis','.v95-card','[data-v101-tab="attendance"]','[data-tab="attendance"]'],tab:'attendance'},
+      {title:'Shift Output',body:'Save your regular daily objectives once. Each day, check what you completed, attach proof, and submit.',target:['[data-v101-tab="tasklist"]','[data-tab="tasklist"]','#v96OutputForm'],tab:'tasklist'},
+      {title:'Missions',body:'Assign missions to your team, check their proof, validate work, and recommend action when evidence supports it.',target:['#missionForm','.v95-card','[data-v101-tab="missions"]','[data-tab="missions"]'],tab:'missions'},
+      {title:'Memos and Policies',body:'Read memos, monitor acknowledgments, and use policies as the basis for coaching or reports.',target:['#memoForm','.memo-card','.v95-card','[data-v101-tab="memos"]','[data-tab="memos"]'],tab:'memos'},
+      {title:'News Feed',body:'Post positive updates and valid task output. Public recognition helps staff see good work in action.',target:['#newsForm','#toggleNewsPost','.feed-toolbar','[data-v101-tab="news"]','[data-tab="news"]'],tab:'news'},
+      {title:'Training',body:'Open Training to complete assigned learning and monitor completion for your team.',target:['#trainingForm','#acadTrainingForm','.v95-card','[data-v101-tab="training"]','[data-tab="training"]'],tab:'training'},
+      {title:'You are ready',body:'Use Menu anytime to choose another workspace. The Guide button can replay this coaching whenever needed.',tab:'app_menu',final:true}
+    ];
+    return [
+      {title:'Welcome to V-Points',body:`Hi ${firstName106()}, I will guide you through the basics so the app is easy to use on your first day.`,tab:'app_menu'},
+      {title:'Update Your Profile First',body:'Tap Profile and complete your name, photo, contact details, ID, health card, and other required records.',target:['#profileForm','.cred-card','[data-v101-tab="profile"]','[data-tab="profile"]'],tab:'profile'},
+      {title:'Time In and Time Out',body:'Use Time Clock every shift. Take the proof photo when requested so your attendance has a clear time reference.',target:['#attProof59','#attProof','.v95-kpis','.v95-card','[data-v101-tab="attendance"]','[data-tab="attendance"]'],tab:'attendance'},
+      {title:'Daily Shift Output',body:'Save your default objectives once. Each day, check completed work, attach proof, and submit before leaving.',target:['[data-v101-tab="tasklist"]','[data-tab="tasklist"]','#v96OutputForm'],tab:'tasklist'},
+      {title:'Missions',body:'Open My Missions to accept assigned work and submit proof. Only act on missions assigned to you.',target:['#missionForm','.v95-card','[data-v101-tab="missions"]','[data-tab="missions"]'],tab:'missions'},
+      {title:'Memos and Policies',body:'Read memos, acknowledge them, and view company policies when you need the basis for rules or actions.',target:['#memoForm','.memo-card','.v95-card','[data-v101-tab="memos"]','[data-tab="memos"]'],tab:'memos'},
+      {title:'Training',body:'Open Training to complete assigned lessons. Finished training can be recorded and may earn points when valid.',target:['#trainingForm','#acadTrainingForm','.v95-card','[data-v101-tab="training"]','[data-tab="training"]'],tab:'training'},
+      {title:'News Feed',body:'Share positive work updates with proof. Strong customer ratings and valid recognition can help your V-Points.',target:['#newsForm','#toggleNewsPost','.feed-toolbar','[data-v101-tab="news"]','[data-tab="news"]'],tab:'news'},
+      {title:'You are ready',body:'Use Menu anytime to choose another workspace. The Guide button can replay this coaching whenever needed.',tab:'app_menu',final:true}
+    ];
+  }
+
+  function clearTarget106(){
+    if(target106)target106.classList.remove('v106-glow');
+    target106=null;
+    QS('#v106Spot')?.remove();
+    QS('#v106Hand')?.remove();
+  }
+  function removeCoach106(){
+    clearTarget106();
+    QS('#v106Coach')?.remove();
+    running106=false;
+  }
+  function finish106(){
+    markDone106();
+    removeCoach106();
+    try{
+      if(typeof modal==='function'){
+        modal(`<h2>You are ready!</h2><p class="muted">Nice, you are now ready to be a V-Pointer. Use V-Points daily for time clock, proof, missions, memos, training, and positive work updates.</p><button class="btn green full" onclick="closeModal()">Start Using V-Points</button>`);
+      }else alert('Nice, you are now ready to be a V-Pointer.');
+      toast('V-Points guide completed.','ok');
+    }catch(_){}
+  }
+  function skip106(){
+    markDone106();
+    removeCoach106();
+  }
+  function next106(){step106++;renderStep106()}
+  function back106(){step106=Math.max(0,step106-1);renderStep106()}
+
+  function positionCard106(card,target){
+    const vw=window.innerWidth||360, vh=window.innerHeight||640;
+    if(!target){
+      card.style.left=Math.max(12,(vw-340)/2)+'px';
+      card.style.top=Math.max(18,(vh-260)/2)+'px';
+      card.classList.remove('above');
+      return;
+    }
+    const r=target.getBoundingClientRect();
+    const w=Math.min(340,vw-24), h=card.offsetHeight||210;
+    let left=Math.min(Math.max(12,r.left),vw-w-12);
+    let top=r.bottom+18;
+    card.classList.remove('above');
+    if(top+h>vh-12){
+      top=Math.max(12,r.top-h-18);
+      card.classList.add('above');
+    }
+    card.style.left=left+'px';
+    card.style.top=top+'px';
+  }
+  function spotlight106(target){
+    clearTarget106();
+    if(!target)return;
+    target106=target;
+    target.classList.add('v106-glow');
+    try{target.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}catch(_){}
+    setTimeout(()=>{
+      if(!target106)return;
+      const r=target.getBoundingClientRect(), pad=7;
+      const spot=document.createElement('div');
+      spot.id='v106Spot';
+      spot.style.left=Math.max(6,r.left-pad)+'px';
+      spot.style.top=Math.max(6,r.top-pad)+'px';
+      spot.style.width=Math.max(42,r.width+pad*2)+'px';
+      spot.style.height=Math.max(42,r.height+pad*2)+'px';
+      spot.title='Tap to continue';
+      spot.onclick=activateCoachTarget106;
+      document.body.appendChild(spot);
+      const hand=document.createElement('div');
+      hand.id='v106Hand';
+      hand.className='v106-hand';
+      hand.textContent='Tap';
+      hand.title='Tap to continue';
+      hand.style.left=Math.min((window.innerWidth||360)-58,Math.max(10,r.left+r.width-20))+'px';
+      hand.style.top=Math.min((window.innerHeight||640)-70,Math.max(10,r.top+r.height-8))+'px';
+      hand.onclick=activateCoachTarget106;
+      document.body.appendChild(hand);
+      const card=QS('#v106CoachCard');
+      if(card)positionCard106(card,target);
+    },260);
+  }
+
+  function activateCoachTarget106(){
+    const step=currentStep106();
+    if(!step)return;
+    if(step.final)return finish106();
+    const target=target106||targetFor106(step);
+    const navTarget=target?.closest?.('[data-v101-tab],[data-tab]');
+    if(navTarget){
+      try{navTarget.click()}catch(_){}
+      setTimeout(next106,360);
+      return;
+    }
+    next106();
+  }
+
+  function renderStep106(){
+    addStyle106();
+    const list=currentSteps106();
+    if(step106>=list.length)return finish106();
+    const step=list[step106];
+    const existing=QS('#v106Coach');
+    if(!existing)document.body.insertAdjacentHTML('beforeend','<div id="v106Coach"></div>');
+    const root=QS('#v106Coach');
+    const progress=list.map((_,i)=>`<span class="${i<=step106?'on':''}"></span>`).join('');
+    const primary=step.final?'Finish Guide':(step.target?'Show Me':'Next');
+    root.innerHTML=`<div id="v106CoachCard" class="v106-card" style="--v106-count:${list.length}">
+      <div class="v106-kicker">V-Points Coach ${step106+1} of ${list.length}</div>
+      <h3>${E(step.title)}</h3>
+      <p>${E(step.body)}</p>
+      <div class="v106-progress">${progress}</div>
+      <div class="v106-actions">
+        ${step106?'<button type="button" class="btn ghost" id="v106Back">Back</button>':'<button type="button" class="btn ghost" id="v106Skip">Skip</button>'}
+        <button type="button" class="btn blue" id="v106Next">${E(primary)}</button>
+        ${step.final?'':'<button type="button" class="btn ghost wide" id="v106End">Finish later</button>'}
+      </div>
+    </div>`;
+    QS('#v106Back')&&(QS('#v106Back').onclick=back106);
+    QS('#v106Skip')&&(QS('#v106Skip').onclick=skip106);
+    QS('#v106End')&&(QS('#v106End').onclick=skip106);
+    QS('#v106Next').onclick=()=>{
+      if(step.final)return finish106();
+      if(step.tab&&String(S?.tab||'')!==step.tab){
+        go106(step.tab,()=>setTimeout(()=>{const t=targetFor106(step);spotlight106(t);},140));
+        return;
+      }
+      activateCoachTarget106();
+    };
+    if(step.tab&&String(S?.tab||'')!==step.tab){
+      go106(step.tab,()=>setTimeout(()=>{const t=targetFor106(step);spotlight106(t);},160));
+    }else{
+      setTimeout(()=>{const t=targetFor106(step);spotlight106(t);const card=QS('#v106CoachCard');if(card)positionCard106(card,t)},80);
+    }
+  }
+
+  function startGuide106(force=false){
+    if(running106)return;
+    if(!S?.profile)return;
+    if(done106()){QS('#v106GuideBtn')?.remove();return}
+    if(!force&&(!termsAccepted106()||QS('#termsGate'))){
+      if(retry106<40){retry106++;setTimeout(()=>startGuide106(false),500)}
+      return;
+    }
+    retry106=0;
+    running106=true;
+    step106=0;
+    addStyle106();
+    go106('app_menu',()=>setTimeout(renderStep106,180));
+  }
+  window.vpointsStartGuide=()=>startGuide106(true);
+  window.v106StartGuide=window.vpointsStartGuide;
+
+  function injectGuideButton106(){
+    addStyle106();
+    if(!S?.profile||QS('#termsGate')){QS('#v106GuideBtn')?.remove();return}
+    if(done106()){QS('#v106GuideBtn')?.remove();return}
+    if(QS('#v106GuideBtn'))return;
+    document.body.insertAdjacentHTML('beforeend','<button type="button" id="v106GuideBtn">Guide</button>');
+    QS('#v106GuideBtn').onclick=()=>startGuide106(true);
+  }
+  function afterRender106(){
+    setTimeout(injectGuideButton106,120);
+    setTimeout(()=>startGuide106(false),900);
+  }
+  const oldRenderApp106=window.renderApp;
+  if(typeof oldRenderApp106==='function'){
+    window.renderApp=renderApp=function(){
+      const out=oldRenderApp106.apply(this,arguments);
+      afterRender106();
+      return out;
+    };
+  }
+  const oldRenderPage106=window.renderPage;
+  if(typeof oldRenderPage106==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRenderPage106.apply(this,arguments);
+      setTimeout(injectGuideButton106,120);
+      return out;
+    };
+  }
+  document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&running106)skip106()});
+  window.addEventListener('resize',()=>{if(running106)renderStep106()});
+  setTimeout(()=>{injectGuideButton106();startGuide106(false)},1200);
+  console.log('V106 first use app coach loaded');
+})();
+/* ================= END V106 ================= */
+/* ================= V107 MANAGER TIME CLOCK RULE FIX ================= */
+(function(){
+  if(window.__VPOINTS_V107_MANAGER_TIME_CLOCK__)return;
+  window.__VPOINTS_V107_MANAGER_TIME_CLOCK__=true;
+  window.VSCORE_FINAL_BUILD='V107_MANAGER_TIME_CLOCK_RULE_FIX';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const role107=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos107=()=>String(S?.profile?.position||'').toUpperCase();
+  const branch107=()=>String(S?.profile?.branch||'');
+  const today107=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const time107=()=>new Date().toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit',hour12:true});
+  let pendingType107='',pendingBtn107=null,saving107=false;
+
+  function addStyle107(){
+    if(QS('#v107-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v107-style">
+      .v107-note{border-left:5px solid #2563eb;background:#eff6ff;color:#1e3a8a;border-radius:14px;padding:11px 12px;margin:0 0 12px;font-weight:850}
+      .v107-section-title{font-size:12px;text-transform:uppercase;color:#64748b;font-weight:1000;margin:13px 3px 7px}
+      .v107-monitor{margin-top:12px}.v107-row{border:1px solid #e5e7eb;border-radius:15px;padding:11px;background:#fff;margin:8px 0}.v107-row b{color:#7f1d1d}.v107-row span{display:block;color:#64748b;font-size:12px;font-weight:850;margin-top:2px}.v107-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.v107-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.v107-kpis div{border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px}.v107-kpis span{font-size:10px;font-weight:1000;text-transform:uppercase;color:#64748b}.v107-kpis b{display:block;font-size:22px;color:#7f1d1d}.v107-mine{border-color:#bfdbfe;background:#eff6ff}
+      @media(max-width:520px){.v107-kpis{grid-template-columns:1fr 1fr}.v107-actions .btn{flex:1 1 auto}}
+    </style>`);
+  }
+  function isRetail107(){
+    const r=role107(),p=pos107(),b=branch107().toUpperCase();
+    if(/NATIONAL BRANCH/.test(b))return true;
+    if(['retail_head','national_retail_head','national_head','head_office_admin','head_office','executive','executive_management','master','hr','admin'].includes(r))return true;
+    return /NATIONAL RETAIL|RETAIL HEAD|HEAD OFFICE|EXECUTIVE|NATIONAL HEAD|HR \/ COMPLIANCE|HR/.test(p);
+  }
+  function isBranchManager107(){
+    if(isRetail107())return false;
+    const r=role107(),p=pos107();
+    return ['manager','branch_manager','team_leader','fsqa_officer','branch_leader','management'].includes(r)||/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|MANAGER|MANAGEMENT/.test(p);
+  }
+  function allowedBranches107(){
+    if(isRetail107())return null;
+    try{if(typeof vscoreRolePolicy85?.allowedBranches==='function'){const a=vscoreRolePolicy85.allowedBranches();if(Array.isArray(a)&&a.length)return a.map(String)}}catch(_){}
+    const br=branch107();
+    return br?[br]:[];
+  }
+  function photo107(raw){
+    if(!raw)return '';
+    try{if(Array.isArray(raw))return photo107(raw[0]);if(typeof raw==='object')return raw.url||raw.thumbnailUrl||raw.directViewUrl||raw.viewUrl||'';const s=String(raw||'').trim();if(!s)return '';if(s[0]==='['||s[0]==='{')return photo107(JSON.parse(s));return s}catch(_){return String(raw||'')}
+  }
+  function display107(u){try{return typeof v39DriveDisplayUrl==='function'?v39DriveDisplayUrl(u):u}catch(_){return u}}
+  function todayLogs107(){
+    const d=today107();
+    return (S.attendanceLogs||[]).filter(r=>String(r.employee_id)===String(S.profile?.id)&&String(r.work_date||'').slice(0,10)===d).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));
+  }
+  function firstInOut107(logs){logs=(logs||[]).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));return {tin:logs.find(x=>String(x.event_type)==='time_in'),tout:logs.find(x=>String(x.event_type)==='time_out')}}
+  function hours107(a,b){try{const h=(new Date(b)-new Date(a))/36e5;return h>0?h.toFixed(2):'0'}catch(_){return '0'}}
+  function fmt107(d){try{return d?new Date(d).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true}):'missing'}catch(_){return 'missing'}}
+  function emp107(id){try{return typeof emp==='function'?emp(id):{}}catch(_){return {}}}
+  function grouped107(){
+    const g={};
+    (S.attendanceLogs||[]).forEach(r=>{
+      const e=emp107(r.employee_id),d=String(r.work_date||r.created_at||'').slice(0,10),id=String(r.employee_id||''),k=id+'|'+d,br=r.branch||e.branch||'';
+      if(!g[k])g[k]={employee_id:id,employee:e.full_name||'-',branch:br,date:d,tin:null,tout:null};
+      if(String(r.event_type)==='time_in'&&!g[k].tin)g[k].tin=r;
+      if(String(r.event_type)==='time_out'&&!g[k].tout)g[k].tout=r;
+    });
+    let rows=Object.values(g);
+    const allowed=allowedBranches107();
+    if(allowed)rows=rows.filter(r=>allowed.includes(String(r.branch))||String(r.employee_id)===String(S.profile?.id));
+    return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.branch).localeCompare(String(b.branch))||String(a.employee).localeCompare(String(b.employee)));
+  }
+  function clock107(){
+    const logs=todayLogs107(),{tin,tout}=firstInOut107(logs),inPic=display107(photo107(tin?.photo_json||tin?.photo_url)),outPic=display107(photo107(tout?.photo_json||tout?.photo_url));
+    const total=tin&&tout?hours107(tin.created_at,tout.created_at):'0';
+    const note=isBranchManager107()?'Managers and team leaders still need to Time In and Time Out for their own shift. Branch monitoring is shown after your own clock.':'Use Time In at the start of shift and Time Out before leaving. Proof photo and location are required.';
+    return `<div class="v107-section-title">My Time Clock</div><div class="v107-note">${E(note)}</div>
+      <div class="v60-utak-card"><div class="v60-utak-name">${E(S.profile?.full_name||'My Attendance')}</div><div class="v60-utak-hours">${E(total)} hours today</div>
+      <input id="attProof59" type="file" accept="image/*" style="display:none"><input type="checkbox" id="attConfirm59" checked style="display:none"><textarea id="attRemarks59" style="display:none"></textarea>
+      <div class="v60-circle-row"><button type="button" class="v60-time-circle in ${tin?'done disabled':''}" ${tin?'disabled':''} onclick="v107OneTapAttendance('time_in',this)">${inPic?`<img src="${E(inPic)}" class="v60-selfie">`:'IN'}</button><button type="button" class="v60-time-circle out ${(!tin||tout)?'disabled':''} ${tout?'done':''}" ${(!tin||tout)?'disabled':''} onclick="v107OneTapAttendance('time_out',this)">${outPic?`<img src="${E(outPic)}" class="v60-selfie outpic">`:'OUT'}</button></div>
+      <div class="v60-proof-labels"><div><div class="v60-proof-label"><span class="v60-dot ${tin?'ok':''}"></span>Selfie-In</div><div class="v60-proof-time">${tin?'Today<br>'+E(fmt107(tin.created_at)):'-'}</div></div><div><div class="v60-proof-label"><span class="v60-dot ${tout?'warn':''}"></span>Selfie-Out</div><div class="v60-proof-time">${tout?'Today<br>'+E(fmt107(tout.created_at)):'-'}</div></div></div>
+      <div class="v60-mini-actions"><button type="button" class="btn sm ghost" onclick="v107ManualGallery()">Choose from Gallery</button><button type="button" class="btn sm blue" onclick="loadData().then(renderPage)">Refresh</button></div><div id="attPreview59" class="v59-proof-preview"><span class="v59-pill ${tout?'ok':tin?'warn':'blue'}">${tout?'Time Out complete':tin?'Ready for Time Out':'Tap IN to start'}</span></div>
+      <div class="v60-note">Tap IN or OUT. The app saves your photo, timestamp, and phone location.</div></div>`;
+  }
+  function monitor107(title='Attendance Monitoring'){
+    const rows=grouped107(),td=today107(),todays=rows.filter(r=>r.date===td),complete=todays.filter(r=>r.tin&&r.tout).length,missing=todays.filter(r=>!r.tin||!r.tout).length,total=todays.reduce((s,r)=>s+Number(hours107(r.tin?.created_at,r.tout?.created_at)||0),0).toFixed(2);
+    const mine=String(S.profile?.id||'');
+    return `<div class="v107-section-title">${E(title)}</div><div class="v107-kpis"><div><span>Rows Today</span><b>${todays.length}</b></div><div><span>Complete</span><b>${complete}</b></div><div><span>Missing</span><b>${missing}</b></div><div><span>Hours</span><b>${total}</b></div></div>
+      <div class="v107-monitor">${rows.slice(0,140).map(r=>{const inn=display107(photo107(r.tin?.photo_json||r.tin?.photo_url)),out=display107(photo107(r.tout?.photo_json||r.tout?.photo_url));return `<div class="v107-row ${String(r.employee_id)===mine?'v107-mine':''}"><b>${E(r.employee)} - ${E(r.branch||'-')}</b><span>${E(r.date)} | IN: ${E(fmt107(r.tin?.created_at))} | OUT: ${E(fmt107(r.tout?.created_at))} | Hours: ${E(hours107(r.tin?.created_at,r.tout?.created_at))}</span><div class="v107-actions">${inn?`<button class="btn sm blue" onclick="v97PreviewPhoto('${E(inn)}','Time In Photo','vpoints-time-in-${E(r.date)}.jpg')">Preview IN photo</button>`:''}${out?`<button class="btn sm blue" onclick="v97PreviewPhoto('${E(out)}','Time Out Photo','vpoints-time-out-${E(r.date)}.jpg')">Preview OUT photo</button>`:''}</div></div>`}).join('')||'<div class="empty">No attendance logs loaded.</div>'}</div>`;
+  }
+  function page107(){
+    addStyle107();
+    try{typeof addStyle60==='function'&&addStyle60()}catch(_){}
+    if(isRetail107())return `<div class="v95-shell"><div class="v95-hero"><h2>Time Clock Monitoring</h2><p>Retail monitors branches. Retail users do not need staff Time In / Out.</p></div>${monitor107('All Branch Attendance')}</div>`;
+    const mon=isBranchManager107()?monitor107('Branch Attendance Monitor'):'';
+    return `<div class="v95-shell"><div class="v95-hero"><h2>${isBranchManager107()?'Manager Time Clock':'Time In / Time Out'}</h2><p>${isBranchManager107()?'Your own attendance is required. Your branch monitor is below.':'Use this for your shift attendance.'}</p></div>${clock107()}${mon}</div>`;
+  }
+  function bind107(){
+    const input=QS('#attProof59');if(!input||input.__v107)return;input.__v107=true;
+    input.addEventListener('change',async()=>{
+      if(!pendingType107||saving107)return;
+      const file=input.files&&input.files[0];if(!file)return;
+      saving107=true;
+      try{if(typeof setPreview59==='function')setPreview59(file,'Saving '+(pendingType107==='time_in'?'Time In':'Time Out')+'...')}catch(_){}
+      try{
+        const cb=QS('#attConfirm59');if(cb)cb.checked=true;
+        if(typeof attendanceLog59==='function')await attendanceLog59(pendingType107,pendingBtn107||input);
+        else throw new Error('Attendance saver is not ready. Refresh once.');
+      }catch(e){saving107=false;console.error(e);try{toast(e.message||String(e),'error')}catch(_){}}
+      finally{pendingType107='';pendingBtn107=null;setTimeout(()=>{saving107=false},1200)}
+    });
+  }
+  window.v107ManualGallery=function(){
+    const {tin,tout}=firstInOut107(todayLogs107());pendingType107=!tin?'time_in':(!tout?'time_out':'');pendingBtn107=null;if(!pendingType107)return toast('Time In and Time Out are already complete today.','error');QS('#attProof59')?.click();
+  };
+  window.v107OneTapAttendance=function(type,btn){
+    const {tin,tout}=firstInOut107(todayLogs107());
+    if(type==='time_in'&&tin)return toast('Time In already recorded today.','error');
+    if(type==='time_out'&&!tin)return toast('Time In required first.','error');
+    if(type==='time_out'&&tout)return toast('Time Out already recorded today.','error');
+    pendingType107=type;pendingBtn107=btn;saving107=false;
+    const input=QS('#attProof59');if(!input)return toast('Attendance photo field is loading. Refresh once.','error');
+    input.value='';
+    try{if(typeof v58OpenCamera==='function')return v58OpenCamera(input,{prefix:'attendance_'+type,facing:'user'});}catch(e){console.warn(e)}
+    input.click();
+  };
+  function relabelHome107(root=document){
+    if(!isBranchManager107())return;
+    QSA('[data-v101-tab="attendance"]',root).forEach(btn=>{
+      const title=QS('.v101-title,b',btn),sub=QS('.v101-sub,small',btn),badge=QS('.v101-badge',btn);
+      if(title)title.textContent='Time In / Out';
+      if(sub)sub.textContent='My clock + team monitor';
+      if(badge)badge.textContent='Required';
+    });
+  }
+  const oldRenderPage107=window.renderPage;
+  if(typeof oldRenderPage107==='function'){
+    window.renderPage=renderPage=function(){
+      addStyle107();
+      const page=QS('#page');
+      if(window.S&&page&&['attendance','attendance_monitor'].includes(String(S.tab))){
+        page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">${isRetail107()?'Time Clock Monitoring':'Time In / Time Out'}</span><button class="btn sm ghost" id="pageRef">Refresh This Page</button></div>${page107()}`;
+        bind107();
+        const ref=QS('#pageRef');if(ref)ref.onclick=async e=>act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'Refresh This Page'},loadData,renderPage);
+        setTimeout(bind107,80);
+        return;
+      }
+      const out=oldRenderPage107.apply(this,arguments);
+      setTimeout(()=>relabelHome107(document),80);
+      return out;
+    };
+  }
+  const oldRenderApp107=window.renderApp;
+  if(typeof oldRenderApp107==='function'){
+    window.renderApp=renderApp=function(){const out=oldRenderApp107.apply(this,arguments);setTimeout(()=>relabelHome107(document),180);return out};
+  }
+  setTimeout(()=>relabelHome107(document),500);
+  console.log('V107 manager time clock rule fix loaded');
+})();
+/* ================= END V107 ================= */
+/* ================= V108 CUTOFF ATTENDANCE REPORTS ================= */
+(function(){
+  if(window.__VPOINTS_V108_CUTOFF_ATTENDANCE__)return;
+  window.__VPOINTS_V108_CUTOFF_ATTENDANCE__=true;
+  window.VSCORE_FINAL_BUILD='V108_CUTOFF_ATTENDANCE_REPORTS';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const role=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos=()=>String(S?.profile?.position||'').toUpperCase();
+  const branch=()=>String(S?.profile?.branch||'');
+  const phDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  function addStyle108(){
+    if(QS('#v108-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v108-style">
+      .v108-report{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;margin-top:12px;box-shadow:0 12px 28px rgba(15,23,42,.06)}
+      .v108-report h3{margin:0;color:#7f1d1d}.v108-sub{color:#64748b;font-weight:850;margin:5px 0 12px;line-height:1.35}
+      .v108-filter{border:1px solid #fed7aa;background:#fff7ed;border-radius:18px;padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}
+      .v108-filter .field{margin:0}.v108-filter label{font-size:11px;text-transform:uppercase;color:#64748b;font-weight:1000}.v108-filter input,.v108-filter select{width:100%;border:1px solid #dbe3ef;border-radius:14px;padding:11px 12px;font-size:15px;background:#fff}
+      .v108-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v108-presets{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.v108-presets .btn{min-height:36px}
+      .v108-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}.v108-kpis div{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px}.v108-kpis span{font-size:10px;text-transform:uppercase;color:#64748b;font-weight:1000}.v108-kpis b{display:block;color:#7f1d1d;font-size:22px}
+      .v108-table{display:grid;gap:8px;max-height:520px;overflow:auto;padding-right:3px}.v108-row{border:1px solid #e5e7eb;border-left:5px solid #94a3b8;border-radius:14px;padding:10px;background:#fff}.v108-row.complete{border-left-color:#16a34a}.v108-row.missing{border-left-color:#f59e0b}.v108-row.absent{border-left-color:#dc2626}.v108-row b{color:#111827}.v108-row span{display:block;color:#64748b;font-size:12px;font-weight:850;margin-top:2px}.v108-row .v108-status{display:inline-flex;margin-top:7px;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:1000;background:#f1f5f9;color:#334155}.v108-row.complete .v108-status{background:#dcfce7;color:#166534}.v108-row.missing .v108-status{background:#fef3c7;color:#92400e}.v108-row.absent .v108-status{background:#fee2e2;color:#991b1b}.v108-photo-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+      @media(max-width:620px){.v108-filter{grid-template-columns:1fr}.v108-actions{grid-template-columns:1fr}.v108-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v108-presets .btn{flex:1 1 auto}}
+    </style>`);
+  }
+  function isRetail(){
+    const r=role(),p=pos(),b=branch().toUpperCase();
+    return /NATIONAL BRANCH/.test(b)||['retail_head','national_retail_head','national_head','head_office_admin','head_office','executive','executive_management','master','hr','admin'].includes(r)||/NATIONAL RETAIL|RETAIL HEAD|HEAD OFFICE|EXECUTIVE|NATIONAL HEAD|HR/.test(p);
+  }
+  function isLeader(){return !isRetail()&&(['manager','branch_manager','team_leader','fsqa_officer','branch_leader','management'].includes(role())||/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|MANAGER|MANAGEMENT/.test(pos()))}
+  function allowedBranches(){
+    if(isRetail())return null;
+    try{if(typeof vscoreRolePolicy85?.allowedBranches==='function'){const a=vscoreRolePolicy85.allowedBranches();if(Array.isArray(a)&&a.length)return a.map(String)}}catch(_){}
+    return branch()?[branch()]:[];
+  }
+  function empRows(){
+    const allowed=allowedBranches();
+    let arr=(S.allEmployees&&S.allEmployees.length?S.allEmployees:S.employees||[]).filter(e=>e&&e.is_active!==false&&String(e.activation_status||'').toLowerCase()!=='deleted');
+    if(allowed)arr=arr.filter(e=>allowed.includes(String(e.branch||''))||String(e.id)===String(S.profile?.id));
+    return arr.sort((a,b)=>String(a.branch||'').localeCompare(String(b.branch||''))||String(a.full_name||'').localeCompare(String(b.full_name||'')));
+  }
+  function cutoffDefault(){
+    const now=phDate(),d=new Date(now+'T00:00:00'),day=Number(now.slice(8,10));
+    const start=new Date(d);start.setDate(day<=15?1:16);
+    return {from:fmtDate(start),to:now};
+  }
+  function fmtDate(d){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
+  function lastDay(y,m){return new Date(y,m,0).getDate()}
+  function getRange(){
+    const def=cutoffDefault();
+    return {
+      from:localStorage.getItem('v108_att_from')||def.from,
+      to:localStorage.getItem('v108_att_to')||def.to,
+      branch:localStorage.getItem('v108_att_branch')||'__ALL__',
+      position:localStorage.getItem('v108_att_position')||'__ALL__',
+      status:localStorage.getItem('v108_att_status')||'__ALL__'
+    };
+  }
+  function setRange(patch){
+    const r={...getRange(),...patch};
+    localStorage.setItem('v108_att_from',r.from);
+    localStorage.setItem('v108_att_to',r.to);
+    localStorage.setItem('v108_att_branch',r.branch);
+    localStorage.setItem('v108_att_position',r.position);
+    localStorage.setItem('v108_att_status',r.status);
+  }
+  function datesBetween(from,to){
+    const out=[],a=new Date(from+'T00:00:00'),b=new Date(to+'T00:00:00');
+    if(!from||!to||a>b)return out;
+    for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1))out.push(fmtDate(d));
+    return out.slice(0,62);
+  }
+  function photo(raw){
+    if(!raw)return '';
+    try{if(Array.isArray(raw))return photo(raw[0]);if(typeof raw==='object')return raw.url||raw.thumbnailUrl||raw.directViewUrl||raw.viewUrl||'';const s=String(raw||'').trim();if(!s)return '';if(s[0]==='['||s[0]==='{')return photo(JSON.parse(s));return s}catch(_){return String(raw||'')}
+  }
+  function display(u){try{return typeof v39DriveDisplayUrl==='function'?v39DriveDisplayUrl(u):u}catch(_){return u}}
+  function time(d){try{return d?new Date(d).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true}):''}catch(_){return ''}}
+  function hours(a,b){try{const h=(new Date(b)-new Date(a))/36e5;return h>0?h.toFixed(2):'0'}catch(_){return '0'}}
+  function logMap(){
+    const g={};
+    (S.attendanceLogs||[]).forEach(r=>{
+      const id=String(r.employee_id||''),d=String(r.work_date||r.created_at||'').slice(0,10),k=id+'|'+d;
+      g[k]=g[k]||{tin:null,tout:null,logs:[]};
+      g[k].logs.push(r);
+      if(String(r.event_type)==='time_in'&&!g[k].tin)g[k].tin=r;
+      if(String(r.event_type)==='time_out'&&!g[k].tout)g[k].tout=r;
+    });
+    return g;
+  }
+  function statusOf(tin,tout){
+    if(tin&&tout)return 'complete';
+    if(tin&&!tout)return 'missing_out';
+    if(!tin&&tout)return 'missing_in';
+    return 'absent';
+  }
+  function labelStatus(s){return ({complete:'Complete',missing_out:'Missing Time Out',missing_in:'Missing Time In',absent:'Absent'})[s]||s}
+  function reportRows(){
+    const r=getRange(),people=empRows(),days=datesBetween(r.from,r.to),map=logMap(),rows=[];
+    people.forEach(e=>days.forEach(d=>{
+      const rec=map[String(e.id)+'|'+d]||{},tin=rec.tin||null,tout=rec.tout||null,status=statusOf(tin,tout);
+      rows.push({employee_id:e.id,employee:e.full_name||'-',employee_no:e.employee_number||e.employee_no||e.staff_number||'',branch:e.branch||'',position:e.position||'',role:e.role||'',date:d,tin,tout,status,hours:tin&&tout?hours(tin.created_at,tout.created_at):'0'});
+    }));
+    return rows.filter(x=>(r.branch==='__ALL__'||String(x.branch)===r.branch)&&(r.position==='__ALL__'||String(x.position||x.role)===r.position)&&(r.status==='__ALL__'||x.status===r.status))
+      .sort((a,b)=>String(a.branch).localeCompare(String(b.branch))||String(a.position).localeCompare(String(b.position))||String(a.employee).localeCompare(String(b.employee))||String(a.date).localeCompare(String(b.date)));
+  }
+  function filterHtml(){
+    const r=getRange(),people=empRows();
+    const branches=[...new Set(people.map(e=>String(e.branch||'')).filter(Boolean))].sort();
+    const positions=[...new Set(people.map(e=>String(e.position||e.role||'')).filter(Boolean))].sort();
+    return `<div class="v108-filter">
+      <div class="field"><label>Start Date</label><input id="v108From" type="date" value="${E(r.from)}"></div>
+      <div class="field"><label>End Date</label><input id="v108To" type="date" value="${E(r.to)}"></div>
+      <div class="field"><label>Branch</label><select id="v108Branch"><option value="__ALL__">All allowed branches</option>${branches.map(b=>`<option ${r.branch===b?'selected':''} value="${E(b)}">${E(b)}</option>`).join('')}</select></div>
+      <div class="field"><label>Position</label><select id="v108Position"><option value="__ALL__">All positions</option>${positions.map(p=>`<option ${r.position===p?'selected':''} value="${E(p)}">${E(p)}</option>`).join('')}</select></div>
+      <div class="field"><label>Status</label><select id="v108Status">${[['__ALL__','All status'],['complete','Complete'],['missing_in','Missing Time In'],['missing_out','Missing Time Out'],['absent','Absent']].map(x=>`<option ${r.status===x[0]?'selected':''} value="${x[0]}">${x[1]}</option>`).join('')}</select></div>
+      <div class="v108-actions"><button type="button" class="btn blue" onclick="v108ApplyAttendance()">Apply</button><button type="button" class="btn green" onclick="v108DownloadAttendanceExcel()">Download Excel</button></div>
+    </div>`;
+  }
+  function cutoffPreset(kind){
+    const now=phDate(),y=Number(now.slice(0,4)),m=Number(now.slice(5,7)),day=Number(now.slice(8,10));
+    let from,to;
+    if(kind==='current'){from=`${now.slice(0,8)}${day<=15?'01':'16'}`;to=now}
+    else if(kind==='first'){from=`${now.slice(0,8)}01`;to=`${now.slice(0,8)}15`}
+    else if(kind==='second'){from=`${now.slice(0,8)}16`;to=`${now.slice(0,8)}${String(lastDay(y,m)).padStart(2,'0')}`}
+    else {const d=new Date(now+'T00:00:00');d.setDate(d.getDate()-14);from=fmtDate(d);to=now}
+    setRange({from,to});renderPage();
+  }
+  window.v108SetCutoff=cutoffPreset;
+  window.v108ApplyAttendance=function(){
+    setRange({from:QS('#v108From')?.value||getRange().from,to:QS('#v108To')?.value||getRange().to,branch:QS('#v108Branch')?.value||'__ALL__',position:QS('#v108Position')?.value||'__ALL__',status:QS('#v108Status')?.value||'__ALL__'});
+    renderPage();
+  };
+  function reportHtml(){
+    addStyle108();
+    const rows=reportRows(),r=getRange();
+    const complete=rows.filter(x=>x.status==='complete').length,missing=rows.filter(x=>x.status==='missing_in'||x.status==='missing_out').length,absent=rows.filter(x=>x.status==='absent').length,total=rows.reduce((s,x)=>s+Number(x.hours||0),0).toFixed(2);
+    return `<div class="v108-report"><h3>Cutoff Attendance Report</h3><p class="v108-sub">Managers can download their allowed branch attendance. Retail can download all branches. Missing days are included so the 15-day cutoff is complete.</p>
+      ${filterHtml()}<div class="v108-presets"><button type="button" class="btn sm ghost" onclick="v108SetCutoff('current')">Current cutoff to today</button><button type="button" class="btn sm ghost" onclick="v108SetCutoff('first')">1-15 cutoff</button><button type="button" class="btn sm ghost" onclick="v108SetCutoff('second')">16-end cutoff</button><button type="button" class="btn sm ghost" onclick="v108SetCutoff('last15')">Last 15 days</button></div>
+      <div class="v108-kpis"><div><span>Rows</span><b>${rows.length}</b></div><div><span>Complete</span><b>${complete}</b></div><div><span>Missing</span><b>${missing}</b></div><div><span>Hours</span><b>${total}</b></div></div>
+      <div class="small muted"><b>Absent rows:</b> ${absent} | <b>Range:</b> ${E(r.from)} to ${E(r.to)}</div>
+      <div class="v108-table">${rows.slice(0,180).map(x=>{const inn=display(photo(x.tin?.photo_json||x.tin?.photo_url)),out=display(photo(x.tout?.photo_json||x.tout?.photo_url));const cls=x.status==='complete'?'complete':x.status==='absent'?'absent':'missing';return `<div class="v108-row ${cls}"><b>${E(x.employee)} ${x.employee_no?`(${E(x.employee_no)})`:''}</b><span>${E(x.branch)} | ${E(x.position||'-')} | ${E(x.date)} | IN: ${E(time(x.tin?.created_at)||'missing')} | OUT: ${E(time(x.tout?.created_at)||'missing')} | Hours: ${E(x.hours)}</span><span class="v108-status">${E(labelStatus(x.status))}</span><div class="v108-photo-actions">${inn?`<button class="btn sm blue" onclick="v97PreviewPhoto('${E(inn)}','Time In Photo','vpoints-time-in-${E(x.date)}.jpg')">Preview IN</button>`:''}${out?`<button class="btn sm blue" onclick="v97PreviewPhoto('${E(out)}','Time Out Photo','vpoints-time-out-${E(x.date)}.jpg')">Preview OUT</button>`:''}</div></div>`}).join('')||'<div class="empty">No attendance rows in this filter.</div>'}</div>${rows.length>180?`<div class="small muted">Showing first 180 rows. Download Excel for the full ${rows.length} rows.</div>`:''}</div>`;
+  }
+  window.v108DownloadAttendanceExcel=function(){
+    const rows=reportRows(),r=getRange();
+    const body=rows.map(x=>`<tr><td>${E(x.employee_no)}</td><td>${E(x.employee)}</td><td>${E(x.branch)}</td><td>${E(x.position)}</td><td>${E(x.date)}</td><td>${E(time(x.tin?.created_at))}</td><td>${E(time(x.tout?.created_at))}</td><td>${E(x.hours)}</td><td>${E(labelStatus(x.status))}</td><td>${E(x.tin?.location_text||'')}</td><td>${E(x.tout?.location_text||'')}</td><td>${photo(x.tin?.photo_json||x.tin?.photo_url)?'YES':''}</td><td>${photo(x.tout?.photo_json||x.tout?.photo_url)?'YES':''}</td></tr>`).join('');
+    const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr><th>Employee No</th><th>Name</th><th>Branch</th><th>Position</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Hours</th><th>Status</th><th>IN Location</th><th>OUT Location</th><th>IN Photo</th><th>OUT Photo</th></tr></thead><tbody>${body}</tbody></table></body></html>`;
+    const scope=String(r.branch==='__ALL__'?'ALL_ALLOWED_BRANCHES':r.branch).replace(/[^a-z0-9_-]+/gi,'_');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'application/vnd.ms-excel'}));a.download=`V-POINTS_ATTENDANCE_${scope}_${r.from}_to_${r.to}.xls`;document.body.appendChild(a);a.click();a.remove();
+    try{toast(`Attendance Excel ready: ${rows.length} rows`,'ok')}catch(_){}
+  };
+  const oldPage107=window.renderPage;
+  function injectReport108(){
+    if(!['attendance','attendance_monitor'].includes(String(S?.tab||''))||(!isLeader()&&!isRetail()))return;
+    const shell=QS('#page .v95-shell');if(!shell||QS('.v108-report',shell))return;
+    shell.insertAdjacentHTML('beforeend',reportHtml());
+  }
+  if(typeof oldPage107==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldPage107.apply(this,arguments);
+      injectReport108();
+      setTimeout(injectReport108,80);
+      return out;
+    };
+  }
+  console.log('V108 cutoff attendance reports loaded');
+})();
+/* ================= END V108 ================= */
+/* ================= V109 DEPLOYMENT MODAL CLOSE GUARD ================= */
+(function(){
+  if(window.__VPOINTS_V109_DEPLOYMENT_CLOSE_GUARD__)return;
+  window.__VPOINTS_V109_DEPLOYMENT_CLOSE_GUARD__=true;
+  window.VSCORE_FINAL_BUILD='V109_DEPLOYMENT_MODAL_CLOSE_GUARD';
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  function addStyle109(){
+    if(QS('#v109-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v109-style">
+      .v109-close{position:sticky;top:0;float:right;z-index:20;margin:-4px -4px 8px 8px;border:0;border-radius:999px;background:#111827;color:#fff;font-weight:1000;padding:9px 12px;box-shadow:0 8px 22px rgba(15,23,42,.20)}
+      .v109-close:active{transform:scale(.98)}
+    </style>`);
+  }
+  function protectedModal109(modal){
+    if(!modal)return true;
+    if(modal.id==='termsGate'||modal.id==='memoLock')return true;
+    if(modal.closest?.('#termsGate,#memoLock'))return true;
+    if(modal.classList?.contains('v106-terms')||modal.classList?.contains('v55-lock'))return true;
+    const txt=String(modal.textContent||'').toLowerCase();
+    if(/mandatory memo|must acknowledge|privacy and use agreement|agree and continue/.test(txt))return true;
+    return false;
+  }
+  function hasClose109(card){
+    return QSA('button,a',card).some(b=>/close|back|dismiss|cancel|start using/i.test(String(b.textContent||b.getAttribute('aria-label')||''))||/closeModal|remove\(\)/.test(String(b.getAttribute('onclick')||'')));
+  }
+  function closeModal109(modal){
+    try{
+      const video=modal.querySelector?.('video');
+      if(video?.srcObject)video.srcObject.getTracks().forEach(t=>t.stop());
+    }catch(_){}
+    modal.remove();
+  }
+  function addCloseButton109(card,handler){
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='v109-close';
+    btn.textContent='Close';
+    btn.onclick=handler;
+    if(typeof card.insertBefore==='function')card.insertBefore(btn,card.firstChild);
+    else if(typeof card.prepend==='function')card.prepend(btn);
+    else if(typeof card.appendChild==='function')card.appendChild(btn);
+  }
+  function enhance109(root=document){
+    addStyle109();
+    QSA('.modal',root).forEach(m=>{
+      if(protectedModal109(m)||m.dataset.v109==='1')return;
+      const card=QS('.modal-card',m)||m.firstElementChild;
+      if(!card)return;
+      if(!hasClose109(card)){
+        addCloseButton109(card,()=>closeModal109(m));
+      }
+      m.dataset.v109='1';
+    });
+    const p=QS('#v97Preview .v97-preview-card',root);
+    if(p&&!hasClose109(p)){
+      addCloseButton109(p,()=>QS('#v97Preview')?.remove());
+    }
+  }
+  const oldModal109=window.modal;
+  if(typeof oldModal109==='function'){
+    window.modal=modal=function(){
+      const out=oldModal109.apply(this,arguments);
+      setTimeout(()=>enhance109(document),20);
+      return out;
+    };
+  }
+  if(typeof MutationObserver!=='undefined'){
+    const mo=new MutationObserver(()=>setTimeout(()=>enhance109(document),20));
+    setTimeout(()=>{try{mo.observe(document.body||document.documentElement,{childList:true,subtree:true})}catch(_){}} ,120);
+  }
+  document.addEventListener('click',()=>setTimeout(()=>enhance109(document),40),true);
+  setTimeout(()=>enhance109(document),500);
+  console.log('V109 deployment modal close guard loaded');
+})();
+/* ================= END V109 ================= */
+/* ================= V110 FACTORY RESET HARDENING ================= */
+(function(){
+  if(window.__VPOINTS_V110_FACTORY_RESET_HARDENING__)return;
+  window.__VPOINTS_V110_FACTORY_RESET_HARDENING__=true;
+  window.VSCORE_FINAL_BUILD='V110_FACTORY_RESET_READY';
+
+  const V110_TABLES=[
+    'vscore_notifications',
+    'vscore_terms_acceptance',
+    'vscore_reward_claims',
+    'vscore_social_reactions',
+    'vscore_social_comments',
+    'vscore_social_posts',
+    'vscore_chat_messages',
+    'vscore_chat_members',
+    'vscore_chat_rooms',
+    'vscore_task_comments',
+    'vscore_task_reactions',
+    'vscore_task_acknowledgments',
+    'vscore_tasks',
+    'memo_acknowledgments',
+    'memos',
+    'vscore_case_actions',
+    'ledger',
+    'achievements',
+    'violations',
+    'investigation_reports',
+    'fsqa_audits',
+    'vscore_customer_ratings',
+    'vscore_attendance_logs',
+    'vscore_training_quiz_attempts',
+    'vscore_training_completions',
+    'vscore_training_questions',
+    'vscore_training_slides',
+    'vscore_training_modules',
+    'vscore_academy_attempts',
+    'vscore_academy_completions',
+    'vscore_academy_questions',
+    'vscore_academy_slides',
+    'vscore_academy_modules',
+    'vscore_forms',
+    'vscore_policy_rules',
+    'vscore_rewards',
+    'vscore_cleanup_log',
+    'audit_trail',
+    'vscore_standing_rules',
+    'branch_options',
+    'app_settings'
+  ];
+  const V110_STORAGE_BUCKETS=['vscore-training'];
+  let v110PlanCache=null;
+
+  function v110Style(){
+    if(document.getElementById('v110-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v110-style">
+      .v110-reset-card{border:1px solid #fecaca;background:linear-gradient(180deg,#fff 0%,#fff7f7 100%)}
+      .v110-reset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+      .v110-reset-stat{border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:12px}
+      .v110-reset-stat b{display:block;font-size:22px;color:#7f1d1d}
+      .v110-reset-list{max-height:260px;overflow:auto;border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:10px}
+      @media(max-width:700px){.v110-reset-grid{grid-template-columns:1fr}.v110-reset-card .split{display:grid;grid-template-columns:1fr;gap:8px}}
+    </style>`);
+  }
+  function v110Esc(v){return typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function v110Uniq(arr){return Array.from(new Set((arr||[]).map(x=>String(x||'').trim()).filter(Boolean)))}
+  function v110Mother(){
+    const p=S?.profile||{};
+    const pool=[p,...(S?.allEmployees||[]),...(S?.employees||[])].filter(x=>x&&x.id);
+    const ownerLike=e=>/retail|head|office|admin|management|master|hr/i.test(`${e.role||''} ${e.position||''} ${e.branch||''}`);
+    if(p.id&&ownerLike(p))return p;
+    return pool.find(ownerLike)||p;
+  }
+  function v110OwnerAllowed(){
+    return !!(S?.profile?.id&&typeof isOwner==='function'&&isOwner());
+  }
+  function v110DriveIdFromUrl(s){
+    s=String(s||'');
+    if(typeof v45DriveId==='function')return v45DriveId(s)||'';
+    if(typeof v44DriveIdFromUrl==='function')return v44DriveIdFromUrl(s)||'';
+    let m=s.match(/[?&]id=([a-zA-Z0-9_-]{15,})/); if(m)return m[1];
+    m=s.match(/\/d\/([a-zA-Z0-9_-]{15,})/); if(m)return m[1];
+    m=s.match(/thumbnail\?id=([a-zA-Z0-9_-]{15,})/); if(m)return m[1];
+    return '';
+  }
+  function v110ExtractDrive(v,key='',out=[]){
+    try{
+      if(!v)return out;
+      if(typeof v45ExtractDriveIds==='function')out.push(...(v45ExtractDriveIds(v)||[]));
+      if(typeof v48DriveIdsFromAny==='function')out.push(...(v48DriveIdsFromAny(v)||[]));
+      if(typeof v==='string'){
+        const t=v.trim();
+        const id=v110DriveIdFromUrl(t); if(id)out.push(id);
+        if(/drive|fileid|file_id/i.test(key)&&/^[a-zA-Z0-9_-]{15,}$/.test(t))out.push(t);
+        if((t.startsWith('{')||t.startsWith('['))&&t.length<250000){
+          try{v110ExtractDrive(JSON.parse(t),key,out)}catch(_){}
+        }
+      }else if(Array.isArray(v)){
+        v.forEach(x=>v110ExtractDrive(x,key,out));
+      }else if(typeof v==='object'){
+        Object.entries(v).forEach(([k,val])=>{
+          if(/drive|file|url|photo|image|media|proof|evidence|rectification|attachment|selfie|json/i.test(k))v110ExtractDrive(val,k,out);
+        });
+      }
+    }catch(_){}
+    return v110Uniq(out);
+  }
+  function v110ExtractStorage(v,key='',out=[]){
+    try{
+      if(!v)return out;
+      if(typeof v==='string'){
+        const t=v.trim();
+        const re=/\/storage\/v1\/object\/public\/([^\/?#]+)\/([^?#"']+)/g;
+        let m; while((m=re.exec(t))){out.push({bucket:decodeURIComponent(m[1]),path:decodeURIComponent(m[2])})}
+        if((t.startsWith('{')||t.startsWith('['))&&t.length<250000){
+          try{v110ExtractStorage(JSON.parse(t),key,out)}catch(_){}
+        }
+      }else if(Array.isArray(v)){
+        v.forEach(x=>v110ExtractStorage(x,key,out));
+      }else if(typeof v==='object'){
+        Object.entries(v).forEach(([k,val])=>{
+          if(/file|url|photo|image|media|proof|evidence|rectification|attachment|selfie|json/i.test(k))v110ExtractStorage(val,k,out);
+        });
+      }
+    }catch(_){}
+    return out;
+  }
+  async function v110FetchRows(table){
+    const rows=[]; let from=0; const size=1000;
+    for(let guard=0;guard<30;guard++){
+      const r=await sb.from(table).select('*').range(from,from+size-1);
+      if(r.error)return {rows,error:r.error.message||String(r.error)};
+      rows.push(...(r.data||[]));
+      if(!r.data||r.data.length<size)break;
+      from+=size;
+    }
+    return {rows,error:''};
+  }
+  async function v110ListBucket(bucket,path='',depth=0){
+    if(depth>7)return {files:[],error:''};
+    const r=await sb.storage.from(bucket).list(path,{limit:1000,sortBy:{column:'name',order:'asc'}});
+    if(r.error)return {files:[],error:r.error.message||String(r.error)};
+    let files=[];
+    for(const item of (r.data||[])){
+      const p=path?`${path}/${item.name}`:item.name;
+      if(item.id||item.metadata){files.push(p)}
+      else{
+        const sub=await v110ListBucket(bucket,p,depth+1);
+        files.push(...sub.files);
+      }
+    }
+    return {files,error:''};
+  }
+  async function v110BuildPlan(){
+    const byTable={}, errors=[], driveIds=[], storagePairs=[];
+    for(const table of V110_TABLES){
+      const r=await v110FetchRows(table);
+      byTable[table]=r.rows||[];
+      if(r.error)errors.push(`${table}: ${r.error}`);
+      (r.rows||[]).forEach(row=>{
+        driveIds.push(...v110ExtractDrive(row));
+        storagePairs.push(...v110ExtractStorage(row));
+      });
+    }
+    const empRes=await v110FetchRows('employees');
+    const employees=empRes.rows||[];
+    if(empRes.error)errors.push(`employees: ${empRes.error}`);
+    employees.forEach(row=>{
+      driveIds.push(...v110ExtractDrive(row));
+      storagePairs.push(...v110ExtractStorage(row));
+    });
+    const bucketFiles={};
+    for(const bucket of V110_STORAGE_BUCKETS){
+      const listed=await v110ListBucket(bucket);
+      if(listed.error)errors.push(`${bucket} storage list: ${listed.error}`);
+      bucketFiles[bucket]=v110Uniq([...(bucketFiles[bucket]||[]),...(listed.files||[])]);
+    }
+    storagePairs.forEach(x=>{
+      if(!x.bucket||!x.path)return;
+      bucketFiles[x.bucket]=v110Uniq([...(bucketFiles[x.bucket]||[]),x.path]);
+    });
+    const mother=v110Mother();
+    const deleteEmployees=employees.filter(e=>String(e.id)!==String(mother.id));
+    const totalRows=Object.values(byTable).reduce((s,a)=>s+a.length,0);
+    v110PlanCache={at:Date.now(),byTable,errors,driveIds:v110Uniq(driveIds),bucketFiles,mother,employees,deleteEmployees,totalRows};
+    return v110PlanCache;
+  }
+  function v110PlanHtml(plan){
+    const bucketCount=Object.values(plan.bucketFiles||{}).reduce((s,a)=>s+(a||[]).length,0);
+    const topTables=Object.entries(plan.byTable||{}).filter(([,r])=>r.length).sort((a,b)=>b[1].length-a[1].length);
+    return `<div class="v110-reset-grid">
+      <div class="v110-reset-stat"><span class="small muted">Supabase rows</span><b>${plan.totalRows}</b></div>
+      <div class="v110-reset-stat"><span class="small muted">Staff/accounts to delete</span><b>${plan.deleteEmployees.length}</b></div>
+      <div class="v110-reset-stat"><span class="small muted">Storage files found</span><b>${plan.driveIds.length+bucketCount}</b></div>
+    </div>
+    <div class="notice success"><b>Account kept:</b><br>${v110Esc(plan.mother?.full_name||'Mother Retail Account')}<br>${v110Esc(plan.mother?.email||'')}</div>
+    <div class="v110-reset-list">${topTables.map(([t,r])=>`<div class="split" style="justify-content:space-between"><span>${v110Esc(t)}</span><b>${r.length}</b></div>`).join('')||'<div class="empty">No Supabase rows found.</div>'}</div>
+    ${plan.errors.length?`<div class="notice danger"><b>Items needing manual check:</b><br>${plan.errors.slice(0,6).map(v110Esc).join('<br>')}${plan.errors.length>6?'<br>More warnings hidden in console.':''}</div>`:''}`;
+  }
+  window.v110FactoryResetPreview=async function(btn){
+    if(!v110OwnerAllowed())return toast('Only Retail / Head Office can preview factory reset.','error');
+    await act(btn||document.createElement('button'),{busy:'Checking...',success:'Preview Ready',reset:'Preview Reset',toast:'Factory reset preview ready.'},async()=>{
+      const plan=await v110BuildPlan();
+      modal(`<h2>Factory Reset Preview</h2><p class="muted">This is only a preview. Nothing was deleted.</p>${v110PlanHtml(plan)}<br><button class="btn dark full" onclick="closeModal()">Close</button>`);
+    });
+  };
+  async function v110DeleteTable(table){
+    const attempts=[
+      q=>q.not('id','is',null),
+      q=>q.not('created_at','is',null),
+      q=>q.neq('employee_id','__vpoints_keep__'),
+      q=>q.neq('room_id','__vpoints_keep__'),
+      q=>q.neq('setting_key','__vpoints_keep__'),
+      q=>q.neq('branch_name','__vpoints_keep__'),
+      q=>q.neq('status','__vpoints_keep__')
+    ];
+    let last='No delete attempt';
+    for(const filter of attempts){
+      try{
+        const r=await filter(sb.from(table).delete());
+        if(!r.error)return {ok:true,error:''};
+        last=r.error.message||String(r.error);
+      }catch(e){last=e.message||String(e)}
+    }
+    return {ok:false,error:last};
+  }
+  async function v110DeleteEmployeesExcept(mother){
+    const keep=String(mother?.id||'');
+    if(!keep)throw new Error('Mother Retail account was not found. Reset stopped.');
+    let r=await sb.from('employees').delete().neq('id',keep);
+    if(r.error){
+      r=await sb.from('employees').update({is_active:false,hidden_from_monitoring:true,activation_status:'permanent_deleted'}).neq('id',keep);
+      if(r.error)return {ok:false,error:r.error.message||String(r.error),fallback:'failed'};
+      return {ok:true,error:'Delete blocked; non-mother accounts were hidden/deactivated instead.',fallback:'hidden'};
+    }
+    return {ok:true,error:'',fallback:''};
+  }
+  async function v110RestoreMother(mother){
+    const patch={
+      full_name:mother.full_name||'Mother Retail Account',
+      email:mother.email||'',
+      branch:mother.branch||'NATIONAL BRANCH',
+      position:mother.position||'RETAIL HEAD',
+      role:mother.role||'retail_head',
+      employee_number:mother.employee_number||'VG-2026-001',
+      login_password_backup:mother.login_password_backup||mother.temp_password||'',
+      temp_password:mother.temp_password||mother.login_password_backup||'',
+      current_points:Number(mother.current_points||100),
+      is_active:true,
+      hidden_from_monitoring:false,
+      activation_status:'activated',
+      last_login_at:new Date().toISOString()
+    };
+    Object.keys(patch).forEach(k=>patch[k]===undefined&&delete patch[k]);
+    const r=await sb.from('employees').update(patch).eq('id',mother.id).select('*').maybeSingle();
+    if(r.error)throw r.error;
+    S.profile={...(S.profile||{}),...(r.data||patch),id:mother.id};
+    saveSession(S.profile);
+  }
+  async function v110DeleteDrive(ids){
+    ids=v110Uniq(ids);
+    if(!ids.length)return {ok:true,count:0,failed:0,skipped:false};
+    if(typeof v45TrashDriveFiles==='function'){
+      const r=await v45TrashDriveFiles(ids,'factory-reset');
+      return {ok:!((r.failed||[]).length),count:ids.length,failed:(r.failed||[]).length,skipped:false};
+    }
+    if(typeof v44DriveDeleteFiles==='function'){
+      const r=await v44DriveDeleteFiles(ids,'factory-reset');
+      return {ok:!((r.failed||[]).length),count:ids.length,failed:(r.failed||[]).length,skipped:false};
+    }
+    return {ok:false,count:ids.length,failed:ids.length,skipped:true};
+  }
+  async function v110DeleteStorage(bucketFiles){
+    const out=[];
+    for(const [bucket,pathsRaw] of Object.entries(bucketFiles||{})){
+      const paths=v110Uniq(pathsRaw);
+      let removed=0,failed=0;
+      for(let i=0;i<paths.length;i+=80){
+        const batch=paths.slice(i,i+80);
+        const r=await sb.storage.from(bucket).remove(batch);
+        if(r.error)failed+=batch.length; else removed+=batch.length;
+      }
+      out.push({bucket,total:paths.length,removed,failed});
+    }
+    return out;
+  }
+  function v110ClearLocal(motherId){
+    try{
+      Object.keys(localStorage).forEach(k=>{if(k!=='VSCORE_SESSION')localStorage.removeItem(k)});
+      localStorage.setItem(`VPOINTS_COACH_DONE_${motherId}_V106`,'1');
+    }catch(_){}
+  }
+  function v110ResetMemory(){
+    try{
+      Object.keys(S||{}).forEach(k=>{if(Array.isArray(S[k]))S[k]=[]});
+      S.employees=[S.profile];
+      S.allEmployees=[S.profile];
+      S.settings={};
+      S.tab='dashboard';
+    }catch(_){}
+  }
+  window.factoryReset=factoryReset=async function(btn){
+    if(!v110OwnerAllowed())return toast('Only Retail / Head Office can run factory reset.','error');
+    const mother=v110Mother();
+    if(!mother?.id||!mother?.email)return toast('Mother Retail account is missing. Reset stopped.','error');
+    if(!confirm('Factory Reset will delete Supabase app data, storage files, Google Drive uploads found in records, and all accounts except the mother Retail account. Continue?'))return;
+    const typed=prompt('Type RESET V-POINTS to continue:');
+    if(String(typed||'').trim()!=='RESET V-POINTS')return toast('Factory reset cancelled.','error');
+    const email=prompt(`Type the mother account email to keep:\n${mother.email}`);
+    if(String(email||'').trim().toLowerCase()!==String(mother.email||'').trim().toLowerCase())return toast('Mother account email did not match. Reset cancelled.','error');
+    const finalCode=prompt('Final safety code: type DELETE-ALL-DATA');
+    if(String(finalCode||'').trim()!=='DELETE-ALL-DATA')return toast('Final code did not match. Reset cancelled.','error');
+    await act(btn||document.createElement('button'),{busy:'Factory resetting...',success:'Reset Complete',reset:'Factory Reset App Data',toast:'Factory reset finished. Mother Retail account kept.'},async()=>{
+      const plan=(v110PlanCache&&Date.now()-v110PlanCache.at<120000)?v110PlanCache:await v110BuildPlan();
+      const drive=await v110DeleteDrive(plan.driveIds);
+      const storage=await v110DeleteStorage(plan.bucketFiles);
+      const tableErrors=[];
+      for(const table of V110_TABLES){
+        const r=await v110DeleteTable(table);
+        if(!r.ok)tableErrors.push(`${table}: ${r.error}`);
+      }
+      const emp=await v110DeleteEmployeesExcept(mother);
+      await v110RestoreMother(mother);
+      v110ClearLocal(mother.id);
+      v110ResetMemory();
+      if(tableErrors.length||drive.failed||drive.skipped||storage.some(x=>x.failed)||emp.error){
+        console.warn('Factory reset completed with warnings',{tableErrors,drive,storage,employees:emp});
+        toast('Reset finished. Some storage cleanup may need manual check in Settings.','error');
+      }
+      return {tableErrors,drive,storage,employees:emp};
+    },async()=>{
+      closeModal();
+      try{await loadProfile();await loadData()}catch(e){console.warn(e)}
+      S.tab='dashboard';
+      renderApp();
+    });
+  };
+  function v110FactoryResetCard(){
+    v110Style();
+    return `<div class="card v110-reset-card"><h3>Factory Reset Before Launch</h3>
+      <p class="muted">Use this only when you are ready to erase testing data. It keeps the mother Retail account active so you do not get locked out.</p>
+      <div class="notice danger"><b>Deletes:</b> staff accounts, attendance, output, missions, memos, reports, cases, ratings, news feed, chat, trainings, rewards, policies, logs, Google Drive files found in records, and old Supabase training storage files.</div>
+      <div class="split"><button type="button" class="btn blue" id="v110PreviewReset" onclick="v110FactoryResetPreview(this)">Preview Reset</button><button type="button" class="btn dark" id="v110FactoryReset" onclick="factoryReset(this)">Factory Reset App Data</button></div>
+      <p class="small muted">Required before reset: type RESET V-POINTS, confirm the mother account email, then type DELETE-ALL-DATA.</p>
+    </div>`;
+  }
+  if(typeof settingsPage==='function'&&!window.__v110SettingsPatched){
+    window.__v110SettingsPatched=true;
+    const oldSettings=settingsPage;
+    settingsPage=function(){
+      let html=String(oldSettings.apply(this,arguments)||'');
+      const card=v110FactoryResetCard();
+      const re=/<div class="card"><h3>Factory Reset \/ Clear Testing Data<\/h3>[\s\S]*?<button id="factoryReset"[\s\S]*?<\/button><\/div>/;
+      html=re.test(html)?html.replace(re,card):`${html}<div class="grid two" style="margin-top:14px">${card}</div>`;
+      return html;
+    };
+    window.settingsPage=settingsPage;
+  }
+  if(typeof cleanupPage==='function'&&!window.__v110CleanupPatched){
+    window.__v110CleanupPatched=true;
+    const oldCleanup=cleanupPage;
+    cleanupPage=function(){
+      const html=String(oldCleanup.apply(this,arguments)||'');
+      return html.includes('v110-reset-card')?html:`${html}<div class="grid two" style="margin-top:14px">${v110FactoryResetCard()}</div>`;
+    };
+    window.cleanupPage=cleanupPage;
+  }
+  const oldBind110=window.bind||bind;
+  if(typeof oldBind110==='function'&&!window.__v110BindPatched){
+    window.__v110BindPatched=true;
+    window.bind=bind=function(){
+      const out=oldBind110.apply(this,arguments);
+      v110Style();
+      const p=document.getElementById('v110PreviewReset'); if(p&&!p.__v110){p.__v110=true;p.onclick=()=>v110FactoryResetPreview(p)}
+      const r=document.getElementById('v110FactoryReset'); if(r&&!r.__v110){r.__v110=true;r.onclick=()=>factoryReset(r)}
+      return out;
+    };
+  }
+  console.log('V110 factory reset hardening loaded');
+})();
+/* ================= END V110 ================= */
+/* ================= V111 TRUE PERMANENT ACCOUNT DELETE ================= */
+(function(){
+  if(window.__VPOINTS_V111_TRUE_ACCOUNT_DELETE__)return;
+  window.__VPOINTS_V111_TRUE_ACCOUNT_DELETE__=true;
+  window.VSCORE_FINAL_BUILD='V111_TRUE_ACCOUNT_DELETE';
+
+  const TABLES111=[
+    'vscore_task_comments','vscore_task_reactions','vscore_task_acknowledgments',
+    'vscore_social_comments','vscore_social_reactions',
+    'vscore_chat_messages','vscore_chat_members',
+    'memo_acknowledgments','vscore_case_actions','vscore_reward_claims',
+    'vscore_training_quiz_attempts','vscore_training_completions','vscore_training_questions','vscore_training_slides',
+    'vscore_academy_attempts','vscore_academy_completions','vscore_academy_questions','vscore_academy_slides',
+    'vscore_notifications','vscore_terms_acceptance','ledger','vscore_attendance_logs','vscore_customer_ratings',
+    'achievements','violations','investigation_reports','fsqa_audits',
+    'vscore_tasks','vscore_social_posts','vscore_chat_rooms','memos',
+    'vscore_training_modules','vscore_academy_modules','vscore_rewards','vscore_forms','vscore_policy_rules',
+    'audit_trail','employees'
+  ];
+  const ORDER111=TABLES111;
+
+  function esc111(v){return typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function uniq111(arr){return Array.from(new Set((arr||[]).map(x=>String(x||'').trim()).filter(Boolean)))}
+  function id111(){return String(window.S?.profile?.id||'')}
+  function retail111(){
+    try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){}
+    const r=String(S?.profile?.role||'').toLowerCase(),p=String(S?.profile?.position||'').toUpperCase();
+    return /retail|head|office|admin|management|master|hr/.test(r)||/RETAIL|HEAD OFFICE|MANAGEMENT|EXECUTIVE|HR/.test(p);
+  }
+  function rowKey111(row){return String(row?.id||JSON.stringify(row||{}).slice(0,300))}
+  function deletedAccount111(e){
+    const st=String(e?.activation_status||'').toLowerCase();
+    return st==='hard_deleted'||(st==='permanent_deleted'&&e?.hidden_from_monitoring===true)||!!e?.hard_deleted_at;
+  }
+  function filterDeletedAccounts111(){
+    try{
+      if(Array.isArray(S.accountBackupRows))S.accountBackupRows=S.accountBackupRows.filter(e=>!deletedAccount111(e));
+      if(Array.isArray(S.allEmployees))S.allEmployees=S.allEmployees.filter(e=>!deletedAccount111(e));
+      if(Array.isArray(S.employees))S.employees=S.employees.filter(e=>!deletedAccount111(e));
+    }catch(_){}
+  }
+  async function fetchTable111(table){
+    const rows=[]; let from=0; const size=1000;
+    for(let guard=0;guard<30;guard++){
+      const r=await sb.from(table).select('*').range(from,from+size-1);
+      if(r.error)return {rows,error:r.error.message||String(r.error)};
+      rows.push(...(r.data||[]));
+      if(!r.data||r.data.length<size)break;
+      from+=size;
+    }
+    return {rows,error:''};
+  }
+  function isEmpRefKey111(k){
+    return /(employee|staff|created_by|updated_by|assigned|reported|reporter|reviewed|approved|validated|published|sender|member|owner|deleted_by|restored_by|kicked_by|manager|auditor|rated|subject|by)$/i.test(k);
+  }
+  function rowHasEmployee111(table,row,empId){
+    if(!row)return false;
+    if(table==='employees')return String(row.id||'')===String(empId);
+    return Object.entries(row).some(([k,v])=>{
+      if(k==='id')return false;
+      if(v==null)return false;
+      if(Array.isArray(v))return v.map(String).includes(String(empId));
+      return isEmpRefKey111(k)&&String(v)===String(empId);
+    });
+  }
+  function addRow111(plan,table,row){
+    if(!row)return;
+    const key=rowKey111(row);
+    if(!plan.deleteMap[table])plan.deleteMap[table]=new Map();
+    plan.deleteMap[table].set(key,row);
+  }
+  function rows111(plan,table){return Array.from((plan.deleteMap[table]||new Map()).values())}
+  function hasId111(arr,id){return (arr||[]).some(x=>String(x)===String(id))}
+  function addRelatedBy111(plan,table,field,ids){
+    const set=new Set((ids||[]).map(String));
+    if(!set.size)return;
+    (plan.allRows[table]||[]).forEach(r=>{if(set.has(String(r?.[field]||'')))addRow111(plan,table,r)});
+  }
+  function collectIds111(plan,table){return uniq111(rows111(plan,table).map(r=>r.id))}
+  function driveId111(s){
+    s=String(s||'');
+    if(typeof v45DriveId==='function')return v45DriveId(s)||'';
+    if(typeof v44DriveIdFromUrl==='function')return v44DriveIdFromUrl(s)||'';
+    let m=s.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);if(m)return m[1];
+    m=s.match(/\/d\/([a-zA-Z0-9_-]{15,})/);if(m)return m[1];
+    m=s.match(/thumbnail\?id=([a-zA-Z0-9_-]{15,})/);if(m)return m[1];
+    return '';
+  }
+  function extractDrive111(v,key='',out=[]){
+    try{
+      if(!v)return out;
+      if(typeof v45ExtractDriveIds==='function')out.push(...(v45ExtractDriveIds(v)||[]));
+      if(typeof v48DriveIdsFromAny==='function')out.push(...(v48DriveIdsFromAny(v)||[]));
+      if(typeof v==='string'){
+        const t=v.trim(),id=driveId111(t);if(id)out.push(id);
+        if(/drive|fileid|file_id/i.test(key)&&/^[a-zA-Z0-9_-]{15,}$/.test(t))out.push(t);
+        if((t.startsWith('{')||t.startsWith('['))&&t.length<250000){try{extractDrive111(JSON.parse(t),key,out)}catch(_){}}
+      }else if(Array.isArray(v)){
+        v.forEach(x=>extractDrive111(x,key,out));
+      }else if(typeof v==='object'){
+        Object.entries(v).forEach(([k,val])=>{if(/drive|file|url|photo|image|media|proof|evidence|rectification|attachment|selfie|json/i.test(k))extractDrive111(val,k,out)});
+      }
+    }catch(_){}
+    return uniq111(out);
+  }
+  function extractStorage111(v,key='',out=[]){
+    try{
+      if(!v)return out;
+      if(typeof v==='string'){
+        const t=v.trim(),re=/\/storage\/v1\/object\/public\/([^\/?#]+)\/([^?#"']+)/g;
+        let m; while((m=re.exec(t))){out.push({bucket:decodeURIComponent(m[1]),path:decodeURIComponent(m[2])})}
+        if((t.startsWith('{')||t.startsWith('['))&&t.length<250000){try{extractStorage111(JSON.parse(t),key,out)}catch(_){}}
+      }else if(Array.isArray(v)){
+        v.forEach(x=>extractStorage111(x,key,out));
+      }else if(typeof v==='object'){
+        Object.entries(v).forEach(([k,val])=>{if(/file|url|photo|image|media|proof|evidence|rectification|attachment|selfie|json/i.test(k))extractStorage111(val,k,out)});
+      }
+    }catch(_){}
+    return out;
+  }
+  async function buildDeletePlan111(empId){
+    const plan={allRows:{},deleteMap:{},errors:[],driveIds:[],storagePairs:[]};
+    for(const table of TABLES111){
+      const r=await fetchTable111(table);
+      plan.allRows[table]=r.rows||[];
+      if(r.error)plan.errors.push(`${table}: ${r.error}`);
+      (r.rows||[]).forEach(row=>{if(rowHasEmployee111(table,row,empId))addRow111(plan,table,row)});
+    }
+    let changed=true, guard=0;
+    while(changed&&guard++<6){
+      const before=JSON.stringify(Object.fromEntries(Object.entries(plan.deleteMap).map(([k,v])=>[k,v.size])));
+      const taskIds=collectIds111(plan,'vscore_tasks');
+      addRelatedBy111(plan,'vscore_task_comments','task_id',taskIds);
+      addRelatedBy111(plan,'vscore_task_reactions','task_id',taskIds);
+      addRelatedBy111(plan,'vscore_task_acknowledgments','task_id',taskIds);
+      const memoIds=collectIds111(plan,'memos');
+      addRelatedBy111(plan,'memo_acknowledgments','memo_id',memoIds);
+      const postIds=collectIds111(plan,'vscore_social_posts');
+      addRelatedBy111(plan,'vscore_social_comments','post_id',postIds);
+      addRelatedBy111(plan,'vscore_social_reactions','post_id',postIds);
+      const commentIds=collectIds111(plan,'vscore_social_comments');
+      addRelatedBy111(plan,'vscore_social_comments','parent_comment_id',commentIds);
+      const roomIds=collectIds111(plan,'vscore_chat_rooms');
+      addRelatedBy111(plan,'vscore_chat_messages','room_id',roomIds);
+      addRelatedBy111(plan,'vscore_chat_members','room_id',roomIds);
+      const violationIds=collectIds111(plan,'violations');
+      addRelatedBy111(plan,'vscore_case_actions','violation_id',violationIds);
+      const rewardIds=collectIds111(plan,'vscore_rewards');
+      addRelatedBy111(plan,'vscore_reward_claims','reward_id',rewardIds);
+      const trainingIds=collectIds111(plan,'vscore_training_modules');
+      ['vscore_training_slides','vscore_training_questions','vscore_training_completions','vscore_training_quiz_attempts'].forEach(t=>addRelatedBy111(plan,t,'module_id',trainingIds));
+      const acadIds=collectIds111(plan,'vscore_academy_modules');
+      ['vscore_academy_slides','vscore_academy_questions','vscore_academy_completions','vscore_academy_attempts'].forEach(t=>addRelatedBy111(plan,t,'module_id',acadIds));
+      changed=before!==JSON.stringify(Object.fromEntries(Object.entries(plan.deleteMap).map(([k,v])=>[k,v.size])));
+    }
+    Object.entries(plan.deleteMap).forEach(([,map])=>Array.from(map.values()).forEach(row=>{
+      plan.driveIds.push(...extractDrive111(row));
+      plan.storagePairs.push(...extractStorage111(row));
+    }));
+    plan.driveIds=uniq111(plan.driveIds);
+    return plan;
+  }
+  async function deleteDrive111(ids){
+    ids=uniq111(ids);
+    if(!ids.length)return {count:0,failed:0,skipped:false};
+    if(typeof v45TrashDriveFiles==='function'){
+      const r=await v45TrashDriveFiles(ids,'account-permanent-delete');
+      return {count:ids.length,failed:(r.failed||[]).length,skipped:false};
+    }
+    if(typeof v44DriveDeleteFiles==='function'){
+      const r=await v44DriveDeleteFiles(ids,'account-permanent-delete');
+      return {count:ids.length,failed:(r.failed||[]).length,skipped:false};
+    }
+    return {count:ids.length,failed:ids.length,skipped:true};
+  }
+  async function deleteStorage111(pairs){
+    const by={};
+    (pairs||[]).forEach(p=>{if(p.bucket&&p.path)(by[p.bucket]||(by[p.bucket]=new Set())).add(p.path)});
+    const out=[];
+    for(const [bucket,set] of Object.entries(by)){
+      const paths=Array.from(set); let removed=0,failed=0;
+      for(let i=0;i<paths.length;i+=80){
+        const batch=paths.slice(i,i+80);
+        const r=await sb.storage.from(bucket).remove(batch);
+        if(r.error)failed+=batch.length; else removed+=batch.length;
+      }
+      out.push({bucket,total:paths.length,removed,failed});
+    }
+    return out;
+  }
+  async function deleteRow111(table,row){
+    if(!row)return {ok:true};
+    const id=row.id;
+    if(id!=null&&id!==''){
+      const r=await sb.from(table).delete().eq('id',id);
+      if(!r.error)return {ok:true};
+    }
+    const keys=['employee_id','task_id','memo_id','post_id','comment_id','parent_comment_id','room_id','module_id','violation_id','reward_id','sender_id','created_by','reported_by','reporter_employee_id','reported_employee_id'].filter(k=>row[k]!=null&&row[k]!=='').slice(0,3);
+    if(!keys.length)return {ok:false,error:'No delete key found'};
+    let q=sb.from(table).delete();
+    keys.forEach(k=>{q=q.eq(k,row[k])});
+    const r=await q;
+    return r.error?{ok:false,error:r.error.message||String(r.error)}:{ok:true};
+  }
+  async function runDeletePlan111(plan){
+    const errors=[];
+    for(const table of ORDER111){
+      const rows=rows111(plan,table);
+      for(const row of rows){
+        const r=await deleteRow111(table,row);
+        if(!r.ok)errors.push(`${table}: ${r.error||'delete blocked'}`);
+      }
+    }
+    return errors;
+  }
+  async function fallbackHideEmployee111(empId,reason){
+    const patch={
+      full_name:'Deleted Account',
+      email:`deleted-${String(empId).slice(0,8)}@removed.local`,
+      temp_password:'',
+      login_password_backup:'',
+      is_active:false,
+      hidden_from_monitoring:true,
+      activation_status:'hard_deleted',
+      deletion_reason:reason,
+      deleted_at:new Date().toISOString(),
+      hard_deleted_at:new Date().toISOString(),
+      permanent_deleted_by:id111()
+    };
+    try{await sb.from('employees').update(patch).eq('id',empId)}catch(_){}
+  }
+  function localPurge111(empId){
+    try{
+      const raw=JSON.parse(localStorage.getItem('VPOINTS_PURGED_ACCOUNTS')||'[]');
+      if(!raw.includes(empId))raw.push(empId);
+      localStorage.setItem('VPOINTS_PURGED_ACCOUNTS',JSON.stringify(raw));
+    }catch(_){}
+    ['employees','allEmployees','accountBackupRows'].forEach(k=>{if(Array.isArray(S[k]))S[k]=S[k].filter(e=>String(e.id)!==String(empId))});
+  }
+  function purgedIds111(){
+    try{return JSON.parse(localStorage.getItem('VPOINTS_PURGED_ACCOUNTS')||'[]').map(String)}catch(_){return []}
+  }
+  function removePurgedFromLists111(){
+    const ids=new Set(purgedIds111());
+    ['employees','allEmployees','accountBackupRows'].forEach(k=>{
+      if(Array.isArray(S[k]))S[k]=S[k].filter(e=>!ids.has(String(e.id))&&!deletedAccount111(e));
+    });
+  }
+  window.v111PermanentDeleteAccount=async function(empId,btn){
+    if(!retail111())return toast('Only Retail / Executive can permanently delete accounts.','error');
+    const e=[...(S.accountBackupRows||[]),...(S.allEmployees||[]),...(S.employees||[])].find(x=>String(x.id)===String(empId))||(typeof emp==='function'?emp(empId):null)||{};
+    if(!e.id)return toast('Account not found.','error');
+    if(String(e.id)===id111())return toast('You cannot delete your own mother/admin account.','error');
+    const name=String(e.full_name||e.email||e.id);
+    const reason=prompt('Reason for permanent delete?','resigned / AWOL / terminated / duplicate');
+    if(!reason)return;
+    if(!confirm(`This will permanently delete ${name} and connected app records. This is not backup hide. Continue?`))return;
+    const typed=prompt(`Type DELETE ${name} to confirm:`);
+    if(String(typed||'').trim()!==`DELETE ${name}`)return toast('Permanent delete cancelled.','error');
+    await act(btn||document.createElement('button'),{busy:'Deleting...',success:'Deleted',reset:'Permanent Remove',toast:'Account and connected records deleted.'},async()=>{
+      const plan=await buildDeletePlan111(e.id);
+      await deleteDrive111(plan.driveIds);
+      await deleteStorage111(plan.storagePairs);
+      const errors=await runDeletePlan111(plan);
+      const still=await sb.from('employees').select('id').eq('id',e.id).maybeSingle();
+      if(still.data?.id)await fallbackHideEmployee111(e.id,reason);
+      if(errors.length)console.warn('Permanent account delete warnings',errors);
+      localPurge111(e.id);
+    },async()=>{await loadData();removePurgedFromLists111();renderPage()});
+  };
+  window.v87PermanentRemove=function(id,btn){return window.v111PermanentDeleteAccount(id,btn)};
+  window.deleteAccount=function(id,btn){return window.v111PermanentDeleteAccount(id,btn)};
+  try{v87PermanentRemove=window.v111PermanentDeleteAccount}catch(_){}
+  try{deleteAccount=window.v111PermanentDeleteAccount}catch(_){}
+
+  const oldLoad111=window.loadData;
+  if(typeof oldLoad111==='function'&&!window.__v111LoadPatched){
+    window.__v111LoadPatched=true;
+    window.loadData=loadData=async function(){
+      const out=await oldLoad111.apply(this,arguments);
+      removePurgedFromLists111();
+      return out;
+    };
+  }
+  const oldAccounts111=window.accountsPage;
+  if(typeof oldAccounts111==='function'&&!window.__v111AccountsPatched){
+    window.__v111AccountsPatched=true;
+    window.accountsPage=accountsPage=function(){
+      removePurgedFromLists111();
+      let html=String(oldAccounts111.apply(this,arguments)||'');
+      html=html.replace('Kick/disable login keeps the account in backup. Permanent remove hides it from active monitoring but keeps an audit trail.','Kick/disable login keeps the account in backup. Permanent Remove deletes the account and connected records from V-Points.');
+      html=html.replace(/Permanent Remove/g,'Permanent Remove');
+      return html;
+    };
+  }
+  const oldBind111=window.bind;
+  if(typeof oldBind111==='function'&&!window.__v111BindPatched){
+    window.__v111BindPatched=true;
+    window.bind=bind=function(){
+      const out=oldBind111.apply(this,arguments);
+      setTimeout(()=>{
+        document.querySelectorAll('.v87DeleteAcct,.delAcct').forEach(b=>{
+          if(b.__v111)return;
+          b.__v111=true;
+          b.onclick=()=>window.v111PermanentDeleteAccount(b.dataset.id,b);
+        });
+      },60);
+      return out;
+    };
+  }
+  filterDeletedAccounts111();
+  console.log('V111 true permanent account delete loaded');
+})();
+/* ================= END V111 ================= */
+/* ================= V112 CUSTOMER QR RATING HARDENING ================= */
+(function(){
+  if(window.__VPOINTS_V112_CUSTOMER_QR_HARDENING__)return;
+  window.__VPOINTS_V112_CUSTOMER_QR_HARDENING__=true;
+  window.VSCORE_FINAL_BUILD='V112_CUSTOMER_QR_HARDENING';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money112=n=>{try{return typeof money==='function'?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n??'0')}};
+
+  function addStyle112(){
+    if(QS('#v112-rating-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v112-rating-style">
+      .v112-public{min-height:100vh;background:linear-gradient(135deg,#fff7ed,#fff,#eef2ff);display:flex;align-items:center;justify-content:center;padding:18px}.v112-card{max-width:690px;width:100%;background:#fff;border:1px solid #fde68a;border-radius:24px;padding:22px;box-shadow:0 20px 55px rgba(15,23,42,.14)}.v112-card h1{margin:0 0 8px;color:#7f1d1d;line-height:1.12}.v112-note{border-left:5px solid #facc15;background:#fffbeb;color:#78350f;border-radius:14px;padding:12px;margin:10px 0}.v112-good{border-left-color:#22c55e;background:#f0fdf4;color:#14532d}.v112-danger{border-left-color:#ef4444;background:#fef2f2;color:#7f1d1d}.v112-stars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}.v112-star{border:1px solid #fde68a;background:#fff7ed;color:#7f1d1d;border-radius:14px;padding:11px 8px;font-weight:1000;text-align:center}.v112-star.active{background:#facc15;box-shadow:0 8px 18px rgba(250,204,21,.25)}.v112-check{display:flex;gap:9px;align-items:flex-start;border:1px solid #e5e7eb;border-radius:14px;padding:11px;background:#f8fafc;margin:9px 0}.v112-check input{width:auto;margin-top:3px}.v112-mini{font-size:12px;color:#64748b}.v112-trap{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}.v112-thank{font-size:28px;text-align:center;color:#166534;font-weight:1000}.v112-qrbox{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;text-align:center;max-width:340px;margin:12px auto}.v112-qrbox img{width:230px;height:230px;max-width:100%;border-radius:14px}@media(max-width:760px){.v112-card{padding:16px;border-radius:20px}.v112-stars{grid-template-columns:1fr}.v112-star{text-align:left}.grid.two{grid-template-columns:1fr}}
+    </style>`);
+  }
+  function today112(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+  function baseUrl112(){
+    try{
+      const set=window.S?.v53Settings||{};
+      const u=String(set.public_app_url||localStorage.getItem('vscore_public_app_url')||'').trim();
+      if(u)return u.replace(/[#?].*$/,'');
+    }catch(_){}
+    return location.href.split('#')[0].split('?')[0];
+  }
+  function ratingUrl112(id){const base=baseUrl112();return base+(base.includes('?')?'&':'?')+'rate='+encodeURIComponent(id)}
+  window.v112RatingUrl=ratingUrl112;
+  function stars112(n){return Array(Math.max(1,Math.min(5,Number(n||0)))).fill('&#9733;').join('')}
+  function starText112(i){return ['Needs improvement','Fair','Good','Very good','Excellent'][Math.max(0,Math.min(4,Number(i)-1))]}
+  function savedSession112(){try{return typeof readSession==='function'?readSession():JSON.parse(localStorage.getItem('VSCORE_SESSION')||'null')}catch(_){return null}}
+  function sessionMatches112(em){try{const s=savedSession112();return !!(s&&em&&(String(s.id||s.employee_id||'')===String(em.id)||String(s.email||'').toLowerCase()===String(em.email||em.account_email||'').toLowerCase()))}catch(_){return false}}
+  function hasStaffSession112(){const s=savedSession112();return !!(s&&(s.id||s.employee_id||s.email))}
+  async function resolveEmployee112(raw){
+    const clean=decodeURIComponent(String(raw||'')).trim().replace(/[^a-zA-Z0-9_@.\-]/g,'');
+    if(!clean)return null;
+    let r=await sb.from('employees').select('*').eq('id',clean).maybeSingle();
+    if(!r.error&&r.data)return r.data;
+    if(clean.includes('@')){
+      r=await sb.from('employees').select('*').or(`email.eq.${clean},account_email.eq.${clean}`).maybeSingle();
+      if(!r.error&&r.data)return r.data;
+    }
+    return null;
+  }
+  function employeeInactive112(em){return !em||em.is_active===false||/deleted|hard_deleted|permanent/i.test(String(em.activation_status||''))}
+  async function hash112(text){
+    try{
+      if(window.crypto?.subtle&&window.TextEncoder){
+        const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,48);
+      }
+    }catch(_){}
+    let h=2166136261;
+    for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);
+    return (h>>>0).toString(16);
+  }
+  async function raterToken112(){
+    const sc=window.screen||{};
+    const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(_){return''}})();
+    const raw=[navigator.userAgent||'',navigator.language||'',navigator.platform||'',tz,sc.width||'',sc.height||'',sc.colorDepth||'',navigator.hardwareConcurrency||'',navigator.deviceMemory||''].join('|');
+    return 'rt_'+await hash112(raw);
+  }
+  function dailyKey112(date){return 'vpoints_customer_rating_daily_'+date}
+  function readDaily112(date){try{return JSON.parse(localStorage.getItem(dailyKey112(date))||'null')}catch(_){return null}}
+  function writeDaily112(date,employeeId){try{localStorage.setItem(dailyKey112(date),JSON.stringify({employee_id:employeeId,at:new Date().toISOString()}));localStorage.setItem('vpoints_rate_'+employeeId+'_'+date,'1')}catch(_){}}
+  function alreadyHtml112(em){
+    return `<div class="v112-thank">Thank you!</div><p style="text-align:center">This rater already submitted one customer rating today. One customer can rate one employee per day.</p><div class="v112-note"><b>Rated employee:</b><br>${E(em.full_name)}<br><span class="v112-mini">${E(em.branch||'')}</span></div>`;
+  }
+  async function existingRating112(ratingDate,deviceToken,identifier){
+    try{
+      const r=await sb.from('vscore_customer_ratings').select('id,employee_id,created_at').eq('rating_date',ratingDate).eq('device_token',deviceToken).limit(1);
+      if(!r.error&&Array.isArray(r.data)&&r.data.length)return r.data[0];
+    }catch(_){}
+    if(identifier&&identifier!==deviceToken){
+      try{
+        const r=await sb.from('vscore_customer_ratings').select('id,employee_id,created_at').eq('rating_date',ratingDate).eq('customer_identifier',identifier).limit(1);
+        if(!r.error&&Array.isArray(r.data)&&r.data.length)return r.data[0];
+      }catch(_){}
+    }
+    return null;
+  }
+  async function insertRating112(payload){
+    const full={...payload};
+    const medium={...payload};
+    ['rater_token','is_anonymous','anonymous','remarks','fake_risk_flags','verified_customer','submitted_from','user_agent'].forEach(k=>delete medium[k]);
+    const minimal={employee_id:payload.employee_id,employee_name:payload.employee_name,branch:payload.branch,stars:payload.stars,comment:payload.comment,customer_service_points:payload.customer_service_points,source:'qr_public',rating_date:payload.rating_date,device_token:payload.device_token,is_public:payload.is_public,created_at:payload.created_at};
+    let last=null;
+    for(const attempt of [full,medium,minimal]){
+      const r=await sb.from('vscore_customer_ratings').insert(attempt).select().single();
+      if(!r.error)return r.data||attempt;
+      last=r.error;
+      if(/duplicate|unique/i.test(String(r.error.message||'')))throw new Error('This rater already submitted a customer rating today.');
+    }
+    throw last||new Error('Rating was not saved.');
+  }
+  async function awardRating112(em,stars,sourceId){
+    const pts=Number(stars||0);
+    if(!pts)return;
+    try{await sb.from('employees').update({current_points:Number(em.current_points||100)+pts,customer_service_points:Number(em.customer_service_points||0)+pts}).eq('id',em.id)}catch(_){}
+    try{await sb.from('ledger').insert({employee_id:em.id,points_change:pts,reason:`Customer service rating: ${stars} star(s)`,source_type:'customer_rating',source_id:sourceId,created_by:em.id,created_at:new Date().toISOString()})}catch(_){}
+  }
+  async function postNews112(em,stars,comment,sourceId){
+    if(Number(stars)<4)return;
+    const caption=`Customer Service Recognition\n\nCongratulations ${em.full_name}! A customer gave you ${stars} out of 5 stars.${comment?`\n\nCustomer remarks:\n"${comment}"`:''}\n\nThis recognition added +${stars} V-Points. Keep the service standard strong.`;
+    try{await sb.from('vscore_social_posts').insert({post_type:'news',caption,photos_json:'[]',created_by:em.id,branch:em.branch,share_scope:'all',comments_enabled:true,source_type:'customer_rating',source_id:sourceId,expires_at:new Date(Date.now()+7*86400000).toISOString(),is_active:true,created_at:new Date().toISOString()})}catch(_){}
+  }
+  function qrBox112(em){
+    const link=ratingUrl112(em.id);
+    return `<div class="v112-qrbox"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(link)}"><h3>${E(em.full_name)}</h3><p>${E(em.branch||'')}</p><button class="btn ghost" onclick="window.print()">Print QR</button></div>`;
+  }
+  function qrOnly112(em,title,body){
+    QS('#root').innerHTML=`<div class="v112-public"><div class="v112-card"><h1>${E(title)}</h1><div class="v112-note">${body}</div>${qrBox112(em)}</div></div>`;
+  }
+  async function renderCustomerRating112(rateId){
+    addStyle112();
+    QS('#root').innerHTML='<div class="v112-public"><div class="v112-card"><h1>Loading rating page...</h1><p>Please wait.</p></div></div>';
+    const em=await resolveEmployee112(rateId);
+    if(employeeInactive112(em)){QS('#root').innerHTML='<div class="v112-public"><div class="v112-card"><h1>Rating link not found</h1><p>This QR is not connected to an active employee record.</p></div></div>';return}
+    if(sessionMatches112(em)){qrOnly112(em,'Customer Rating QR','<b>Self-rating is disabled.</b><br>This page is for customers only. Ask the customer to scan using their own phone.');return}
+    if(hasStaffSession112()){qrOnly112(em,'Customer Rating Protected','<b>Staff app session detected.</b><br>For fake-rater protection, customer ratings are disabled on logged-in V-Points staff devices. Ask the customer to scan this QR using their own phone.');return}
+
+    const ratingDate=today112();
+    const deviceToken=await raterToken112();
+    const localAlready=readDaily112(ratingDate)||localStorage.getItem('vpoints_rate_'+em.id+'_'+ratingDate);
+    const serverAlready=localAlready?null:await existingRating112(ratingDate,deviceToken,'');
+    if(localAlready||serverAlready){QS('#root').innerHTML=`<div class="v112-public"><div class="v112-card">${alreadyHtml112(em)}</div></div>`;return}
+
+    const openedAt=Date.now();
+    QS('#root').innerHTML=`<div class="v112-public"><div class="v112-card"><div style="text-align:center;margin-bottom:12px">${(typeof logo==='function'&&logo())?`<img src="${E(logo())}" style="width:74px;border-radius:16px">`:''}</div><h1>How was my service today?</h1><p class="muted">Rate the staff member, add remarks if you want, and choose anonymous if you prefer not to share your name.</p><div class="v112-note"><b>You are rating:</b><br><span style="font-size:24px;font-weight:1000;color:#7f1d1d">${E(em.full_name)}</span><br>${E(em.position||'Varda Group Staff')} - ${E(em.branch||'')}</div><form id="custRateForm112"><input type="hidden" id="custStars112" value="5"><input id="custWebsite112" class="v112-trap" autocomplete="off" tabindex="-1"><label class="v112-check"><input type="checkbox" id="custAnon112" checked><span><b>Submit anonymously</b><br><span class="v112-mini">Your name and ID will not be sent when this is checked.</span></span></label><div id="v112Identity" class="grid two hidden"><div class="field"><label>Your name optional</label><input id="custName112" class="input" placeholder="Customer name"></div><div class="field"><label>Student no. / ID optional</label><input id="custStudent112" class="input" placeholder="Student number / ID"></div></div><div class="v112-stars">${[1,2,3,4,5].map(i=>`<button type="button" class="v112-star ${i<=5?'active':''}" data-star="${i}">${stars112(i)}<br><small>${starText112(i)}</small></button>`).join('')}</div><div class="field"><label>Remarks / comment optional</label><textarea id="custComment112" maxlength="500" placeholder="Freely share what happened, what you appreciated, or what we can improve."></textarea></div><label class="v112-check"><input type="checkbox" id="custVerify112" required><span>I confirm I am a real customer and this feedback is for service I received today.</span></label><button class="btn green full" style="font-size:20px;padding:16px">Submit Rating</button></form><p class="v112-mini" style="text-align:center">Protection: one rater can submit one employee rating per day. Staff self-rating is blocked.</p></div></div>`;
+    QSA('.v112-star').forEach(b=>b.onclick=()=>{const val=Number(b.dataset.star||5);QS('#custStars112').value=val;QSA('.v112-star').forEach(x=>x.classList.toggle('active',Number(x.dataset.star)<=val))});
+    const syncAnon=()=>{const anon=QS('#custAnon112')?.checked!==false;const box=QS('#v112Identity');if(box)box.classList.toggle('hidden',anon);['#custName112','#custStudent112'].forEach(sel=>{const el=QS(sel);if(el){el.disabled=anon;if(anon)el.value=''}})};
+    QS('#custAnon112')?.addEventListener('change',syncAnon);syncAnon();
+    const form=QS('#custRateForm112');
+    if(form)form.onsubmit=async ev=>{
+      ev.preventDefault();
+      const btn=ev.submitter;
+      try{
+        btn.disabled=true;btn.textContent='Submitting...';
+        if(QS('#custWebsite112')?.value)throw new Error('Rating blocked.');
+        if(Date.now()-openedAt<2200)throw new Error('Please take a moment to review before submitting.');
+        if(!QS('#custVerify112')?.checked)throw new Error('Please confirm this is real customer feedback.');
+        const stars=Math.max(1,Math.min(5,Number(QS('#custStars112').value||5)));
+        const anonymous=QS('#custAnon112')?.checked!==false;
+        const comment=String(QS('#custComment112').value||'').trim().slice(0,500);
+        const customerName=anonymous?'Anonymous':String(QS('#custName112').value||'').trim().slice(0,120);
+        const studentNo=anonymous?'':String(QS('#custStudent112').value||'').trim().slice(0,80);
+        const identifier=studentNo||deviceToken;
+        const dup=await existingRating112(ratingDate,deviceToken,identifier);
+        if(dup){writeDaily112(ratingDate,em.id);QS('.v112-card').innerHTML=alreadyHtml112(em);return}
+        const now=new Date().toISOString();
+        const payload={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment,remarks:comment,customer_name:customerName,student_number:studentNo,customer_identifier:identifier,customer_service_points:stars,source:'qr_public',rating_date:ratingDate,device_token:deviceToken,rater_token:deviceToken,is_anonymous:anonymous,anonymous,verified_customer:true,fake_risk_flags:'daily_device_check,human_confirm,staff_session_block,self_rating_block,honeypot',submitted_from:'customer_qr',user_agent:(navigator.userAgent||'web').slice(0,180),is_public:stars>=4,created_at:now};
+        const rating=await insertRating112(payload);
+        const sourceId=rating.id||`${em.id}_${ratingDate}_${Date.now()}`;
+        await awardRating112(em,stars,sourceId);
+        await postNews112(em,stars,comment,sourceId);
+        try{await sb.from('vscore_notifications').insert({employee_id:em.id,title:stars>=4?'Customer recognition received':'Customer feedback received',message:`You received ${stars} star(s) from a customer. ${stars>=4?'It was shared to News Feed.':'This is private coaching feedback.'}`,type:'customer_rating',source_type:'customer_rating',source_id:sourceId,points:stars,is_active:true,created_at:now})}catch(_){}
+        writeDaily112(ratingDate,em.id);
+        QS('.v112-card').innerHTML=`<div class="v112-thank">Thank you for your feedback!</div><p style="text-align:center">Your rating has been received.${stars>=4?' Recognition was shared for management visibility.':' This feedback stays private for coaching.'}</p><div style="text-align:center"><button class="btn dark" onclick="window.close()">Close</button></div>`;
+      }catch(e){
+        btn.disabled=false;btn.textContent='Submit Rating';
+        alert(e.message||e);
+      }
+    };
+  }
+
+  window.v112ShowRatingQR=function(id){resolveEmployee112(id).then(em=>{if(employeeInactive112(em))return;addStyle112();const body='<div class="v112-note"><b>Customer-only rating.</b><br>One rater can submit one employee rating per day. Staff self-rating is blocked.</div>'+qrBox112(em);if(typeof modal==='function')modal(`<h2>Customer Service QR</h2>${body}<button class="btn dark full" onclick="closeModal()">Close</button>`);else qrOnly112(em,'Customer Service QR','<b>Customer-only rating.</b><br>One rater can submit one employee rating per day. Staff self-rating is blocked.')})};
+  window.v99ShowRatingQR=window.v112ShowRatingQR;
+  window.showRatingQR53=window.v112ShowRatingQR;
+
+  const oldInit112=window.init;
+  async function startRate112(){
+    const params=new URLSearchParams(location.search);
+    const rate=params.get('rate')||params.get('employee')||params.get('emp');
+    if(!rate)return false;
+    if(window.__v112ActiveRate===String(rate))return true;
+    window.__v112ActiveRate=String(rate);
+    try{if(typeof loadPublicSettings==='function')await loadPublicSettings()}catch(_){}
+    await renderCustomerRating112(rate);
+    return true;
+  }
+  window.init=init=async function(){if(await startRate112())return;return oldInit112.apply(this,arguments)};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>startRate112());
+  setTimeout(()=>startRate112(),0);
+  console.log('V112 customer QR rating hardening loaded');
+})();
+/* ================= END V112 ================= */
 </script></body></html>
