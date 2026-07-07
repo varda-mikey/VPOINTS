@@ -16139,191 +16139,768 @@ init();
   console.log('V111 true permanent account delete loaded');
 })();
 /* ================= END V111 ================= */
-/* ================= V112 CUSTOMER QR RATING HARDENING ================= */
+/* ================= V112 LIVE EXCITEMENT NOTIFICATIONS + CUSTOMER REMARKS ================= */
 (function(){
-  if(window.__VPOINTS_V112_CUSTOMER_QR_HARDENING__)return;
-  window.__VPOINTS_V112_CUSTOMER_QR_HARDENING__=true;
-  window.VSCORE_FINAL_BUILD='V112_CUSTOMER_QR_HARDENING';
+  if(window.__VPOINTS_V112_LIVE_EXCITEMENT__)return;
+  window.__VPOINTS_V112_LIVE_EXCITEMENT__=true;
+  window.VSCORE_FINAL_BUILD='V112_LIVE_EXCITEMENT_NOTIFICATIONS';
 
   const QS=(s,r=document)=>r.querySelector(s);
   const QSA=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const money112=n=>{try{return typeof money==='function'?money(n):Number(n||0).toFixed(2).replace(/\.00$/,'')}catch(_){return String(n??'0')}};
+  const me=()=>String(window.S?.profile?.id||'');
+  const nowIso=()=>new Date().toISOString();
+  const isMgr=()=>{try{return typeof isManager==='function'&&isManager()}catch(_){return false}};
+  const isOwner112=()=>{try{return typeof isOwner==='function'&&isOwner()}catch(_){return false}};
+  const money112=n=>{try{return typeof money==='function'?money(n):Number(n||0).toFixed(0)}catch(_){return String(n||0)}};
+  const emp112=id=>{try{return typeof emp==='function'?emp(id):{}}catch(_){return {}}};
 
-  function addStyle112(){
-    if(QS('#v112-rating-style'))return;
-    document.head.insertAdjacentHTML('beforeend',`<style id="v112-rating-style">
-      html.v112-rating-open,html.v112-rating-open body,html.v112-rating-open #root{height:auto!important;min-height:100dvh!important;overflow-y:auto!important;position:static!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important}body.v112-rating-open{overflow:auto!important;min-height:100dvh;touch-action:pan-y}.v53-public,.v54-public,.v72-public,.v112-public{min-height:100dvh!important;height:auto!important;align-items:flex-start!important;justify-content:center!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:max(16px,env(safe-area-inset-top))!important;padding-bottom:max(34px,calc(24px + env(safe-area-inset-bottom)))!important}.v53-public-card,.v54-public-card,.v72-public-card,.v112-card{max-height:none!important;overflow:visible!important;margin:0 auto!important}.v112-public{background:linear-gradient(135deg,#fff7ed,#fff,#eef2ff);display:flex;padding-left:18px;padding-right:18px}.v112-card{max-width:690px;width:100%;background:#fff;border:1px solid #fde68a;border-radius:24px;padding:20px;box-shadow:0 20px 55px rgba(15,23,42,.14)}.v112-card h1{margin:0 0 6px;color:#7f1d1d;line-height:1.08}.v112-lead{margin:0;color:#64748b}.v112-note{border-left:5px solid #facc15;background:#fffbeb;color:#78350f;border-radius:14px;padding:11px;margin:9px 0}.v112-employee{font-size:22px;font-weight:1000;color:#7f1d1d;line-height:1.08}.v112-good{border-left-color:#22c55e;background:#f0fdf4;color:#14532d}.v112-danger{border-left-color:#ef4444;background:#fef2f2;color:#7f1d1d}.v112-stars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin:10px 0}.v112-star{border:1px solid #fde68a;background:#fff7ed;color:#7f1d1d;border-radius:12px;padding:9px 5px;font-weight:1000;text-align:center;line-height:1.1}.v112-star.active{background:#facc15;box-shadow:0 8px 18px rgba(250,204,21,.25)}.v112-check{display:flex;gap:8px;align-items:flex-start;border:1px solid #e5e7eb;border-radius:12px;padding:9px 10px;background:#f8fafc;margin:7px 0}.v112-check input{width:auto;margin-top:3px}.v112-mini{font-size:12px;color:#64748b}.v112-trap{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}.v112-thank{font-size:28px;text-align:center;color:#166534;font-weight:1000}.v112-qrbox{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;text-align:center;max-width:340px;margin:12px auto}.v112-qrbox img{width:230px;height:230px;max-width:100%;border-radius:14px}#custComment112{min-height:70px}.v112-card .field{margin:7px 0}.v112-card .input,.v112-card textarea{border-radius:12px;padding:10px 12px}@media(max-width:760px){.v112-public{display:block!important;padding-left:8px!important;padding-right:8px!important;padding-top:max(8px,env(safe-area-inset-top))!important;padding-bottom:max(18px,env(safe-area-inset-bottom))!important}.v112-card{padding:10px;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.10)}.v112-card h1{font-size:21px}.v112-lead{display:none}.v112-note{padding:8px 9px;margin:7px 0}.v112-employee{font-size:18px}.v112-stars{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin:7px 0}.v112-star{font-size:13px;padding:7px 1px;min-height:40px;border-radius:10px;letter-spacing:0}.v112-star small{display:none}.v112-check{padding:7px 8px;margin:6px 0;font-size:13px}.v112-mini{font-size:11px}#custComment112{min-height:48px}.v112-card .field label{font-size:11px;margin-bottom:4px}.v112-card .input,.v112-card textarea{padding:8px 9px}.v112-card .btn.full{padding:11px 12px!important;font-size:17px!important}.grid.two{grid-template-columns:1fr}}
+  function style112(){
+    if(QS('#v112-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v112-style">
+      #v112Stack{position:fixed;right:14px;top:14px;z-index:99990;display:grid;gap:10px;width:min(420px,calc(100vw - 24px));pointer-events:none}
+      .v112-pop{pointer-events:auto;background:#fff;border:1px solid #fde68a;border-left:7px solid #facc15;border-radius:18px;padding:14px;box-shadow:0 22px 60px rgba(15,23,42,.22);animation:v112In .24s ease both;position:relative;overflow:hidden}
+      .v112-pop:before{content:"";position:absolute;right:-42px;top:-42px;width:116px;height:116px;border-radius:999px;background:rgba(250,204,21,.22)}
+      .v112-kicker{font-size:11px;font-weight:1000;color:#92400e;text-transform:uppercase}
+      .v112-pop h3{margin:4px 0 5px;color:#7f1d1d;font-size:22px;line-height:1.08}
+      .v112-pop p{margin:0 0 10px;color:#475569;font-weight:800;line-height:1.35}
+      .v112-points{font-size:34px;font-weight:1000;color:#166534;margin:8px 0;background:#dcfce7;border:1px solid #bbf7d0;border-radius:14px;padding:9px;text-align:center}
+      .v112-actions{display:flex;gap:8px;flex-wrap:wrap}.v112-actions .btn{min-height:42px}
+      .v112-rating{border-left-color:#22c55e}.v112-mission{border-left-color:#facc15}.v112-news{border-left-color:#3b82f6}.v112-memo{border-left-color:#f97316}
+      .v112-live-dot{display:inline-block;width:9px;height:9px;border-radius:999px;background:#22c55e;box-shadow:0 0 0 6px rgba(34,197,94,.14);margin-right:7px}
+      .v112-feed-item{border:1px solid #e5e7eb;border-radius:14px;padding:10px;margin:8px 0;background:#fff}.v112-feed-item b{color:#7f1d1d}
+      .v112-customer-page .v99-stars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}
+      .v112-customer-page .v99-star{border:1px solid #fde68a;background:#fff7ed;color:#7f1d1d;border-radius:14px;padding:11px 8px;font-weight:1000;text-align:center}
+      .v112-customer-page .v99-star.active{background:#facc15;box-shadow:0 8px 18px rgba(250,204,21,.25)}
+      .v112-customer-page textarea{min-height:120px}.v112-customer-page .btn{min-height:56px;font-size:20px}
+      @keyframes v112In{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @media(max-width:700px){#v112Stack{left:10px;right:10px;top:10px;width:auto}.v112-pop{border-radius:14px;padding:12px}.v112-pop h3{font-size:19px}.v112-points{font-size:28px}}
     </style>`);
   }
-  function today112(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
-  function baseUrl112(){
-    try{
-      const set=window.S?.v53Settings||{};
-      const u=String(set.public_app_url||localStorage.getItem('vscore_public_app_url')||'').trim();
-      if(u)return u.replace(/[#?].*$/,'');
-    }catch(_){}
-    return location.href.split('#')[0].split('?')[0];
+  function stack112(){style112();let s=QS('#v112Stack');if(!s){s=document.createElement('div');s.id='v112Stack';document.body.appendChild(s)}return s}
+  function seenKey112(kind,id){return `VPOINTS_V112_SEEN_${kind}_${me()}_${id}`}
+  function seen112(kind,id){try{return localStorage.getItem(seenKey112(kind,id))==='1'}catch(_){return false}}
+  function markSeenLocal112(kind,id){try{localStorage.setItem(seenKey112(kind,id),'1')}catch(_){}}
+  async function markNotificationSeen112(id){
+    if(!id)return;
+    markSeenLocal112('notification',id);
+    try{await sb.from('vscore_notifications').update({seen_at:nowIso()}).eq('id',id)}catch(_){}
+    try{S.notifications=(S.notifications||[]).filter(n=>String(n.id)!==String(id))}catch(_){}
   }
-  function ratingUrl112(id){const base=baseUrl112();return base+(base.includes('?')?'&':'?')+'rate='+encodeURIComponent(id)}
-  window.v112RatingUrl=ratingUrl112;
-  function stars112(n){return Array(Math.max(1,Math.min(5,Number(n||0)))).fill('&#9733;').join('')}
-  function starText112(i){return ['Needs improvement','Fair','Good','Very good','Excellent'][Math.max(0,Math.min(4,Number(i)-1))]}
-  function savedSession112(){try{return typeof readSession==='function'?readSession():JSON.parse(localStorage.getItem('VSCORE_SESSION')||'null')}catch(_){return null}}
-  function sessionMatches112(em){try{const s=savedSession112();return !!(s&&em&&(String(s.id||s.employee_id||'')===String(em.id)||String(s.email||'').toLowerCase()===String(em.email||em.account_email||'').toLowerCase()))}catch(_){return false}}
-  function hasStaffSession112(){const s=savedSession112();return !!(s&&(s.id||s.employee_id||s.email))}
+  function browserNotify112(title,body){
+    try{
+      if(!('Notification' in window)||Notification.permission!=='granted')return;
+      new Notification(title,{body,tag:'vpoints-'+Date.now()});
+    }catch(_){}
+  }
+  function go112(tab){
+    try{if(typeof v47Go==='function')return v47Go(tab)}catch(_){}
+    S.tab=tab;renderPage();
+  }
+  function popup112(opts){
+    if(!S?.profile||QS('#termsGate'))return;
+    style112();
+    const id=`${opts.kind||'event'}_${opts.id||Date.now()}`;
+    if(seen112(opts.kind||'event',opts.id||id))return;
+    if(QS(`[data-v112-id="${CSS.escape(id)}"]`))return;
+    const card=document.createElement('div');
+    card.className=`v112-pop v112-${E(opts.kind||'event')}`;
+    card.dataset.v112Id=id;
+    const points=Number(opts.points||0);
+    card.innerHTML=`<div class="v112-kicker"><span class="v112-live-dot"></span>${E(opts.kicker||'Live V-Points Alert')}</div>
+      <h3>${E(opts.title||'New update')}</h3>
+      <p>${E(opts.message||'Open V-Points to review this update.')}</p>
+      ${points?`<div class="v112-points">+${E(money112(points))} V-Points opportunity</div>`:''}
+      <div class="v112-actions"></div>`;
+    const actions=QS('.v112-actions',card);
+    (opts.actions||[]).forEach(a=>{
+      const b=document.createElement('button');
+      b.type='button';b.className=`btn ${a.cls||'blue'}`;b.textContent=a.label;
+      b.onclick=async()=>{try{await a.run?.()}finally{card.remove()}};
+      actions.appendChild(b);
+    });
+    const later=document.createElement('button');
+    later.type='button';later.className='btn ghost';later.textContent=opts.laterLabel||'Later';
+    later.onclick=async()=>{markSeenLocal112(opts.kind||'event',opts.id||id); if(opts.notificationId)await markNotificationSeen112(opts.notificationId); card.remove();};
+    actions.appendChild(later);
+    stack112().prepend(card);
+    browserNotify112(opts.title||'V-Points update',opts.message||'Open V-Points.');
+    setTimeout(()=>{if(document.body.contains(card)&&!opts.sticky)card.remove()},opts.timeout||24000);
+  }
+  function taskOpen112(t){
+    const st=String(t?.status||'').toLowerCase();
+    return String(t?.assigned_to_employee_id||'')===me() && ['assigned','new','accepted',''].includes(st) && !t?.proof_url;
+  }
+  function missionPopup112(t,notificationId=''){
+    if(!t?.id||seen112('mission',t.id))return;
+    const giver=emp112(t.assigned_by_employee_id);
+    const pts=Number(t.merit_points||t.points||1);
+    popup112({
+      kind:'mission',
+      id:t.id,
+      notificationId,
+      sticky:true,
+      kicker:'Mission received',
+      title:`New mission: ${t.title||'Assigned Mission'}`,
+      message:`From ${giver.full_name||'Management'}${t.due_at?' - Due '+new Date(t.due_at).toLocaleString():''}. Accept it, finish it, and upload proof.`,
+      points:pts,
+      actions:[
+        {label:'Accept Mission',cls:'green',run:async()=>{markSeenLocal112('mission',t.id);if(notificationId)await markNotificationSeen112(notificationId);await acceptTask(t.id,document.createElement('button'));await loadData();go112('missions')}},
+        {label:'Open Missions',cls:'blue',run:async()=>{markSeenLocal112('mission',t.id);if(notificationId)await markNotificationSeen112(notificationId);go112('missions')}}
+      ],
+      laterLabel:'Ignore for now'
+    });
+  }
+  function ratingPopup112(r,notificationId=''){
+    const rid=r?.id||notificationId||`${r?.employee_id}_${r?.created_at}`;
+    if(!rid||seen112('rating',rid))return;
+    const stars=Number(r.stars||r.points||0);
+    const comment=r.comment||r.message||'Customer feedback received.';
+    popup112({
+      kind:'rating',
+      id:rid,
+      notificationId,
+      kicker:stars>=4?'Customer recognition':'Private customer feedback',
+      title:stars>=4?'Great service rating received!':'Customer feedback received',
+      message:`${stars||''}${stars?' star(s). ':''}${comment}`,
+      points:stars,
+      actions:[
+        {label:stars>=4?'View News Feed':'View Ratings',cls:stars>=4?'green':'blue',run:async()=>{markSeenLocal112('rating',rid);if(notificationId)await markNotificationSeen112(notificationId);go112(stars>=4?'news':'ratings')}},
+        {label:'Open Alerts',cls:'yellow',run:async()=>{markSeenLocal112('rating',rid);if(notificationId)await markNotificationSeen112(notificationId);go112('notifications')}}
+      ]
+    });
+  }
+  function genericNotificationPopup112(n){
+    if(!n?.id||seen112('notification',n.id))return;
+    const type=String(n.type||n.source_type||'').toLowerCase();
+    if(type.includes('mission')){
+      const t=(S.tasks||[]).find(x=>String(x.id)===String(n.source_id));
+      if(t)return missionPopup112(t,n.id);
+    }
+    if(type.includes('customer')||type.includes('rating'))return ratingPopup112({id:n.source_id||n.id,stars:n.points,comment:n.message,employee_id:n.employee_id,created_at:n.created_at},n.id);
+    const tab=type.includes('memo')?'memos':type.includes('news')?'news':type.includes('merit')?'news':'notifications';
+    popup112({
+      kind:type.includes('memo')?'memo':type.includes('news')?'news':'event',
+      id:n.id,
+      notificationId:n.id,
+      kicker:'V-Points update',
+      title:n.title||'New V-Points alert',
+      message:n.message||'Open V-Points to review this update.',
+      points:n.points,
+      actions:[{label:'Open Now',cls:'blue',run:async()=>{await markNotificationSeen112(n.id);go112(tab)}}]
+    });
+  }
+  async function notify112(employeeId,title,message,type='general',sourceType='general',sourceId='',points=0){
+    if(!employeeId)return;
+    const payload={employee_id:employeeId,title,message,type,source_type:sourceType,source_id:sourceId,points:Number(points||0),created_by:me()||null,is_active:true,created_at:nowIso()};
+    try{
+      let r=await sb.from('vscore_notifications').insert(payload);
+      if(r.error){
+        const simple={employee_id:employeeId,title,message,type,source_type:sourceType,source_id:sourceId,points:Number(points||0),is_active:true};
+        r=await sb.from('vscore_notifications').insert(simple);
+      }
+      if(r.error)console.warn('V112 notification skipped',r.error.message);
+    }catch(e){console.warn('V112 notification skipped',e.message)}
+  }
+  window.v112Notify=notify112;
+
+  async function pollNotifications112(){
+    if(!S?.profile?.id||QS('#termsGate'))return;
+    try{
+      const notes=await q(sb.from('vscore_notifications').select('*').eq('employee_id',S.profile.id).eq('is_active',true).is('seen_at',null).order('created_at',{ascending:false}).limit(20),[]);
+      S.notifications=notes||[];
+      (notes||[]).slice().reverse().forEach(genericNotificationPopup112);
+    }catch(e){console.warn('V112 notification poll skipped',e.message)}
+    try{
+      const tasks=await q(sb.from('vscore_tasks').select('*').eq('assigned_to_employee_id',S.profile.id).order('created_at',{ascending:false}).limit(12),[]);
+      (tasks||[]).filter(taskOpen112).slice(0,3).forEach(t=>missionPopup112(t));
+    }catch(e){console.warn('V112 mission poll skipped',e.message)}
+    try{
+      const ratings=await q(sb.from('vscore_customer_ratings').select('*').eq('employee_id',S.profile.id).order('created_at',{ascending:false}).limit(5),[]);
+      (ratings||[]).forEach(r=>ratingPopup112(r));
+    }catch(e){console.warn('V112 rating poll skipped',e.message)}
+    try{
+      const posts=await q(sb.from('vscore_social_posts').select('id,caption,created_by,branch,share_scope,created_at,post_type').eq('is_active',true).order('created_at',{ascending:false}).limit(5),[]);
+      (posts||[]).filter(p=>String(p.created_by)!==me()).forEach(p=>{
+        const scope=String(p.share_scope||'all').toLowerCase();
+        if(scope!=='all'&&String(p.branch||'')!==String(S.profile.branch||''))return;
+        const id=p.id||p.created_at;
+        if(seen112('news',id))return;
+        popup112({kind:'news',id,kicker:'News Feed update',title:'New V-Points News Feed post',message:String(p.caption||'New update posted.').slice(0,140),actions:[{label:'Open News Feed',cls:'blue',run:async()=>{markSeenLocal112('news',id);go112('news')}}],timeout:15000});
+      });
+    }catch(e){console.warn('V112 news poll skipped',e.message)}
+  }
+  function startLive112(){
+    if(window.__v112LiveStarted)return;
+    window.__v112LiveStarted=true;
+    setTimeout(pollNotifications112,1000);
+    window.__v112LiveTimer=setInterval(pollNotifications112,9000);
+  }
+
+  const oldAssign112=window.assignMission;
+  window.assignMission=assignMission=async function(e){
+    if(e?.preventDefault)e.preventDefault();
+    const btn=e?.submitter;
+    if(!isMgr())return toast('Staff cannot assign missions.','error');
+    await act(btn||document.createElement('button'),{busy:'Assigning...',success:'Mission Sent',reset:'Assign Another Mission',toast:'Mission sent with live alert.'},async()=>{
+      const targets=(typeof targetEmployees==='function'?targetEmployees():[]);
+      if(!targets.length)throw new Error('No target employees found for this mission.');
+      const title=(QS('#missionTitle')?.value||'').trim();
+      const items=(QS('#missionItems')?.value||'').trim();
+      if(!title||!items)throw new Error('Mission title and checklist required.');
+      const pts=Number(QS('#missionPts')?.value||1);
+      const due=QS('#missionDue')?.value?new Date(QS('#missionDue').value).toISOString():null;
+      const rows=targets.map(t=>({title,task_items:items,assigned_to_employee_id:t.id,assigned_by_employee_id:S.profile.id,branch:t.branch||S.profile.branch,source_type:'assigned_mission',target_scope:QS('#missionScope')?.value||'individual',status:'assigned',due_at:due,merit_points:pts,created_at:nowIso()}));
+      let r=await sb.from('vscore_tasks').insert(rows).select('*');
+      let created=[];
+      if(r.error){
+        r=await sb.from('vscore_tasks').insert(rows);
+        if(r.error)throw r.error;
+        created=rows;
+      }else created=r.data||[];
+      for(let i=0;i<targets.length;i++){
+        const t=targets[i], rec=created[i]||rows[i];
+        await notify112(t.id,'Mission received!',`A mission from ${S.profile.full_name||'Management'} is waiting. Finish it to earn up to +${pts} V-Points.`, 'mission_assigned','mission',rec.id||'',pts);
+      }
+      try{await auditEvent('Mission assigned with live alert','vscore_tasks',`${title} | ${targets.length} target(s)`)}catch(_){}
+    },async()=>{await loadData();S.tab='missions';renderPage();});
+  };
+
+  const oldCreateSocial112=window.createSocialPost;
+  if(typeof oldCreateSocial112==='function'){
+    window.createSocialPost=createSocialPost=async function(e,type){
+      const out=await oldCreateSocial112.apply(this,arguments);
+      try{
+        const recipients=(S.employees||[]).filter(x=>x&&String(x.id)!==me()&&x.is_active!==false);
+        const caption=(QS('#newsCaption')?.value||QS('#memCaption')?.value||'New News Feed update').trim().slice(0,100);
+        for(const r of recipients.slice(0,80)){
+          if(type==='memory'&&String(r.branch)!==String(S.profile.branch))continue;
+          notify112(r.id,'New News Feed update',`${S.profile.full_name||'Someone'} posted: ${caption||'Open News Feed to view.'}`,'news_update','news','',0);
+        }
+      }catch(err){console.warn('V112 news notification skipped',err.message)}
+      return out;
+    };
+  }
+
+  const oldMemo112=window.createMemo;
+  if(typeof oldMemo112==='function'){
+    window.createMemo=createMemo=async function(e){
+      const title=(QS('#memoTitle')?.value||'New memo').trim();
+      const out=await oldMemo112.apply(this,arguments);
+      try{
+        const recipients=(S.employees||[]).filter(x=>x&&String(x.id)!==me()&&x.is_active!==false);
+        for(const r of recipients.slice(0,120))await notify112(r.id,'New memo to acknowledge',`${title} is ready. Please read and acknowledge.`,'memo_new','memo','',0);
+      }catch(err){console.warn('V112 memo notification skipped',err.message)}
+      return out;
+    };
+  }
+
   async function resolveEmployee112(raw){
     const clean=decodeURIComponent(String(raw||'')).trim().replace(/[^a-zA-Z0-9_@.\-]/g,'');
     if(!clean)return null;
     let r=await sb.from('employees').select('*').eq('id',clean).maybeSingle();
     if(!r.error&&r.data)return r.data;
-    if(clean.includes('@')){
-      r=await sb.from('employees').select('*').or(`email.eq.${clean},account_email.eq.${clean}`).maybeSingle();
-      if(!r.error&&r.data)return r.data;
-    }
+    if(clean.includes('@')){r=await sb.from('employees').select('*').ilike('email',clean).maybeSingle();if(!r.error&&r.data)return r.data}
     return null;
   }
-  function employeeInactive112(em){return !em||em.is_active===false||/deleted|hard_deleted|permanent/i.test(String(em.activation_status||''))}
-  async function hash112(text){
-    try{
-      if(window.crypto?.subtle&&window.TextEncoder){
-        const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
-        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,48);
-      }
-    }catch(_){}
-    let h=2166136261;
-    for(let i=0;i<text.length;i++)h=Math.imul(h^text.charCodeAt(i),16777619);
-    return (h>>>0).toString(16);
-  }
-  async function raterToken112(){
-    const sc=window.screen||{};
-    const tz=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(_){return''}})();
-    const raw=[navigator.userAgent||'',navigator.language||'',navigator.platform||'',tz,sc.width||'',sc.height||'',sc.colorDepth||'',navigator.hardwareConcurrency||'',navigator.deviceMemory||''].join('|');
-    return 'rt_'+await hash112(raw);
-  }
-  function dailyKey112(date){return 'vpoints_customer_rating_daily_'+date}
-  function readDaily112(date){try{return JSON.parse(localStorage.getItem(dailyKey112(date))||'null')}catch(_){return null}}
-  function writeDaily112(date,employeeId){try{localStorage.setItem(dailyKey112(date),JSON.stringify({employee_id:employeeId,at:new Date().toISOString()}));localStorage.setItem('vpoints_rate_'+employeeId+'_'+date,'1')}catch(_){}}
-  function alreadyHtml112(em){
-    return `<div class="v112-thank">Thank you!</div><p style="text-align:center">This rater already submitted one customer rating today. One customer can rate one employee per day.</p><div class="v112-note"><b>Rated employee:</b><br>${E(em.full_name)}<br><span class="v112-mini">${E(em.branch||'')}</span></div>`;
-  }
-  async function existingRating112(ratingDate,deviceToken,identifier){
-    try{
-      const r=await sb.from('vscore_customer_ratings').select('id,employee_id,created_at').eq('rating_date',ratingDate).eq('device_token',deviceToken).limit(1);
-      if(!r.error&&Array.isArray(r.data)&&r.data.length)return r.data[0];
-    }catch(_){}
-    if(identifier&&identifier!==deviceToken){
-      try{
-        const r=await sb.from('vscore_customer_ratings').select('id,employee_id,created_at').eq('rating_date',ratingDate).eq('customer_identifier',identifier).limit(1);
-        if(!r.error&&Array.isArray(r.data)&&r.data.length)return r.data[0];
-      }catch(_){}
-    }
-    return null;
-  }
-  async function insertRating112(payload){
-    const full={...payload};
-    const medium={...payload};
-    ['customer_name','student_number','customer_identifier','rater_token','is_anonymous','anonymous','remarks','fake_risk_flags','verified_customer','submitted_from','user_agent'].forEach(k=>delete medium[k]);
-    const minimal={employee_id:payload.employee_id,employee_name:payload.employee_name,branch:payload.branch,stars:payload.stars,comment:payload.comment,customer_service_points:payload.customer_service_points,source:'qr_public',rating_date:payload.rating_date,device_token:payload.device_token,is_public:payload.is_public,created_at:payload.created_at};
-    let last=null;
-    for(const attempt of [full,medium,minimal]){
-      const r=await sb.from('vscore_customer_ratings').insert(attempt).select().single();
-      if(!r.error)return r.data||attempt;
-      last=r.error;
-      if(/duplicate|unique/i.test(String(r.error.message||'')))throw new Error('This rater already submitted a customer rating today.');
-    }
-    throw last||new Error('Rating was not saved.');
-  }
-  async function awardRating112(em,stars,sourceId){
-    const pts=Number(stars||0);
-    if(!pts)return;
-    try{await sb.from('employees').update({current_points:Number(em.current_points||100)+pts,customer_service_points:Number(em.customer_service_points||0)+pts}).eq('id',em.id)}catch(_){}
-    try{await sb.from('ledger').insert({employee_id:em.id,points_change:pts,reason:`Customer service rating: ${stars} star(s)`,source_type:'customer_rating',source_id:sourceId,created_by:em.id,created_at:new Date().toISOString()})}catch(_){}
-  }
-  async function postNews112(em,stars,comment,sourceId){
-    if(Number(stars)<4)return;
-    const caption=`Customer Service Recognition\n\nCongratulations ${em.full_name}! A customer gave you ${stars} out of 5 stars.${comment?`\n\nCustomer remarks:\n"${comment}"`:''}\n\nThis recognition added +${stars} V-Points. Keep the service standard strong.`;
-    try{await sb.from('vscore_social_posts').insert({post_type:'news',caption,photos_json:'[]',created_by:em.id,branch:em.branch,share_scope:'all',comments_enabled:true,source_type:'customer_rating',source_id:sourceId,expires_at:new Date(Date.now()+7*86400000).toISOString(),is_active:true,created_at:new Date().toISOString()})}catch(_){}
-  }
-  function qrBox112(em){
-    const link=ratingUrl112(em.id);
-    return `<div class="v112-qrbox"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(link)}"><h3>${E(em.full_name)}</h3><p>${E(em.branch||'')}</p><button class="btn ghost" onclick="window.print()">Print QR</button></div>`;
-  }
-  function qrOnly112(em,title,body){
-    QS('#root').innerHTML=`<div class="v112-public"><div class="v112-card"><h1>${E(title)}</h1><div class="v112-note">${body}</div>${qrBox112(em)}</div></div>`;
-  }
-  async function renderCustomerRating112(rateId){
-    addStyle112();
-    try{document.documentElement.classList.add('v112-rating-open');document.body.classList.add('v112-rating-open')}catch(_){}
-    QS('#root').innerHTML='<div class="v112-public"><div class="v112-card"><h1>Loading rating page...</h1><p>Please wait.</p></div></div>';
+  function baseUrl112(){return location.href.split('#')[0].split('?')[0]}
+  async function customerRating112(rateId){
+    style112();
+    await loadPublicSettings?.();
+    QS('#root').innerHTML='<div class="v72-public"><div class="v72-public-card v112-customer-page"><h1>Loading rating page...</h1></div></div>';
     const em=await resolveEmployee112(rateId);
-    if(employeeInactive112(em)){QS('#root').innerHTML='<div class="v112-public"><div class="v112-card"><h1>Rating link not found</h1><p>This QR is not connected to an active employee record.</p></div></div>';return}
-    if(sessionMatches112(em)){qrOnly112(em,'Customer Rating QR','<b>Self-rating is disabled.</b><br>This page is for customers only. Ask the customer to scan using their own phone.');return}
-    if(hasStaffSession112()){qrOnly112(em,'Customer Rating Protected','<b>Staff app session detected.</b><br>For fake-rater protection, customer ratings are disabled on logged-in V-Points staff devices. Ask the customer to scan this QR using their own phone.');return}
-
-    const ratingDate=today112();
-    const deviceToken=await raterToken112();
-    const localAlready=readDaily112(ratingDate)||localStorage.getItem('vpoints_rate_'+em.id+'_'+ratingDate);
-    const serverAlready=localAlready?null:await existingRating112(ratingDate,deviceToken,'');
-    if(localAlready||serverAlready){QS('#root').innerHTML=`<div class="v112-public"><div class="v112-card">${alreadyHtml112(em)}</div></div>`;return}
-
-    const openedAt=Date.now();
-    QS('#root').innerHTML=`<div class="v112-public"><div class="v112-card"><h1>How was my service today?</h1><p class="v112-lead">Rate the staff member, add remarks if you want, and choose anonymous if you prefer not to share your name.</p><div class="v112-note"><b>You are rating:</b><br><span class="v112-employee">${E(em.full_name)}</span><br>${E(em.position||'Varda Group Staff')} - ${E(em.branch||'')}</div><form id="custRateForm112"><input type="hidden" id="custStars112" value="5"><input id="custWebsite112" class="v112-trap" autocomplete="off" tabindex="-1"><label class="v112-check"><input type="checkbox" id="custAnon112" checked><span><b>Submit anonymously</b><br><span class="v112-mini">Your name and ID will not be sent when this is checked.</span></span></label><div id="v112Identity" class="grid two hidden"><div class="field"><label>Your name optional</label><input id="custName112" class="input" placeholder="Customer name"></div><div class="field"><label>Student no. / ID optional</label><input id="custStudent112" class="input" placeholder="Student number / ID"></div></div><div class="v112-stars">${[1,2,3,4,5].map(i=>`<button type="button" class="v112-star ${i<=5?'active':''}" data-star="${i}">${stars112(i)}<br><small>${starText112(i)}</small></button>`).join('')}</div><div class="field"><label>Remarks optional</label><textarea id="custComment112" maxlength="500" placeholder="Say what happened, good or bad."></textarea></div><label class="v112-check"><input type="checkbox" id="custVerify112" required><span>I confirm this is real customer feedback today.</span></label><button class="btn green full" style="font-size:20px;padding:16px">Submit Rating</button></form><p class="v112-mini" style="text-align:center">One rater can submit one employee rating per day. Staff self-rating is blocked.</p></div></div>`;
-    QSA('.v112-star').forEach(b=>b.onclick=()=>{const val=Number(b.dataset.star||5);QS('#custStars112').value=val;QSA('.v112-star').forEach(x=>x.classList.toggle('active',Number(x.dataset.star)<=val))});
-    const syncAnon=()=>{const anon=QS('#custAnon112')?.checked!==false;const box=QS('#v112Identity');if(box)box.classList.toggle('hidden',anon);['#custName112','#custStudent112'].forEach(sel=>{const el=QS(sel);if(el){el.disabled=anon;if(anon)el.value=''}})};
-    QS('#custAnon112')?.addEventListener('change',syncAnon);syncAnon();
-    const form=QS('#custRateForm112');
-    if(form)form.onsubmit=async ev=>{
+    if(!em){QS('#root').innerHTML='<div class="v72-public"><div class="v72-public-card v112-customer-page"><h1>Rating link not found</h1><p>This QR is not connected to an active employee.</p></div></div>';return}
+    const deviceKey='vpoints_rate_'+em.id+'_'+new Date().toISOString().slice(0,10);
+    if(localStorage.getItem(deviceKey)){
+      QS('#root').innerHTML='<div class="v72-public"><div class="v72-public-card v112-customer-page"><div class="v72-thank">Thank you!</div><p style="text-align:center">You already submitted feedback for this employee today.</p></div></div>';
+      return;
+    }
+    QS('#root').innerHTML=`<div class="v72-public"><div class="v72-public-card v112-customer-page"><h1>Rate My Service</h1><p class="muted">Your rating helps recognize good service and improve coaching.</p><div class="v72-note"><b>You are rating:</b><br><span style="font-size:24px;font-weight:1000;color:#7f1d1d">${E(em.full_name)}</span><br>${E(em.position||'Varda Group Staff')} - ${E(em.branch||'')}</div><form id="custRateForm112"><input type="hidden" id="custStars112" value="5"><div class="grid two"><div class="field"><label>Your name</label><input id="custName112" class="input" placeholder="Example: Juan Dela Cruz"></div><div class="field"><label>Student no. / ID</label><input id="custStudent112" class="input" placeholder="Example: 2026-00123"></div></div><div class="v99-stars">${[1,2,3,4,5].map(i=>`<button type="button" class="v99-star ${i<=5?'active':''}" data-star="${i}">${'*'.repeat(i)}<br><small>${i} point${i===1?'':'s'}</small></button>`).join('')}</div><div class="field"><label>Remarks / Comment</label><textarea id="custRemarks112" required placeholder="Example: Fast service, friendly staff, clean counter, or what we can improve."></textarea></div><button class="btn green full">Submit Rating</button></form><p class="small muted" style="text-align:center">1 star = 1 V-Point. Ratings 1-3 stay private for coaching. Ratings 4-5 can recognize the staff on News Feed.</p></div></div>`;
+    QSA('.v99-star').forEach(b=>b.onclick=()=>{const val=Number(b.dataset.star||5);QS('#custStars112').value=val;QSA('.v99-star').forEach(x=>x.classList.toggle('active',Number(x.dataset.star)<=val))});
+    QS('#custRateForm112').onsubmit=async ev=>{
       ev.preventDefault();
       const btn=ev.submitter;
+      btn.disabled=true;btn.textContent='Submitting rating...';
       try{
-        btn.disabled=true;btn.textContent='Submitting...';
-        if(QS('#custWebsite112')?.value)throw new Error('Rating blocked.');
-        if(Date.now()-openedAt<2200)throw new Error('Please take a moment to review before submitting.');
-        if(!QS('#custVerify112')?.checked)throw new Error('Please confirm this is real customer feedback.');
-        const stars=Math.max(1,Math.min(5,Number(QS('#custStars112').value||5)));
-        const anonymous=QS('#custAnon112')?.checked!==false;
-        const comment=String(QS('#custComment112').value||'').trim().slice(0,500);
-        const customerName=anonymous?'Anonymous':String(QS('#custName112').value||'').trim().slice(0,120);
-        const studentNo=anonymous?'':String(QS('#custStudent112').value||'').trim().slice(0,80);
-        const identifier=studentNo||deviceToken;
-        const dup=await existingRating112(ratingDate,deviceToken,identifier);
-        if(dup){writeDaily112(ratingDate,em.id);QS('.v112-card').innerHTML=alreadyHtml112(em);return}
-        const now=new Date().toISOString();
-        const payload={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment,remarks:comment,customer_name:customerName,student_number:studentNo,customer_identifier:identifier,customer_service_points:stars,source:'qr_public',rating_date:ratingDate,device_token:deviceToken,rater_token:deviceToken,is_anonymous:anonymous,anonymous,verified_customer:true,fake_risk_flags:'daily_device_check,human_confirm,staff_session_block,self_rating_block,honeypot',submitted_from:'customer_qr',user_agent:(navigator.userAgent||'web').slice(0,180),is_public:stars>=4,created_at:now};
-        const rating=await insertRating112(payload);
-        const sourceId=rating.id||`${em.id}_${ratingDate}_${Date.now()}`;
-        await awardRating112(em,stars,sourceId);
-        await postNews112(em,stars,comment,sourceId);
-        try{await sb.from('vscore_notifications').insert({employee_id:em.id,title:stars>=4?'Customer recognition received':'Customer feedback received',message:`You received ${stars} star(s) from a customer. ${stars>=4?'It was shared to News Feed.':'This is private coaching feedback.'}`,type:'customer_rating',source_type:'customer_rating',source_id:sourceId,points:stars,is_active:true,created_at:now})}catch(_){}
-        writeDaily112(ratingDate,em.id);
-        QS('.v112-card').innerHTML=`<div class="v112-thank">Thank you for your feedback!</div><p style="text-align:center">Your rating has been received.${stars>=4?' Recognition was shared for management visibility.':' This feedback stays private for coaching.'}</p><div style="text-align:center"><button class="btn dark" onclick="window.close()">Close</button></div>`;
-      }catch(e){
-        btn.disabled=false;btn.textContent='Submit Rating';
-        alert(e.message||e);
+        const stars=Number(QS('#custStars112').value||5);
+        const comment=String(QS('#custRemarks112').value||'').trim().slice(0,600);
+        const payload={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment,customer_name:String(QS('#custName112').value||'').trim().slice(0,120),student_number:String(QS('#custStudent112').value||'').trim().slice(0,80),customer_identifier:String(QS('#custStudent112').value||'').trim().slice(0,80),customer_service_points:stars,source:'qr_public',rating_date:new Date().toISOString().slice(0,10),device_token:(navigator.userAgent||'web').slice(0,120),is_public:stars>=4,created_at:nowIso()};
+        let r=await sb.from('vscore_customer_ratings').insert(payload).select().single();
+        if(r.error){const simple={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment,customer_service_points:stars,source:'qr_public',rating_date:payload.rating_date,is_public:stars>=4,created_at:payload.created_at};r=await sb.from('vscore_customer_ratings').insert(simple).select().single()}
+        if(r.error)throw r.error;
+        try{await sb.from('employees').update({current_points:Number(em.current_points||100)+stars,customer_service_points:Number(em.customer_service_points||0)+stars}).eq('id',em.id)}catch(_){}
+        try{await sb.from('ledger').insert({employee_id:em.id,points_change:stars,reason:`Customer service rating: ${stars} star(s)`,source_type:'customer_rating',source_id:r.data?.id||'',created_at:nowIso()})}catch(_){}
+        if(stars>=4){try{await sb.from('vscore_social_posts').insert({post_type:'news',caption:`Customer Service Recognition\n\nCongratulations ${em.full_name}! A customer gave you ${stars} out of 5 stars.\n\nRemarks:\n"${comment}"\n\nThis added +${stars} V-Points.`,photos_json:'[]',created_by:em.id,branch:em.branch,share_scope:'all',comments_enabled:true,source_type:'customer_rating',source_id:r.data?.id||'',expires_at:new Date(Date.now()+7*86400000).toISOString(),is_active:true,created_at:nowIso()})}catch(_){}}
+        await notify112(em.id,stars>=4?'Customer recognition received':'Customer feedback received',`${stars} star(s): ${comment}`, 'customer_rating','customer_rating',r.data?.id||'',stars);
+        localStorage.setItem(deviceKey,'1');
+        QS('.v72-public-card').innerHTML=`<div class="v72-thank">Thank you for your rating!</div><p style="text-align:center">Your rating added +${stars} V-Points.${stars>=4?' Recognition was shared to the News Feed.':' This feedback stays private for coaching.'}</p><div style="text-align:center"><button class="btn dark" onclick="window.close()">Close</button></div>`;
+      }catch(err){btn.disabled=false;btn.textContent='Submit Rating';alert(err.message||err)}
+    };
+  }
+  window.v112CustomerRating=customerRating112;
+  const oldInit112=window.init;
+  window.init=init=async function(){
+    const p=new URLSearchParams(location.search);
+    const rate=p.get('rate')||p.get('employee')||p.get('emp');
+    if(rate)return customerRating112(rate);
+    return oldInit112.apply(this,arguments);
+  };
+  setTimeout(()=>{const p=new URLSearchParams(location.search);const rate=p.get('rate')||p.get('employee')||p.get('emp');if(rate)customerRating112(rate);else if(S?.profile?.id)startLive112()},250);
+
+  const oldLoad112=window.loadData;
+  if(typeof oldLoad112==='function'){
+    window.loadData=loadData=async function(){const out=await oldLoad112.apply(this,arguments);try{setTimeout(pollNotifications112,500)}catch(_){}return out};
+  }
+  const oldRenderApp112=window.renderApp;
+  if(typeof oldRenderApp112==='function'){
+    window.renderApp=renderApp=function(){const out=oldRenderApp112.apply(this,arguments);startLive112();return out};
+  }
+  const oldRenderPage112=window.renderPage;
+  if(typeof oldRenderPage112==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRenderPage112.apply(this,arguments);
+      if(S?.tab==='notifications'){
+        setTimeout(()=>{
+          const page=QS('#page');
+          if(page&&!QS('#v112LiveFeed',page)){
+            const notes=S.notifications||[];
+            page.insertAdjacentHTML('beforeend',`<div id="v112LiveFeed" class="v47-card" style="margin-top:14px"><h3><span class="v112-live-dot"></span>Live Event Feed</h3><p class="muted">Mission, rating, merit, memo, and news alerts appear here and also pop up while the app is open.</p>${notes.map(n=>`<div class="v112-feed-item"><b>${E(n.title||'Alert')}</b><br>${E(n.message||'')}<br><span class="small muted">${E(n.created_at?new Date(n.created_at).toLocaleString():'')}</span></div>`).join('')||'<div class="empty">No unread live alerts right now.</div>'}</div>`);
+          }
+        },80);
+      }
+      return out;
+    };
+  }
+  window.showMissionPopup=function(){try{(S.tasks||[]).filter(taskOpen112).slice(0,2).forEach(t=>missionPopup112(t))}catch(_){}};
+  console.log('V112 live excitement notifications loaded');
+})();
+/* ================= END V112 ================= */
+/* ================= V113 OPEN-TIME LEADERBOARD HYPE ================= */
+(function(){
+  if(window.__VPOINTS_V113_LEADERBOARD_HYPE__)return;
+  window.__VPOINTS_V113_LEADERBOARD_HYPE__=true;
+  window.VSCORE_FINAL_BUILD='V113_OPEN_LEADERBOARD_HYPE';
+
+  const QS=(s,r=document)=>r.querySelector(s);
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const role113=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos113=()=>String(window.S?.profile?.position||'').toUpperCase();
+  const retail113=()=>['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role113())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos113());
+  const pts113=e=>Number(e?.current_points??100)||0;
+
+  function style113(){
+    if(QS('#v113-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v113-style">
+      .v113-rank-wrap{position:relative;text-align:center;overflow:hidden;background:radial-gradient(circle at 50% 0%,rgba(250,204,21,.34),transparent 30%),linear-gradient(145deg,#fff7ed,#fff,#eff6ff);border:1px solid #fde68a;border-radius:24px;padding:18px;color:#111827}
+      .v113-rank-wrap:before,.v113-rank-wrap:after{content:"";position:absolute;border-radius:999px;background:rgba(250,204,21,.18);pointer-events:none}.v113-rank-wrap:before{width:150px;height:150px;right:-54px;top:-62px}.v113-rank-wrap:after{width:95px;height:95px;left:-34px;bottom:-42px;background:rgba(59,130,246,.13)}
+      .v113-kicker{font-size:12px;font-weight:1000;text-transform:uppercase;color:#92400e}.v113-title{font-size:29px;line-height:1.05;color:#7f1d1d;margin:6px 0;font-weight:1000}
+      .v113-rank-num{font-size:68px;line-height:.95;font-weight:1000;color:#111827;margin:8px 0;text-shadow:0 9px 24px rgba(15,23,42,.12)}
+      .v113-sub{font-size:16px;color:#475569;font-weight:900;max-width:620px;margin:0 auto 12px}.v113-points{display:inline-flex;gap:8px;align-items:center;justify-content:center;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:9px 14px;font-weight:1000;margin:8px 0}
+      .v113-next{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:11px;margin:12px auto;max-width:520px;text-align:left}.v113-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+      .v113-top3{background:radial-gradient(circle at 50% 8%,rgba(250,204,21,.40),transparent 34%),linear-gradient(145deg,#fff7ed,#fff,#f0fdf4)}.v113-top3 .v113-rank-num{color:#b45309}
+      @media(max-width:700px){.v113-rank-wrap{border-radius:16px;padding:14px}.v113-title{font-size:23px}.v113-rank-num{font-size:52px}.v113-sub{font-size:14px}}
+    </style>`);
+  }
+  function ordinal113(n){
+    n=Number(n||0);
+    const mod=n%100;
+    if(mod>=11&&mod<=13)return `${n}th`;
+    const last=n%10;
+    return `${n}${last===1?'st':last===2?'nd':last===3?'rd':'th'}`;
+  }
+  function rankRows113(){
+    const me=String(S?.profile?.id||'');
+    const branch=String(S?.profile?.branch||'');
+    let rows=[...(S?.employees||[]),...(S?.allEmployees||[])].filter(e=>e&&e.id&&e.is_active!==false&&String(e.activation_status||'').toLowerCase()!=='permanent_deleted');
+    const by=new Map();
+    rows.forEach(e=>by.set(String(e.id),e));
+    if(S?.profile?.id)by.set(String(S.profile.id),S.profile);
+    rows=[...by.values()];
+    if(!retail113()&&branch)rows=rows.filter(e=>String(e.branch||'')===branch||String(e.id)===me);
+    return rows.sort((a,b)=>pts113(b)-pts113(a)||String(a.full_name||'').localeCompare(String(b.full_name||'')));
+  }
+  function showLeaderboardHype113(force=false){
+    try{
+      if(!S?.profile?.id||QS('#termsGate'))return;
+      if(retail113())return;
+      if(window.__v113RankShownThisOpen&&!force)return;
+      const rows=rankRows113();
+      if(!rows.length)return;
+      const myId=String(S.profile.id);
+      const idx=rows.findIndex(e=>String(e.id)===myId);
+      if(idx<0)return;
+      window.__v113RankShownThisOpen=true;
+      style113();
+      const rank=idx+1,total=rows.length,points=pts113(S.profile),prevRank=Number(localStorage.getItem(`VPOINTS_LAST_RANK_${myId}`)||0)||null;
+      const top3=rank<=3;
+      const movedTop3=prevRank&&prevRank>3&&top3;
+      const leader=rows[0]||S.profile;
+      const ahead=idx>0?rows[idx-1]:null;
+      const gap=ahead?Math.max(0,pts113(ahead)-points+.01):0;
+      const nextText=ahead
+        ? `You need about ${gap.toFixed(2).replace(/\.00$/,'')} more V-Points to catch ${ahead.full_name||'the next person'} at #${rank-1}.`
+        : `You are leading this visible leaderboard. Keep protecting the #1 spot.`;
+      const scope=retail113()?'company':'branch';
+      const title=movedTop3?'Congratulations, you are now in the Top 3!':(top3?`Congratulations, Top ${rank}!`:`You are ${ordinal113(rank)} on the leaderboard!`);
+      const sub=top3
+        ? `${S.profile.full_name||'Ka-Varda'}, your work is standing out in the ${scope}. Keep earning proof-backed V-Points.`
+        : `${S.profile.full_name||'Ka-Varda'}, you are climbing. Complete missions, training, good ratings, and proof-backed work to move up.`;
+      const html=`<div class="v113-rank-wrap ${top3?'v113-top3':''}">
+        <div class="v113-kicker">V-Points Leaderboard Status</div>
+        <div class="v113-title">${E(title)}</div>
+        <div class="v113-rank-num">#${rank}</div>
+        <p class="v113-sub">${E(sub)}</p>
+        <div class="v113-points">${E(points.toFixed(2).replace(/\.00$/,''))} V-Points &bull; ${rank} of ${total}</div>
+        <div class="v113-next"><b>${top3?'Keep the streak alive':'Next climb target'}</b><br>${E(nextText)}<br><span class="small muted">Current #1: ${E(leader.full_name||'Ka-Varda')} with ${E(pts113(leader).toFixed(2).replace(/\.00$/,''))} V-Points.</span></div>
+        <div class="v113-actions"><button class="btn green" id="v113GoDash">View Dashboard</button><button class="btn blue" id="v113GoMissions">Earn More Points</button><button class="btn ghost" id="v113Close">Start Work</button></div>
+      </div>`;
+      try{modal(html)}catch(_){return}
+      localStorage.setItem(`VPOINTS_LAST_RANK_${myId}`,String(rank));
+      QS('#v113GoDash')?.addEventListener('click',()=>{closeModal();try{S.tab='dashboard';renderPage()}catch(_){}});
+      QS('#v113GoMissions')?.addEventListener('click',()=>{closeModal();try{S.tab='missions';renderPage()}catch(_){}});
+      QS('#v113Close')?.addEventListener('click',()=>closeModal());
+      try{
+        if('Notification' in window&&Notification.permission==='granted'){
+          new Notification(top3?'V-Points Top 3!':'V-Points Leaderboard',{body:`You are #${rank} with ${points.toFixed(0)} V-Points.`});
+        }
+      }catch(_){}
+    }catch(e){console.warn('V113 leaderboard hype skipped',e)}
+  }
+  window.v113ShowLeaderboardHype=showLeaderboardHype113;
+  const oldRenderApp113=window.renderApp;
+  if(typeof oldRenderApp113==='function'){
+    window.renderApp=renderApp=function(){
+      const out=oldRenderApp113.apply(this,arguments);
+      setTimeout(()=>showLeaderboardHype113(false),1450);
+      return out;
+    };
+  }
+  const oldBoot113=window.boot;
+  if(typeof oldBoot113==='function'){
+    window.boot=boot=async function(){
+      window.__v113RankShownThisOpen=false;
+      return await oldBoot113.apply(this,arguments);
+    };
+  }
+  setTimeout(()=>showLeaderboardHype113(false),2200);
+  console.log('V113 open-time leaderboard hype loaded');
+})();
+/* ================= END V113 ================= */
+/* ================= V114 MISSION SUBMIT LOCK + LIVE APPROVAL QUEUE ================= */
+(function(){
+  if(window.__VPOINTS_V114_MISSION_APPROVAL_FIX__)return;
+  window.__VPOINTS_V114_MISSION_APPROVAL_FIX__=true;
+  window.VSCORE_FINAL_BUILD='V114_MISSION_RESET_APPROVAL_QUEUE';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const st=v=>String(v||'').toLowerCase().trim().replace(/[\s-]+/g,'_');
+  const me=()=>String(S?.profile?.id||'');
+  const money114=n=>{try{return (typeof money==='function'?money(n):Number(n||0).toFixed(2).replace(/\.00$/,''))}catch(_){return String(n||0)}};
+  const fmt114=d=>{try{return (typeof fmt==='function'?fmt(d):(d?new Date(d).toLocaleString():'-'))}catch(_){return '-'}};
+  const emp114=id=>{try{return (typeof emp==='function'?emp(id):null)||{} }catch(_){return {}}};
+  const name114=id=>emp114(id).full_name||'Unknown / Removed';
+  const branch114=id=>emp114(id).branch||'-';
+  const retail114=()=>{
+    const role=st(S?.profile?.role||''),pos=String(S?.profile?.position||'').toUpperCase();
+    return ['owner','retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr'].includes(role)||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos);
+  };
+
+  function style114(){
+    if(Q('#v114-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v114-style">
+      .v114-queue{display:grid;gap:14px}.v114-hero{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;box-shadow:0 10px 28px rgba(15,23,42,.07)}
+      .v114-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.v114-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:12px}.v114-kpi span{display:block;color:#64748b;font-weight:900;font-size:12px;text-transform:uppercase}.v114-kpi b{font-size:28px;color:#7f1d1d}
+      .v114-card{background:#fff;border:1px solid #e5e7eb;border-left:7px solid #2563eb;border-radius:18px;padding:14px;box-shadow:0 8px 22px rgba(15,23,42,.06)}.v114-card.good{border-left-color:#16a34a}.v114-card.bad{border-left-color:#dc2626}.v114-card.warn{border-left-color:#f59e0b}
+      .v114-card h4{margin:0 0 8px;color:#7f1d1d}.v114-meta{color:#64748b;font-weight:800;font-size:13px;line-height:1.45}.v114-proof{margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;white-space:pre-wrap}.v114-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+      .v114-empty{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:16px;padding:18px;text-align:center;color:#64748b;font-weight:900}
+      @media(max-width:760px){.v114-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v114-card{border-radius:14px;padding:12px}.v114-actions .btn{width:100%}}
+    </style>`);
+  }
+
+  function resetMissionForm114(form){
+    if(!form)return;
+    try{
+      form.dataset.v114Sending='';
+      form.querySelectorAll('button').forEach(b=>{b.disabled=false});
+      const scope=Q('#missionScope',form),pts=Q('#missionPts',form);
+      form.reset();
+      if(scope)scope.value='individual';
+      if(pts)pts.value='2';
+      ['#missionTitle','#missionItems','#missionDue'].forEach(sel=>{const el=Q(sel,form);if(el)el.value=''});
+      const count=Q('#v52TargetCount');
+      if(count&&typeof window.v52TargetEmployees==='function')count.innerHTML=`<b>${window.v52TargetEmployees().length}</b> target employee(s) will receive this mission.`;
+    }catch(e){console.warn('V114 mission reset skipped',e)}
+  }
+
+  const oldAssign114=window.assignMission;
+  if(typeof oldAssign114==='function'){
+    window.assignMission=assignMission=async function(e){
+      if(e?.preventDefault)e.preventDefault();
+      if(e?.stopPropagation)e.stopPropagation();
+      const form=e?.target?.closest?.('form')||Q('#missionForm');
+      const btn=e?.submitter||Q('button[type="submit"],button:not([type])',form);
+      if(form?.dataset?.v114Sending==='1'){
+        try{toast('Mission is already sending. Please wait.','error')}catch(_){}
+        return false;
+      }
+      if(form)form.dataset.v114Sending='1';
+      if(btn)btn.disabled=true;
+      try{
+        const out=await oldAssign114.apply(this,arguments);
+        resetMissionForm114(form);
+        setTimeout(()=>resetMissionForm114(Q('#missionForm')),180);
+        try{toast('Mission sent. Form is ready for another mission.')}catch(_){}
+        return out;
+      }catch(err){
+        if(form)form.dataset.v114Sending='';
+        if(btn)btn.disabled=false;
+        throw err;
       }
     };
   }
 
-  window.v112ShowRatingQR=function(id){resolveEmployee112(id).then(em=>{if(employeeInactive112(em))return;addStyle112();const body='<div class="v112-note"><b>Customer-only rating.</b><br>One rater can submit one employee rating per day. Staff self-rating is blocked.</div>'+qrBox112(em);if(typeof modal==='function')modal(`<h2>Customer Service QR</h2>${body}<button class="btn dark full" onclick="closeModal()">Close</button>`);else qrOnly112(em,'Customer Service QR','<b>Customer-only rating.</b><br>One rater can submit one employee rating per day. Staff self-rating is blocked.')})};
-  window.v99ShowRatingQR=window.v112ShowRatingQR;
-  window.showRatingQR53=window.v112ShowRatingQR;
-
-  const oldInit112=window.init;
-  async function startRate112(){
-    const params=new URLSearchParams(location.search);
-    const rate=params.get('rate')||params.get('employee')||params.get('emp');
-    if(!rate)return false;
-    if(window.__v112ActiveRate===String(rate))return true;
-    window.__v112ActiveRate=String(rate);
-    try{if(typeof loadPublicSettings==='function')await loadPublicSettings()}catch(_){}
-    await renderCustomerRating112(rate);
-    return true;
+  function submittedMission114(t){
+    const s=st(t?.status);
+    if(['approved','completed','closed','cancelled','disagreed'].includes(s))return false;
+    return ['submitted','pending_merit','for_validation','for_retail_review','validated','branch_validated'].includes(s)||!!t?.proof_url;
   }
-  window.init=init=async function(){if(await startRate112())return;return oldInit112.apply(this,arguments)};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>startRate112());
-  setTimeout(()=>startRate112(),0);
-  console.log('V112 customer QR rating hardening loaded');
+  function pendingAch114(a){return ['pending','for_validation','for_retail_review','submitted'].includes(st(a?.status||'pending'))}
+  function pendingViolation114(v){
+    const s=st(v?.status||'pending_validation');
+    if(['validated','closed','closed_deducted','closed_/_deducted','cancelled','dismissed','resolved'].includes(s))return false;
+    return ['pending_validation','for_validation','under_review','for_action','needs_explanation','for_explanation','branch_validated','recommended','submitted'].includes(s)||Number(v?.deduction_points||v?.points||v?.demerit_points||0)!==0;
+  }
+  function pendingReport114(r){
+    const s=st(r?.status||'new_private');
+    return !['closed','resolved','dismissed','cancelled','false_report','validated_true','validated_false'].includes(s);
+  }
+  function img114(url){try{return typeof img==='function'?img(url):''}catch(_){return ''}}
+
+  function missionCard114(t){
+    const pts=Number(t.merit_points||1);
+    return `<div class="v114-card good"><h4>${E(t.title||'Mission Proof')}</h4><div class="v114-meta">Assigned to: <b>${E(name114(t.assigned_to_employee_id))}</b> - ${E(branch114(t.assigned_to_employee_id)||t.branch||'-')}<br>From: ${E(name114(t.assigned_by_employee_id))}<br>Status: ${E(t.status||'submitted')} - Suggested merit: +${E(money114(pts))} V-Points - Due: ${E(fmt114(t.due_at))}</div>${t.task_items?`<div class="v114-proof">${E(t.task_items)}</div>`:''}${img114(t.proof_url)}<div class="v114-actions"><button class="btn sm ghost" onclick="v73MissionSummary('${E(t.id)}')">Review Summary</button><button class="btn sm green" onclick="approveTask('${E(t.id)}',this)">Final Approve Merit</button><button class="btn sm dark" onclick="v73CloseMissionNoPoints('${E(t.id)}',this)">Close No Points</button></div></div>`;
+  }
+  function achievementCard114(a){
+    return `<div class="v114-card good"><h4>${E(a.title||'Achievement Merit')}</h4><div class="v114-meta">Employee: <b>${E(name114(a.employee_id))}</b> - ${E(branch114(a.employee_id))}<br>Status: ${E(a.status||'pending')} - Requested by: ${E(name114(a.requested_by||a.employee_id))}</div>${a.description?`<div class="v114-proof">${E(a.description)}</div>`:''}${img114(a.evidence_url)}<div class="v114-actions"><button class="btn sm green" onclick="approveAch('${E(a.id)}',this)">Final Approve Merit</button></div></div>`;
+  }
+  function violationCard114(v){
+    const pts=Number(v.deduction_points||v.points||v.demerit_points||0);
+    return `<div class="v114-card bad"><h4>${E(v.violation_type||v.type_name||'Demerit / Violation Recommendation')}</h4><div class="v114-meta">Employee: <b>${E(name114(v.employee_id))}</b> - ${E(branch114(v.employee_id)||v.branch||'-')}<br>Status: ${E(v.status||'pending_validation')} - Suggested demerit: ${pts?E(money114(pts)):'Needs Retail decision'} V-Points<br>Reported by: ${E(name114(v.reported_by||v.created_by))}</div>${v.description||v.story||v.details?`<div class="v114-proof">${E(v.description||v.story||v.details)}</div>`:''}${img114(v.evidence_url||v.photo_url||v.proof_url)}<div class="v114-actions"><button class="btn sm green" onclick="validateDirectVio('${E(v.id)}',this)">Final Validate / Deduct</button><button class="btn sm ghost" onclick="S.tab='case_center';renderPage()">Open Case Center</button></div></div>`;
+  }
+  function reportCard114(r){
+    return `<div class="v114-card warn"><h4>${E(r.title||r.report_type||'Private Report Review')}</h4><div class="v114-meta">Reporter: <b>${E(name114(r.reporter_employee_id))}</b><br>Reported employee: ${E(name114(r.reported_employee_id))}<br>Branch: ${E(r.branch||branch114(r.reported_employee_id)||'-')} - Status: ${E(r.status||'new_private')}</div>${r.story||r.description||r.report_details?`<div class="v114-proof">${E(r.story||r.description||r.report_details)}</div>`:''}${img114(r.evidence_url||r.photo_url)}<div class="v114-actions"><button class="btn sm blue" onclick="resolveReport('${E(r.id)}',true,this)">Proven / Apply Action</button><button class="btn sm dark" onclick="resolveReport('${E(r.id)}',false,this)">Dismiss / Close</button><button class="btn sm ghost" onclick="S.tab='case_center';renderPage()">Open Case Center</button></div></div>`;
+  }
+
+  window.approvalsPage=approvalsPage=function(){
+    style114();
+    const missions=(S.tasks||[]).filter(submittedMission114);
+    const achievements=(S.achievements||[]).filter(pendingAch114);
+    const violations=(S.violations||[]).filter(pendingViolation114);
+    const reports=(S.reports||[]).filter(pendingReport114);
+    const total=missions.length+achievements.length+violations.length+reports.length;
+    if(!retail114()){
+      return `<div class="v114-queue"><div class="v114-hero"><h3>Final Merit / Demerit Approvals</h3><p class="muted">Retail / Executive makes the final point decision. Branch leaders can validate and forward evidence from Missions or Case Center.</p></div></div>`;
+    }
+    return `<div class="v114-queue"><div class="v114-hero"><h3>Final Merit / Demerit Approval Queue</h3><p class="muted">All pending point decisions are shown here: mission proofs, achievement merits, violation demerits, and private reports.</p><div class="v114-kpis"><div class="v114-kpi"><span>Total pending</span><b>${total}</b></div><div class="v114-kpi"><span>Mission proofs</span><b>${missions.length}</b></div><div class="v114-kpi"><span>Merits</span><b>${achievements.length}</b></div><div class="v114-kpi"><span>Demerit / cases</span><b>${violations.length+reports.length}</b></div></div></div>${total?`${missions.map(missionCard114).join('')}${achievements.map(achievementCard114).join('')}${violations.map(violationCard114).join('')}${reports.map(reportCard114).join('')}`:'<div class="v114-empty">No pending merit or demerit approval right now.</div>'}</div>`;
+  };
+
+  const oldBind114=window.bind;
+  if(typeof oldBind114==='function'){
+    window.bind=bind=function(){
+      const out=oldBind114.apply(this,arguments);
+      const mf=Q('#missionForm');
+      if(mf)mf.onsubmit=window.assignMission;
+      return out;
+    };
+  }
+  document.addEventListener('submit',function(e){
+    if(e.target?.id==='missionForm'&&window.assignMission){
+      e.preventDefault();
+      e.stopPropagation();
+      window.assignMission(e);
+    }
+  },true);
+
+  console.log('V114 mission reset and approval queue loaded');
 })();
-/* ================= END V112 ================= */
+/* ================= END V114 ================= */
+/* ================= V115 PHILIPPINES READABLE LOCATION STAMP ================= */
+(function(){
+  if(window.__VPOINTS_V115_READABLE_LOCATION__)return;
+  window.__VPOINTS_V115_READABLE_LOCATION__=true;
+  window.VSCORE_FINAL_BUILD='V115_PH_READABLE_LOCATION_STAMP';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const phDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const phTime=()=>new Date().toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit',hour12:true,month:'short',day:'2-digit',year:'numeric'});
+  const role=()=>String(S?.profile?.role||'').toLowerCase();
+  const pos=()=>String(S?.profile?.position||'').toUpperCase();
+  const retail=()=>/retail|head_office|executive|national|hr|admin|owner|master/.test(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos());
+  const manager=()=>retail()||/manager|team_leader|branch|fsqa/.test(role()+' '+pos());
+
+  const PH_PLACES=[
+    {name:"LPU Main Batangas - Pirates' University Cafeteria",area:"Batangas City, Batangas",lat:13.7566,lng:121.0589,radius:0.85,keys:/LPU|LYCEUM|PIRATES|BATANGAS/i},
+    {name:"Lyceum of the Philippines University Batangas - Main Campus",area:"Batangas City, Batangas",lat:13.7566,lng:121.0589,radius:1.10,keys:/LPU|LYCEUM|BATANGAS/i},
+    {name:"LPU Batangas Maritime / Riverside Campus Area",area:"Batangas City, Batangas",lat:13.7608,lng:121.0655,radius:1.20,keys:/MARITIME|LPU|LYCEUM|BATANGAS/i},
+    {name:"Batangas City Capitol / Pallocan Area",area:"Batangas City, Batangas",lat:13.7569,lng:121.0648,radius:1.70,keys:/BATANGAS/i},
+    {name:"Batangas City Proper",area:"Batangas City, Batangas",lat:13.7565,lng:121.0583,radius:6.00,keys:/BATANGAS/i},
+    {name:"Lipa City Center",area:"Lipa City, Batangas",lat:13.9411,lng:121.1644,radius:7.00,keys:/LIPA/i},
+    {name:"Bauan Town Proper",area:"Bauan, Batangas",lat:13.7917,lng:121.0085,radius:6.00,keys:/BAUAN/i},
+    {name:"Ateneo de Manila University",area:"Loyola Heights, Quezon City",lat:14.6397,lng:121.0770,radius:1.25,keys:/ATENEO|ADMU|LOYOLA|KATIPUNAN/i},
+    {name:"Katipunan Avenue / Loyola Heights",area:"Quezon City, Metro Manila",lat:14.6427,lng:121.0746,radius:1.80,keys:/KATIPUNAN|LOYOLA|QUEZON/i},
+    {name:"UP Town Center / Katipunan Area",area:"Quezon City, Metro Manila",lat:14.6498,lng:121.0751,radius:1.50,keys:/KATIPUNAN|QUEZON/i},
+    {name:"Quezon City Memorial / Diliman Area",area:"Quezon City, Metro Manila",lat:14.6507,lng:121.0494,radius:4.50,keys:/QUEZON|DILIMAN/i},
+    {name:"Makati Central Business District",area:"Makati City, Metro Manila",lat:14.5547,lng:121.0244,radius:4.00,keys:/MAKATI/i},
+    {name:"BGC / Bonifacio Global City",area:"Taguig City, Metro Manila",lat:14.5503,lng:121.0490,radius:3.50,keys:/BGC|TAGUIG|BONIFACIO/i},
+    {name:"Ortigas Center",area:"Pasig / Mandaluyong, Metro Manila",lat:14.5869,lng:121.0614,radius:3.00,keys:/ORTIGAS|PASIG|MANDALUYONG/i},
+    {name:"Alabang / Filinvest Area",area:"Muntinlupa City, Metro Manila",lat:14.4190,lng:121.0430,radius:4.50,keys:/ALABANG|MUNTINLUPA/i},
+    {name:"Manila City Area",area:"Manila, Metro Manila",lat:14.5995,lng:120.9842,radius:7.00,keys:/MANILA/i},
+    {name:"Pasay / MOA Area",area:"Pasay City, Metro Manila",lat:14.5350,lng:120.9820,radius:4.50,keys:/PASAY|MOA/i}
+  ];
+
+  function km(lat1,lng1,lat2,lng2){
+    const R=6371,toRad=x=>Number(x)*Math.PI/180;
+    const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1),a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+    return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  function parseJsonMaybe(v){try{return typeof v==='string'?JSON.parse(v):v}catch(_){return null}}
+  function parseLatLngFromText(txt){
+    const m=String(txt||'').match(/Lat\s*(-?\d+(?:\.\d+)?),?\s*Lng\s*(-?\d+(?:\.\d+)?)/i);
+    return m?{lat:Number(m[1]),lng:Number(m[2])}:null;
+  }
+  function locationParts(rec){
+    if(!rec)return {};
+    let lat=Number(rec.latitude??rec.lat),lng=Number(rec.longitude??rec.lng),acc=Number(rec.accuracy_meters??rec.accuracy);
+    if((!isFinite(lat)||!isFinite(lng))&&rec.location_text){const p=parseLatLngFromText(rec.location_text);if(p){lat=p.lat;lng=p.lng}}
+    return {lat,lng,acc};
+  }
+  function readablePlace(lat,lng,acc=0,branchText=''){
+    lat=Number(lat);lng=Number(lng);acc=Number(acc||0);
+    if(!isFinite(lat)||!isFinite(lng))return 'Location captured';
+    const branch=String(branchText||S?.profile?.branch||'');
+    const ranked=PH_PLACES.map(p=>({...p,dist:km(lat,lng,p.lat,p.lng)})).sort((a,b)=>a.dist-b.dist);
+    let best=ranked[0],keyed=ranked.find(p=>p.keys?.test(branch)&&p.dist<=Math.max(p.radius,2.5));
+    if(keyed)best=keyed;
+    let prefix='Near';
+    if(best.dist<=Math.min(best.radius,0.22))prefix='Inside / at';
+    else if(acc>250)prefix='Approx. near';
+    else if(best.dist<=best.radius)prefix='Near';
+    else prefix='Nearest known area';
+    const distance=best.dist<1?`${Math.round(best.dist*1000)}m away`:`${best.dist.toFixed(1)}km away`;
+    const accuracy=isFinite(acc)&&acc>0?` GPS accuracy about ${Math.round(acc)}m.`:'';
+    return `${prefix} ${best.name}, ${best.area} (${distance}).${accuracy}`;
+  }
+  function displayLocation(rec){
+    if(!rec)return '';
+    const txt=String(rec.location_label||rec.place_name||rec.location_text||rec.location||rec.address||'').trim();
+    const {lat,lng,acc}=locationParts(rec);
+    if(isFinite(lat)&&isFinite(lng))return readablePlace(lat,lng,acc,rec.branch);
+    if(/^Lat\s/i.test(txt))return 'Location captured. Place name unavailable for this older log.';
+    return txt;
+  }
+  window.v115ReadablePlace=readablePlace;
+  window.v115DisplayLocation=displayLocation;
+
+  function todayLogs(){
+    const d=phDate();
+    return (S.attendanceLogs||[]).filter(x=>String(x.employee_id)===String(S.profile?.id)&&String(x.work_date||'').slice(0,10)===d).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));
+  }
+  function firstInOut(logs){logs=(logs||[]).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));return {tin:logs.find(x=>x.event_type==='time_in'),tout:logs.find(x=>x.event_type==='time_out')}}
+  function getGeo(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error('Location is required but this browser does not support it. Use phone/HTTPS browser.'));navigator.geolocation.getCurrentPosition(p=>res(p),()=>rej(new Error('Location permission is required. Please tap Allow Location and try again.')),{enableHighAccuracy:true,timeout:25000,maximumAge:0});});}
+  function fileData(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});}
+  async function stampPhoto(file,type,loc){
+    const data=await fileData(file);
+    return await new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const max=1200,scale=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);const ctx=c.getContext('2d');ctx.drawImage(im,0,0,c.width,c.height);const h=Math.max(142,Math.round(c.height*.20));ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(0,c.height-h,c.width,h);ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(22,Math.round(c.width/40))}px Arial`;ctx.fillText((type==='time_in'?'TIME IN':'TIME OUT')+' - '+phTime(),18,c.height-h+38);ctx.font=`bold ${Math.max(16,Math.round(c.width/56))}px Arial`;ctx.fillText(String(S.profile?.full_name||'Employee'),18,c.height-h+70);ctx.font=`${Math.max(14,Math.round(c.width/66))}px Arial`;wrapText(ctx,String(loc||'Location captured'),18,c.height-h+98,c.width-36,Math.max(18,Math.round(c.width/58)),2);res(c.toDataURL('image/jpeg',.76));};im.onerror=rej;im.src=data;});
+  }
+  function wrapText(ctx,text,x,y,maxWidth,lineHeight,maxLines=2){
+    const words=String(text||'').split(/\s+/);let line='',lines=0;
+    for(const w of words){const test=line?line+' '+w:w;if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=w;y+=lineHeight;lines++;if(lines>=maxLines-1)break}else line=test}
+    if(line)ctx.fillText(line.length>112?line.slice(0,109)+'...':line,x,y);
+  }
+
+  window.attendanceLog54=window.attendanceLog55=window.attendanceLog59=async function(type,btn){
+    const logs=todayLogs(),io=firstInOut(logs);
+    if(type==='time_in'&&io.tin)return toast('Time In already recorded today.','error');
+    if(type==='time_out'&&!io.tin)return toast('Time In required first.','error');
+    if(type==='time_out'&&io.tout)return toast('Time Out already recorded today.','error');
+    if(!Q('#attConfirm59')?.checked&&!Q('#attConfirm55')?.checked)return toast('Please confirm uniform and in-store reminder first.','error');
+    const input=Q('#attProof59')||Q('#attProof55'),file=input?.files?.[0];
+    if(!file)return toast('Timestamp photo is required. Tap Take Photo first.','error');
+    await act(btn||input,{busy:'Getting exact place...',success:'Saved',reset:type==='time_in'?'Time In':'Time Out',toast:'Attendance saved with readable place stamp.'},async()=>{
+      const pos=await getGeo(),lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy;
+      const place=readablePlace(lat,lng,acc,S.profile?.branch);
+      const loc=`${place} Captured ${phTime()}.`;
+      if(btn)btn.textContent='Stamping photo...';
+      const stamped=await stampPhoto(file,type,loc);
+      const sp=Q('#attPreview59 .v59-pill')||Q('#attPreview55 .v59-pill')||Q('#attPreview55 .v55-status-pill');
+      if(sp){sp.className='v59-pill blue';sp.textContent='Uploading timestamp photo...'}
+      let photos=[];
+      try{
+        if(typeof v34DriveUploadDataUrl==='function'){
+          const up=await v34DriveUploadDataUrl(stamped,{name:'attendance_'+type+'_'+Date.now()+'.jpg',type:'image/jpeg'},'10 Attendance Proof','attendance_'+type);
+          const url=up.thumbnailUrl||up.directViewUrl||up.viewUrl||up.url||'';
+          if(url)photos=[{url,name:'attendance_'+type+'.jpg',driveFileId:up.fileId||'',fileId:up.fileId||'',storage:'company-drive',stamp:loc,place,uploadedAt:new Date().toISOString()}];
+        }
+      }catch(e){console.warn('attendance drive upload skipped',e.message)}
+      if(!photos.length)photos=[{url:stamped,name:'attendance_'+type+'.jpg',stamp:loc,place,storage:'local-fallback'}];
+      if(sp){sp.className='v59-pill ok';sp.textContent='Uploaded / ready'}
+      const remarks=Q('#attRemarks59')?.value||Q('#attRemarks55')?.value||'',now=new Date().toISOString();
+      const full={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:phDate(),remarks,photo_url:JSON.stringify(photos),photo_json:JSON.stringify(photos),location_label:place,location_text:loc,latitude:lat,longitude:lng,accuracy_meters:acc,device_info:(navigator.userAgent||'').slice(0,200),created_at:now};
+      const simple={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:phDate(),remarks,photo_url:JSON.stringify(photos),location_text:loc,created_at:now};
+      const minimal={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:phDate(),remarks,created_at:now};
+      let r=await sb.from('vscore_attendance_logs').insert(full).select().single();
+      if(r.error){console.warn('attendance full insert fallback',r.error.message);r=await sb.from('vscore_attendance_logs').insert(simple).select().single();}
+      if(r.error){console.warn('attendance simple insert fallback',r.error.message);r=await sb.from('vscore_attendance_logs').insert(minimal).select().single();}
+      if(r.error)throw r.error;
+      try{
+        const rec=r.data||full,managers=(S.employees||[]).filter(e=>String(e.branch)===String(S.profile.branch)&&String(e.id)!==String(S.profile.id)&&/(manager|team_leader|retail|head|admin|hr|management|owner)/i.test(String(e.role||e.position||''))).slice(0,20);
+        if(managers.length&&sb.from)await sb.from('vscore_notifications').insert(managers.map(m=>({employee_id:m.id,title:`Attendance ${type==='time_in'?'Time In':'Time Out'}`,message:`${S.profile.full_name} submitted ${type==='time_in'?'Time In':'Time Out'} at ${place}.`,type:'attendance_log',source_type:'vscore_attendance_logs',source_id:rec.id||null,created_by:S.profile.id,is_active:true,created_at:now})));
+      }catch(e){console.warn('attendance manager notification skipped',e.message)}
+    },async()=>{await loadData();renderPage();});
+  };
+
+  function allowedBranches(){
+    if(retail())return null;
+    const p=S.profile||{},raw=p.assigned_branches||p.branch_assignments||p.managed_branches||'';
+    let arr=[];
+    try{arr=Array.isArray(raw)?raw:JSON.parse(raw||'[]')}catch(_){arr=String(raw||'').split(/[,\n|]+/)}
+    arr=arr.map(x=>String(x).trim()).filter(Boolean);
+    if(p.branch&&!arr.includes(p.branch))arr.push(p.branch);
+    return arr.length?arr:null;
+  }
+  function groupRows(){
+    const g={};
+    (S.attendanceLogs||[]).forEach(r=>{const d=String(r.work_date||r.created_at||'').slice(0,10),id=String(r.employee_id||''),k=id+'|'+d,e=(typeof emp==='function'?emp(id):{})||{};if(!g[k])g[k]={employee_id:id,employee:e.full_name||'-',branch:r.branch||e.branch||'',date:d,tin:null,tout:null};if(String(r.event_type)==='time_in'&&!g[k].tin)g[k].tin=r;if(String(r.event_type)==='time_out'&&!g[k].tout)g[k].tout=r});
+    let rows=Object.values(g),allowed=allowedBranches();
+    if(allowed)rows=rows.filter(r=>allowed.includes(String(r.branch))||String(r.employee_id)===String(S.profile?.id));
+    return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.branch).localeCompare(String(b.branch))||String(a.employee).localeCompare(String(b.employee)));
+  }
+  function decorateLocations(){
+    try{
+      const rows=groupRows().slice(0,140);
+      A('.v107-monitor .v107-row').forEach((el,i)=>{
+        if(el.querySelector('.v115-place'))return;
+        const r=rows[i];if(!r)return;
+        const inn=displayLocation(r.tin),out=displayLocation(r.tout),txt=[inn?`IN place: ${inn}`:'',out?`OUT place: ${out}`:''].filter(Boolean).join(' ');
+        if(txt)el.insertAdjacentHTML('beforeend',`<div class="v115-place">${E(txt)}</div>`);
+      });
+      A('.v59-att-item').forEach(el=>{
+        const small=A('.small.muted',el).find(x=>/Lat\s|Lng\s/i.test(x.textContent||''));
+        if(small)small.textContent='Readable place will show for new logs. Older coordinate-only logs keep audit data.';
+      });
+    }catch(e){console.warn('V115 decorate skipped',e)}
+  }
+  if(!Q('#v115-style'))document.head.insertAdjacentHTML('beforeend',`<style id="v115-style">.v115-place{margin-top:8px;padding:8px 10px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-size:13px;font-weight:900;line-height:1.35}</style>`);
+  const oldRender115=window.renderPage;
+  if(typeof oldRender115==='function'){
+    window.renderPage=renderPage=function(){const out=oldRender115.apply(this,arguments);setTimeout(decorateLocations,120);return out};
+  }
+  setTimeout(decorateLocations,500);
+  console.log('V115 Philippines readable location stamp loaded');
+})();
+/* ================= END V115 ================= */
 </script></body></html>
