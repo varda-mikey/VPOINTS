@@ -103,12 +103,12 @@ function safeName(id){return emp(id)?.full_name||'Unknown / Removed'}
 
 async function init(){await loadPublicSettings();const s=readSession();if(s){S.user={id:'direct-'+s.id,email:s.email,employee_id:s.id};renderAuth()}else renderAuth()}
 async function loadPublicSettings(){S.settings={};const data=await q(sb.from('app_settings').select('*'),[]);data.forEach(x=>S.settings[x.setting_key]=x.setting_value);if(S.settings.app_logo_url)localStorage.setItem('VSCORE_APP_LOGO',S.settings.app_logo_url)}
-function renderAuth(active='login'){const l=logo();const saved=readSession();$('#root').innerHTML=`<div class="auth"><div class="auth-card"><div class="hero">${l?`<img class="logo" src="${esc(l)}">`:'<div class="logo">V</div>'}<h1>Welcome to<br>V-POINTS!</h1><h2>Welcome, Ka-Varda!</h2><p class="muted">Official Varda Group employee integration, mission, memo, rewards, and evidence-first ledger.</p><div class="notice"><b>No Proof, No Point.</b><br>Every win needs evidence. Every mistake needs validation.</div></div><div class="auth-panel">${saved?`<div class="notice success"><b>Saved session found:</b><br>${esc(saved.email)}<br><br><button id="continue" class="btn green full">Continue to V-Points</button><br><br><button id="clear" class="btn ghost full">Logout / Use Different Account</button></div><br>`:''}<div class="notice success"><b>V-POINTS Access Portal</b><br>Official Varda Group performance, mission, FSQA, memo, policy, and evidence ledger.</div><div class="tabs"><button class="tab ${active==='login'?'active':''}" data-a="login">Sign In</button><button class="tab ${active==='activate'?'active':''}" data-a="activate">First Time Activate</button></div><div id="authbox">${active==='activate'?activateForm():loginForm()}</div></div></div></div>`;$$('[data-a]').forEach(b=>b.onclick=()=>renderAuth(b.dataset.a));$('#loginForm')?.addEventListener('submit',signIn);$('#activateForm')?.addEventListener('submit',activate);$('#continue')?.addEventListener('click',boot);$('#clear')?.addEventListener('click',()=>{clearSession();S.user=null;S.profile=null;renderAuth()})}
-function loginForm(){return `<form id="loginForm"><div class="field"><label>Email</label><input id="loginEmail" type="email" class="input" placeholder="Enter your V-POINTS email" required></div><div class="field"><label>Password</label><input id="loginPass" type="password" class="input" placeholder="Enter password" required></div><button class="btn full">Sign In</button></form>`}
+function renderAuth(active='login'){const l=logo();const saved=readSession();$('#root').innerHTML=`<div class="auth"><div class="auth-card"><div class="hero">${l?`<img class="logo" src="${esc(l)}">`:'<div class="logo">V</div>'}<h1>Welcome,<br>Ka-Varda</h1><h2>V-Points Access</h2><p class="muted">Employee login, missions, memos, points, and proof records.</p><div class="notice"><b>No Proof, No Point.</b></div></div><div class="auth-panel">${saved?`<div class="notice success"><b>Saved session found:</b><br>${esc(saved.email)}<br><br><button id="continue" class="btn green full">Continue to V-Points</button><br><br><button id="clear" class="btn ghost full">Logout / Use Different Account</button></div><br>`:''}<div class="notice success"><b>V-POINTS Access Portal</b><br>Sign in to continue.</div><div class="tabs"><button class="tab ${active==='login'?'active':''}" data-a="login">Sign In</button><button class="tab ${active==='activate'?'active':''}" data-a="activate">First Time Activate</button></div><div id="authbox">${active==='activate'?activateForm():loginForm()}</div></div></div></div>`;$$('[data-a]').forEach(b=>b.onclick=()=>renderAuth(b.dataset.a));$('#loginForm')?.addEventListener('submit',signIn);$('#activateForm')?.addEventListener('submit',activate);$('#continue')?.addEventListener('click',boot);$('#clear')?.addEventListener('click',()=>{clearSession();S.user=null;S.profile=null;renderAuth()})}
+function loginForm(){return `<form id="loginForm"><div class="field"><label>Employee Number</label><input id="loginEmployeeNo" class="input" placeholder="VG-2026-001" required></div><div class="field"><label>PIN</label><input id="loginPin" type="password" inputmode="numeric" class="input" placeholder="4-digit PIN" required></div><button class="btn full">Sign In</button></form>`}
 function activateForm(){return `<form id="activateForm"><div class="field"><label>Email</label><input id="actEmail" type="email" class="input" required></div><div class="field"><label>Temporary Password</label><input id="actTemp" class="input" required></div><div class="field"><label>New Password</label><input id="actPass" class="input" required></div><button class="btn green full">Activate Account</button></form>`}
 async function signIn(e){e.preventDefault();const b=e.submitter;await act(b,{busy:'Checking...',success:'Login Accepted',reset:'Sign In Again'},async()=>{const email=$('#loginEmail').value.trim().toLowerCase(),pass=$('#loginPass').value;const emp=await q(sb.from('employees').select('*').ilike('email',email).maybeSingle(),null);if(!emp)throw new Error('No employee account found. Run SQL V10.6 or create account.');if(emp.is_active===false||String(emp.activation_status).toLowerCase()==='deleted')throw new Error('This account is inactive/deleted.');if(String(emp.login_password_backup||'')!==pass&&String(emp.temp_password||'')!==pass)throw new Error('Incorrect password.');await sb.from('employees').update({activation_status:'activated',is_active:true,last_login_at:new Date().toISOString(),activated_at:emp.activated_at||new Date().toISOString()}).eq('id',emp.id);S.user={id:'direct-'+emp.id,email,employee_id:emp.id};S.profile={...emp,activation_status:'activated',is_active:true};saveSession(S.profile);},boot)}
 async function activate(e){e.preventDefault();const b=e.submitter;await act(b,{busy:'Activating...',success:'Activated',reset:'Activate Again',toast:'Account activated. Login now.'},async()=>{const email=$('#actEmail').value.trim().toLowerCase(),temp=$('#actTemp').value.trim(),pass=$('#actPass').value;const emp=await q(sb.from('employees').select('*').ilike('email',email).maybeSingle(),null);if(!emp||String(emp.temp_password||'')!==temp)throw new Error('Email or temporary password not matched.');await sb.from('employees').update({login_password_backup:pass,temp_password:pass,activation_status:'activated',is_active:true,activated_at:new Date().toISOString()}).eq('id',emp.id)},()=>renderAuth('login'))}
-async function boot(){try{if(!S.user){const s=readSession();if(s)S.user={id:'direct-'+s.id,email:s.email,employee_id:s.id};else return renderAuth()}$('#root').innerHTML='<div class="auth"><div class="card" style="max-width:520px;text-align:center"><h2>Opening V-Points...</h2><p class="muted">Loading clean dashboard.</p></div></div>';await loadProfile();if(!S.profile)throw new Error('Profile not found.');await loadData();renderApp();setTimeout(showMemoLock,80);setTimeout(showMissionPopup,180)}catch(e){console.error(e);$('#root').innerHTML=`<div class="auth"><div class="card" style="max-width:720px"><h2>Dashboard loading issue</h2><div class="notice danger"><b>Error:</b><br>${esc(e.message||String(e))}</div><p class="muted">Use V10.7 index and run SQL_UPDATE_V10_7_CONTROL_PATCH.sql once.</p><div class="split"><button class="btn green" id="retry">Retry</button><button class="btn ghost" id="back">Back to Login</button><button class="btn dark" id="out">Logout</button></div></div></div>`;$('#retry').onclick=boot;$('#back').onclick=()=>renderAuth();$('#out').onclick=logout}}
+async function boot(){try{if(!S.user){const s=readSession();if(s)S.user={id:'direct-'+s.id,email:s.email,employee_id:s.id};else return renderAuth()}$('#root').innerHTML='<div class="auth"><div class="card" style="max-width:520px;text-align:center"><h2>Opening V-Points...</h2></div></div>';await loadProfile();if(!S.profile)throw new Error('Profile not found.');await loadData();renderApp();setTimeout(showMemoLock,80);setTimeout(showMissionPopup,180)}catch(e){console.error(e);$('#root').innerHTML=`<div class="auth"><div class="card" style="max-width:720px"><h2>Dashboard loading issue</h2><div class="notice danger"><b>Error:</b><br>${esc(e.message||String(e))}</div><p class="muted">Please refresh and sign in again. If this continues, contact management support.</p><div class="split"><button class="btn green" id="retry">Retry</button><button class="btn ghost" id="back">Back to Login</button><button class="btn dark" id="out">Logout</button></div></div></div>`;$('#retry').onclick=boot;$('#back').onclick=()=>renderAuth();$('#out').onclick=logout}}
 async function loadProfile(){const id=S.user?.employee_id;const email=S.user?.email;let emp=null;if(id)emp=await q(sb.from('employees').select('*').eq('id',id).maybeSingle(),null);if(!emp&&email)emp=await q(sb.from('employees').select('*').ilike('email',email).maybeSingle(),null);S.profile=emp}
 async function loadData(){const pid=S.profile.id;const branch=S.profile.branch;const allScope=isOwner()||national();let empQ=sb.from('employees').select('*').order('full_name');if(!allScope&&isManager())empQ=sb.from('employees').select('*').eq('branch',branch).order('full_name');if(!isManager())empQ=sb.from('employees').select('*').or(`id.eq.${pid},branch.eq.${branch}`).order('full_name');const [employees,memos,acks,allAcks,ach,viol,led,branches,rewards,reports,tasks,rules,settings,fsqa,policies,forms,audits]=await Promise.all([
 q(empQ,[]),q(sb.from('memos').select('*').order('created_at',{ascending:false}),[]),q(sb.from('memo_acknowledgments').select('*').eq('employee_id',pid),[]),q(sb.from('memo_acknowledgments').select('*').order('acknowledged_at',{ascending:false}),[]),q(sb.from('achievements').select('*').order('created_at',{ascending:false}),[]),q(sb.from('violations').select('*').order('created_at',{ascending:false}),[]),q(sb.from('ledger').select('*').order('created_at',{ascending:false}),[]),q(sb.from('branch_options').select('*').eq('is_active',true).order('branch_name'),[]),q(sb.from('vscore_rewards').select('*').eq('is_active',true).order('created_at',{ascending:false}),[]),q(sb.from('investigation_reports').select('*').order('created_at',{ascending:false}),[]),q(sb.from('vscore_tasks').select('*').order('created_at',{ascending:false}),[]),q(sb.from('vscore_standing_rules').select('*').eq('is_active',true).order('min_points',{ascending:false}),[]),q(sb.from('app_settings').select('*'),[]),q(sb.from('fsqa_audits').select('*').order('created_at',{ascending:false}),[]),q(sb.from('vscore_policy_rules').select('*').eq('is_active',true).order('created_at',{ascending:false}),[]),q(sb.from('vscore_forms').select('*').eq('is_active',true).order('category').order('created_at',{ascending:false}),[]),q(sb.from('audit_trail').select('*').order('created_at',{ascending:false}).limit(300),[])]);
@@ -299,19 +299,19 @@ taskMonitorPage=function(){
   const arr=isManager()?list:list.filter(t=>taskOwnerId(t)===S.profile.id || t.assigned_by_employee_id===S.profile.id);
   return `<div class="grid two"><div class="card"><h3>Share My Tasklist</h3><p class="muted">Tasklist is for monitoring, appreciation, comments, and reactions. It is separate from missions and auto-deletes after 3 days.</p><form id="selfTask"><div class="field"><label>Task Title</label><input id="selfTitle" class="input" required placeholder="Example: Grease trap cleaned"></div><div class="field"><label>Checklist Done</label><textarea id="selfItems" required placeholder="List completed tasks"></textarea></div><div class="field"><label>Proof Photo</label><input id="selfProof" type="file" accept="image/*" class="input" required></div><button class="btn green full">Post Shared Tasklist</button></form></div><div class="card"><h3>${isManager()?'Shared Tasklist Monitoring':'My Shared Tasklist Feed'}</h3><p class="muted">${isManager()?'Management can acknowledge, comment, and react. Own posts cannot receive your own reaction.':'You can only view comments/reactions on your own shared tasklists.'}</p>${tasklistTable(arr,isManager())}</div></div>`
 }
-settingsPage=function(){return `<div class="grid two"><div class="card"><h3>App Logo / V-POINTS Logo</h3><p class="muted">Upload logo to appear on login and sidebar.</p><input id="logoFile" type="file" accept="image/*" class="input"><br><br><button id="saveLogo" class="btn green">Save App Logo</button><br><br>${logo()?`<img src="${esc(logo())}" style="max-width:180px;max-height:120px;border:1px solid #ddd;border-radius:18px"><br><br><button id="clearLogo" class="btn dark">Clear Logo</button>`:''}</div><div class="card"><h3>Factory Reset / Clear Testing Data</h3><div class="notice danger"><b>Management-only.</b><br>This deletes uploaded testing records, histories, tasklists, forms, memos, rewards, reports, and all employee accounts except your current management login so you do not get locked out.</div><p class="muted">Two reset codes are required.</p><button id="factoryReset" class="btn dark full">Factory Reset Testing Data</button></div></div>`}
+settingsPage=function(){return `<div class="grid two"><div class="card"><h3>App Logo / V-POINTS Logo</h3><p class="muted">Upload logo to appear on login and sidebar.</p><input id="logoFile" type="file" accept="image/*" class="input"><br><br><button id="saveLogo" class="btn green">Save App Logo</button><br><br>${logo()?`<img src="${esc(logo())}" style="max-width:180px;max-height:120px;border:1px solid #ddd;border-radius:18px"><br><br><button id="clearLogo" class="btn dark">Clear Logo</button>`:''}</div><div class="card"><h3>Factory Reset / Clear App Data</h3><div class="notice danger"><b>Management-only.</b><br>This deletes app records, histories, tasklists, forms, memos, rewards, reports, and all employee accounts except your current management login so you do not get locked out.</div><p class="muted">Two reset codes are required.</p><button id="factoryReset" class="btn dark full">Factory Reset App Data</button></div></div>`}
 async function factoryReset(btn){
   if(!isOwner()){toast('Only Management can reset data.','error');return;}
-  if(!confirm('Are you sure you want to delete all testing data?'))return;
+  if(!confirm('Are you sure you want to delete all app data except your current management account?'))return;
   if(!confirm('Talaga ba? This cannot be undone.'))return;
   const p1=prompt('Enter reset password 1:'); if(p1!=='VPOINTS-RESET'){toast('Wrong first reset password.','error');return;}
   const p2=prompt('Enter reset password 2:'); if(p2!=='DELETE-ALL-DATA'){toast('Wrong second reset password.','error');return;}
-  await act(btn,{busy:'Deleting...',success:'Reset Complete',reset:'Factory Reset Testing Data',toast:'Testing data cleared.'},async()=>{
+  await act(btn,{busy:'Deleting...',success:'Reset Complete',reset:'Factory Reset App Data',toast:'App data cleared.'},async()=>{
     const tables=['vscore_task_comments','vscore_task_reactions','vscore_task_acknowledgments','vscore_tasks','vscore_forms','vscore_policy_rules','fsqa_audits','investigation_reports','rewards','memo_acknowledgments','memos','achievements','violations','ledger','audit_trail'];
     for(const t of tables){try{await sb.from(t).delete().not('id','is',null)}catch(e){console.warn('Reset skipped',t,e.message)}}
     try{await sb.from('employees').delete().neq('id',S.profile.id)}catch(e){console.warn('Employee reset skipped',e.message)}
     await sb.from('employees').update({is_active:true,hidden_from_monitoring:false,activation_status:'activated',role:S.profile.role||'retail_head',current_points:100}).eq('id',S.profile.id);
-    await auditEvent('Factory reset','system','Testing data reset; current management login preserved.')
+    await auditEvent('Factory reset','system','App data reset; current management login preserved.')
   },async()=>{await loadData();S.tab='dashboard';renderApp()})
 }
 const _v14BindBase=bind;
@@ -2076,7 +2076,7 @@ async function submitTrainingQuiz(e,mid){
     const path=v25StoragePath(file,folder);
     const up=await sb.storage.from(TRAINING_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
     if(up.error){
-      throw new Error('Training file upload failed. Please run SQL_UPDATE_V25_TRAINING_STORAGE_QUIZ_FIX.sql first, then try again. Storage error: '+(up.error.message||up.error.error||String(up.error)));
+      throw new Error('Training file upload failed. Please contact the system administrator, then try again. Storage error: '+(up.error.message||up.error.error||String(up.error)));
     }
     const pub=sb.storage.from(TRAINING_BUCKET).getPublicUrl(path);
     const url=pub?.data?.publicUrl || '';
@@ -15783,8 +15783,8 @@ init();
   };
   function v110FactoryResetCard(){
     v110Style();
-    return `<div class="card v110-reset-card"><h3>Factory Reset Before Launch</h3>
-      <p class="muted">Use this only when you are ready to erase testing data. It keeps the mother Retail account active so you do not get locked out.</p>
+    return `<div class="card v110-reset-card"><h3>Factory Reset App Data</h3>
+      <p class="muted">Use this only when you are ready to erase app data. It keeps the mother Retail account active so you do not get locked out.</p>
       <div class="notice danger"><b>Deletes:</b> staff accounts, attendance, output, missions, memos, reports, cases, ratings, news feed, chat, trainings, rewards, policies, logs, Google Drive files found in records, and old Supabase training storage files.</div>
       <div class="split"><button type="button" class="btn blue" id="v110PreviewReset" onclick="v110FactoryResetPreview(this)">Preview Reset</button><button type="button" class="btn dark" id="v110FactoryReset" onclick="factoryReset(this)">Factory Reset App Data</button></div>
       <p class="small muted">Required before reset: type RESET V-POINTS, confirm the mother account email, then type DELETE-ALL-DATA.</p>
@@ -15796,7 +15796,7 @@ init();
     settingsPage=function(){
       let html=String(oldSettings.apply(this,arguments)||'');
       const card=v110FactoryResetCard();
-      const re=/<div class="card"><h3>Factory Reset \/ Clear Testing Data<\/h3>[\s\S]*?<button id="factoryReset"[\s\S]*?<\/button><\/div>/;
+      const re=/<div class="card"><h3>Factory Reset \/ Clear (Testing|App) Data<\/h3>[\s\S]*?<button id="factoryReset"[\s\S]*?<\/button><\/div>/;
       html=re.test(html)?html.replace(re,card):`${html}<div class="grid two" style="margin-top:14px">${card}</div>`;
       return html;
     };
@@ -16229,10 +16229,12 @@ init();
   }
   function taskOpen112(t){
     const st=String(t?.status||'').toLowerCase();
+    if(t?.due_at && new Date(t.due_at).getTime()<Date.now() && !t?.proof_url)return false;
     return String(t?.assigned_to_employee_id||'')===me() && ['assigned','new','accepted',''].includes(st) && !t?.proof_url;
   }
   function missionPopup112(t,notificationId=''){
     if(!t?.id||seen112('mission',t.id))return;
+    if(t?.due_at && new Date(t.due_at).getTime()<Date.now() && !t?.proof_url)return;
     const giver=emp112(t.assigned_by_employee_id);
     const pts=Number(t.merit_points||t.points||1);
     popup112({
@@ -16273,6 +16275,23 @@ init();
   function genericNotificationPopup112(n){
     if(!n?.id||seen112('notification',n.id))return;
     const type=String(n.type||n.source_type||'').toLowerCase();
+    if(type.includes('expired')){
+      popup112({
+        kind:'mission_expired',
+        id:n.id,
+        notificationId:n.id,
+        kicker:'Mission expired',
+        title:n.title||'Mission expired',
+        message:n.message||'This mission is closed for monitoring and management review.',
+        actions:[
+          {label:'Open Missions',cls:'blue',run:async()=>{markSeenLocal112('notification',n.id);await markNotificationSeen112(n.id);go112('missions')}},
+          {label:'Open Alerts',cls:'yellow',run:async()=>{markSeenLocal112('notification',n.id);await markNotificationSeen112(n.id);go112('notifications')}}
+        ],
+        laterLabel:'Close',
+        timeout:18000
+      });
+      return;
+    }
     if(type.includes('mission')){
       const t=(S.tasks||[]).find(x=>String(x.id)===String(n.source_id));
       if(t)return missionPopup112(t,n.id);
@@ -16303,6 +16322,8 @@ init();
     }catch(e){console.warn('V112 notification skipped',e.message)}
   }
   window.v112Notify=notify112;
+  window.v112MissionPopup=missionPopup112;
+  window.v112TaskOpen=taskOpen112;
 
   async function pollNotifications112(){
     if(!S?.profile?.id||QS('#termsGate'))return;
@@ -16903,4 +16924,2093 @@ init();
   console.log('V115 Philippines readable location stamp loaded');
 })();
 /* ================= END V115 ================= */
+/* ================= V116 TRUSTED PH TIME ANTI-CHEAT ================= */
+(function(){
+  if(window.__VPOINTS_V116_TRUSTED_PH_TIME__)return;
+  window.__VPOINTS_V116_TRUSTED_PH_TIME__=true;
+  window.VSCORE_FINAL_BUILD='V116_TRUSTED_PH_TIME_ATTENDANCE';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const MAX_DRIFT_MINUTES=5;
+  const phDateFrom=ms=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(ms));
+  const phTimeFrom=ms=>new Date(ms).toLocaleString('en-PH',{timeZone:'Asia/Manila',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true,month:'short',day:'2-digit',year:'numeric'});
+  const toastSafe=(m,t='ok')=>{try{toast(m,t)}catch(_){alert(m)}};
+
+  async function fetchJsonTime(url,reader){
+    const r=await fetch(url,{cache:'no-store'});
+    if(!r.ok)throw new Error('time source unavailable');
+    const j=await r.json();
+    const ms=reader(j);
+    if(!Number.isFinite(ms))throw new Error('time source invalid');
+    return ms;
+  }
+  async function fetchSupabaseHeaderTime(){
+    if(!window.SUPABASE_URL&&!window.sb)throw new Error('no server time source');
+    const url=(window.SUPABASE_URL||SUPABASE_URL).replace(/\/$/,'')+'/rest/v1/employees?select=id&limit=1';
+    const key=window.SUPABASE_KEY||SUPABASE_KEY;
+    const r=await fetch(url,{cache:'no-store',headers:{apikey:key,authorization:'Bearer '+key}});
+    const d=r.headers.get('date');
+    const ms=d?Date.parse(d):NaN;
+    if(!Number.isFinite(ms))throw new Error('server time header unavailable');
+    return ms;
+  }
+  async function trustedPHTime116(){
+    const sources=[
+      ()=>fetchJsonTime('https://worldtimeapi.org/api/timezone/Asia/Manila',j=>Number(j.unixtime)*1000||Date.parse(j.utc_datetime||j.datetime||'')),
+      ()=>fetchJsonTime('https://timeapi.io/api/TimeZone/zone?timeZone=Asia/Manila',j=>Date.parse((j.currentLocalTime||j.dateTime||'')+'+08:00')),
+      fetchSupabaseHeaderTime
+    ];
+    let last=null;
+    for(const src of sources){
+      try{
+        const ms=await src();
+        if(Number.isFinite(ms))return {ms,iso:new Date(ms).toISOString(),phDate:phDateFrom(ms),phText:phTimeFrom(ms)};
+      }catch(e){last=e}
+    }
+    throw new Error('Trusted Philippines time cannot be verified. Please connect to internet and try again.');
+  }
+  async function verifyDeviceClock116(){
+    const trusted=await trustedPHTime116();
+    const deviceMs=Date.now();
+    const drift=Math.abs(deviceMs-trusted.ms)/60000;
+    if(drift>MAX_DRIFT_MINUTES){
+      const deviceText=phTimeFrom(deviceMs);
+      throw new Error(`Phone time does not match Philippines time. Device shows ${deviceText}, trusted PH time is ${trusted.phText}. Please turn ON automatic date/time, then try again.`);
+    }
+    return {...trusted,deviceMs,deviceIso:new Date(deviceMs).toISOString(),driftMinutes:drift};
+  }
+  window.v116VerifyDeviceClock=verifyDeviceClock116;
+
+  function todayLogsForDate116(workDate){
+    return (S.attendanceLogs||[]).filter(x=>String(x.employee_id)===String(S.profile?.id)&&String(x.work_date||'').slice(0,10)===workDate).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));
+  }
+  function firstInOut116(logs){
+    logs=(logs||[]).sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));
+    return {tin:logs.find(x=>x.event_type==='time_in'),tout:logs.find(x=>x.event_type==='time_out')};
+  }
+  function getGeo116(){
+    return new Promise((res,rej)=>{
+      if(!navigator.geolocation)return rej(new Error('Location is required but this browser does not support it. Use phone/HTTPS browser.'));
+      navigator.geolocation.getCurrentPosition(p=>res(p),()=>rej(new Error('Location permission is required. Please tap Allow Location and try again.')),{enableHighAccuracy:true,timeout:25000,maximumAge:0});
+    });
+  }
+  function fileData116(file){
+    return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file)});
+  }
+  function wrap116(ctx,text,x,y,maxWidth,lineHeight,maxLines=2){
+    const words=String(text||'').split(/\s+/);let line='',lines=0;
+    for(const w of words){
+      const test=line?line+' '+w:w;
+      if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=w;y+=lineHeight;lines++;if(lines>=maxLines-1)break}
+      else line=test;
+    }
+    if(line)ctx.fillText(line.length>118?line.slice(0,115)+'...':line,x,y);
+  }
+  async function stampPhoto116(file,type,loc,time){
+    const data=await fileData116(file);
+    return await new Promise((res,rej)=>{
+      const im=new Image();
+      im.onload=()=>{
+        const max=1200,scale=Math.min(1,max/Math.max(im.width,im.height));
+        const c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);
+        const ctx=c.getContext('2d');ctx.drawImage(im,0,0,c.width,c.height);
+        const h=Math.max(168,Math.round(c.height*.23));
+        ctx.fillStyle='rgba(0,0,0,.74)';ctx.fillRect(0,c.height-h,c.width,h);
+        ctx.fillStyle='#fff';ctx.font=`${Math.max(17,Math.round(c.width/58))}px Arial`;
+        ctx.fillText((type==='time_in'?'TIME IN':'TIME OUT')+' - TRUSTED PH TIME',18,c.height-h+38);
+        ctx.font=`${Math.max(15,Math.round(c.width/64))}px Arial`;
+        ctx.fillText(time.phText,18,c.height-h+70);
+        ctx.font=`${Math.max(13,Math.round(c.width/74))}px Arial`;
+        ctx.fillText(String(S.profile?.full_name||'Employee'),18,c.height-h+100);
+        wrap116(ctx,String(loc||'Location captured'),18,c.height-h+128,c.width-36,Math.max(18,Math.round(c.width/58)),2);
+        res(c.toDataURL('image/jpeg',.76));
+      };
+      im.onerror=rej;im.src=data;
+    });
+  }
+  async function insertAttendance116(row,photos){
+    const full={...row,photo_url:JSON.stringify(photos),photo_json:JSON.stringify(photos)};
+    const simple={employee_id:row.employee_id,branch:row.branch,event_type:row.event_type,work_date:row.work_date,remarks:row.remarks,photo_url:JSON.stringify(photos),location_text:row.location_text,created_at:row.created_at};
+    const minimal={employee_id:row.employee_id,branch:row.branch,event_type:row.event_type,work_date:row.work_date,remarks:row.remarks,created_at:row.created_at};
+    let r=await sb.from('vscore_attendance_logs').insert(full).select().single();
+    if(r.error){console.warn('attendance trusted full insert fallback',r.error.message);r=await sb.from('vscore_attendance_logs').insert(simple).select().single()}
+    if(r.error){console.warn('attendance trusted simple insert fallback',r.error.message);r=await sb.from('vscore_attendance_logs').insert(minimal).select().single()}
+    if(r.error)throw r.error;
+    return r.data||row;
+  }
+
+  window.attendanceLog54=window.attendanceLog55=window.attendanceLog59=async function(type,btn){
+    const input=Q('#attProof59')||Q('#attProof55'),file=input?.files?.[0];
+    if(!file)return toastSafe('Timestamp photo is required. Tap Take Photo first.','error');
+    if(!Q('#attConfirm59')?.checked&&!Q('#attConfirm55')?.checked)return toastSafe('Please confirm uniform and in-store reminder first.','error');
+    await act(btn||input,{busy:'Checking PH time...',success:'Saved',reset:type==='time_in'?'Time In':'Time Out',toast:'Attendance saved using trusted Philippines time.'},async()=>{
+      const time=await verifyDeviceClock116();
+      const logs=todayLogsForDate116(time.phDate),io=firstInOut116(logs);
+      if(type==='time_in'&&io.tin)throw new Error('Time In already recorded today based on trusted Philippines time.');
+      if(type==='time_out'&&!io.tin)throw new Error('Time In required first based on trusted Philippines time.');
+      if(type==='time_out'&&io.tout)throw new Error('Time Out already recorded today based on trusted Philippines time.');
+      if(btn)btn.textContent='Getting exact place...';
+      const pos=await getGeo116(),lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy;
+      const place=typeof window.v115ReadablePlace==='function'?window.v115ReadablePlace(lat,lng,acc,S.profile?.branch):`Lat ${lat.toFixed(6)}, Lng ${lng.toFixed(6)}`;
+      const loc=`${place} Trusted PH time: ${time.phText}. Device drift: ${time.driftMinutes.toFixed(2)} minute(s).`;
+      if(btn)btn.textContent='Stamping trusted time photo...';
+      const stamped=await stampPhoto116(file,type,loc,time);
+      const sp=Q('#attPreview59 .v59-pill')||Q('#attPreview55 .v59-pill')||Q('#attPreview55 .v55-status-pill');
+      if(sp){sp.className='v59-pill blue';sp.textContent='Uploading trusted timestamp photo...'}
+      let photos=[];
+      try{
+        if(typeof v34DriveUploadDataUrl==='function'){
+          const up=await v34DriveUploadDataUrl(stamped,{name:'attendance_trusted_'+type+'_'+time.ms+'.jpg',type:'image/jpeg'},'10 Attendance Proof','attendance_'+type);
+          const url=up.thumbnailUrl||up.directViewUrl||up.viewUrl||up.url||'';
+          if(url)photos=[{url,name:'attendance_'+type+'.jpg',driveFileId:up.fileId||'',fileId:up.fileId||'',storage:'company-drive',stamp:loc,place,trusted_ph_time:time.iso,device_time:time.deviceIso,device_drift_minutes:Number(time.driftMinutes.toFixed(2)),uploadedAt:new Date(time.ms).toISOString()}];
+        }
+      }catch(e){console.warn('trusted attendance drive upload skipped',e.message)}
+      if(!photos.length)photos=[{url:stamped,name:'attendance_'+type+'.jpg',stamp:loc,place,storage:'local-fallback',trusted_ph_time:time.iso,device_time:time.deviceIso,device_drift_minutes:Number(time.driftMinutes.toFixed(2))}];
+      if(sp){sp.className='v59-pill ok';sp.textContent='Trusted PH time saved'}
+      const remarks=Q('#attRemarks59')?.value||Q('#attRemarks55')?.value||'';
+      const row={employee_id:S.profile.id,branch:S.profile.branch,event_type:type,work_date:time.phDate,remarks,location_label:place,location_text:loc,latitude:lat,longitude:lng,accuracy_meters:acc,server_time_iso:time.iso,trusted_time_iso:time.iso,device_time_iso:time.deviceIso,time_drift_minutes:Number(time.driftMinutes.toFixed(2)),device_info:(navigator.userAgent||'').slice(0,200),created_at:time.iso};
+      const rec=await insertAttendance116(row,photos);
+      try{
+        const managers=(S.employees||[]).filter(e=>String(e.branch)===String(S.profile.branch)&&String(e.id)!==String(S.profile.id)&&/(manager|team_leader|retail|head|admin|hr|management|owner)/i.test(String(e.role||e.position||''))).slice(0,20);
+        if(managers.length&&sb.from)await sb.from('vscore_notifications').insert(managers.map(m=>({employee_id:m.id,title:`Trusted Attendance ${type==='time_in'?'Time In':'Time Out'}`,message:`${S.profile.full_name} submitted ${type==='time_in'?'Time In':'Time Out'} at ${place}. PH time verified.`,type:'attendance_log',source_type:'vscore_attendance_logs',source_id:rec.id||null,created_by:S.profile.id,is_active:true,created_at:time.iso})));
+      }catch(e){console.warn('trusted attendance manager notification skipped',e.message)}
+    },async()=>{await loadData();renderPage();});
+  };
+
+  const oldRender116=window.renderPage;
+  if(typeof oldRender116==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRender116.apply(this,arguments);
+      setTimeout(()=>{
+        try{
+          if(String(S?.tab)==='attendance'&&!Q('#v116TimeGuardNote')){
+            const hero=Q('.v95-hero')||Q('.v107-note')?.parentElement;
+            if(hero)hero.insertAdjacentHTML('beforeend',`<div id="v116TimeGuardNote" class="notice success"><b>Trusted PH Time Guard:</b><br>Time In/Out uses online Philippines time. If the phone clock is changed by more than ${MAX_DRIFT_MINUTES} minutes, the app will block attendance until automatic date/time is corrected.</div>`);
+          }
+        }catch(_){}
+      },140);
+      return out;
+    };
+  }
+  console.log('V116 trusted PH time anti-cheat loaded');
+})();
+/* ================= END V116 ================= */
+/* ================= V117 TIME OUT REQUIRES SHIFT OUTPUT ================= */
+(function(){
+  if(window.__VPOINTS_V117_TIMEOUT_OUTPUT_GUARD__)return;
+  window.__VPOINTS_V117_TIMEOUT_OUTPUT_GUARD__=true;
+  window.VSCORE_FINAL_BUILD='V117_TIMEOUT_REQUIRES_SHIFT_OUTPUT';
+
+  const role=()=>String(S?.profile?.role||'').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos=()=>String(S?.profile?.position||'').toUpperCase();
+  const me=()=>String(S?.profile?.id||'');
+  const retail=()=>['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos());
+  const toastSafe=(m,t='ok')=>{try{toast(m,t)}catch(_){alert(m)}};
+  const phDateLocal=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+
+  function isOutputRow(t){
+    const hay=String(t?.source_type||'')+' '+String(t?.task_type||'')+' '+String(t?.title||'');
+    return /daily_output|shift_output|end-of-shift|end of shift|self_tasklist|tasklist/i.test(hay);
+  }
+  function rowDate(t){
+    const title=String(t?.title||'').match(/\d{4}-\d{2}-\d{2}/)?.[0];
+    return title||String(t?.submitted_at||t?.created_at||t?.updated_at||'').slice(0,10);
+  }
+  function outputStatusOk(t){
+    const s=String(t?.status||'shared').toLowerCase();
+    return !['cancelled','deleted','void','rejected'].includes(s);
+  }
+  function parseItems(raw){
+    let s=String(raw||'').trim();
+    for(let i=0;i<2;i++){try{if(/%[0-9A-F]{2}/i.test(s))s=decodeURIComponent(s)}catch(_){}}
+    try{
+      const j=JSON.parse(s);
+      if(Array.isArray(j))return j.map(x=>({task:String(x.task||x.text||x.name||''),done:!!(x.done||x.checked||x.progress>=100||String(x.status||'').toLowerCase()==='done'),progress:Number(x.progress||0),status:String(x.status||'')}));
+      if(j&&typeof j==='object')return Object.keys(j).map(k=>({task:k,done:!!j[k],progress:j[k]?100:0,status:j[k]?'done':'ongoing'}));
+    }catch(_){}
+    return s.split(/\n|\r|\d+\.|•|-/).map(x=>x.trim()).filter(Boolean).map(x=>({task:x,done:true,progress:100,status:'done'}));
+  }
+  function hasCompletedWork(t){
+    const items=parseItems(t?.task_items||t?.description||'');
+    if(!items.length)return true;
+    return items.some(x=>x.done||Number(x.progress||0)>=100||String(x.status||'').toLowerCase()==='done');
+  }
+  function hasShiftOutputForDate(date){
+    return (S?.tasks||[]).some(t=>
+      isOutputRow(t)&&
+      String(t.assigned_to_employee_id||'')===me()&&
+      rowDate(t)===date&&
+      outputStatusOk(t)&&
+      hasCompletedWork(t)
+    );
+  }
+  async function trustedDate(){
+    if(typeof window.v116VerifyDeviceClock==='function'){
+      const t=await window.v116VerifyDeviceClock();
+      return t.phDate||phDateLocal();
+    }
+    return phDateLocal();
+  }
+  async function requireOutputBeforeTimeout(){
+    if(retail())return true;
+    const d=await trustedDate();
+    if(hasShiftOutputForDate(d))return true;
+    toastSafe('Before Time Out, submit your Shift Output / Daily Tasklist first. Add at least one completed work item, then Time Out.','error');
+    try{S.tab='tasklist';renderPage()}catch(_){}
+    return false;
+  }
+  window.v117HasShiftOutputForDate=hasShiftOutputForDate;
+  window.v117RequireOutputBeforeTimeout=requireOutputBeforeTimeout;
+
+  ['attendanceLog53','attendanceLog54','attendanceLog55','attendanceLog59'].forEach(name=>{
+    const old=window[name];
+    if(typeof old==='function'&&!old.__v117){
+      const wrapped=async function(type,btn){
+        if(String(type)==='time_out'){
+          const ok=await requireOutputBeforeTimeout();
+          if(!ok)return false;
+        }
+        return old.apply(this,arguments);
+      };
+      wrapped.__v117=true;
+      window[name]=wrapped;
+      try{eval(name+'=window[name]')}catch(_){}
+    }
+  });
+  const oldV107=window.v107OneTapAttendance;
+  if(typeof oldV107==='function'&&!oldV107.__v117){
+    window.v107OneTapAttendance=async function(type,btn){
+      if(String(type)==='time_out'){
+        const ok=await requireOutputBeforeTimeout();
+        if(!ok)return false;
+      }
+      return oldV107.apply(this,arguments);
+    };
+    window.v107OneTapAttendance.__v117=true;
+  }
+  const oldRender117=window.renderPage;
+  if(typeof oldRender117==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRender117.apply(this,arguments);
+      setTimeout(()=>{
+        try{
+          if(String(S?.tab)==='attendance'&&!document.querySelector('#v117OutGuardNote')){
+            const hero=document.querySelector('.v95-hero')||document.querySelector('.v107-note')?.parentElement;
+            if(hero&&!retail())hero.insertAdjacentHTML('beforeend',"<div id=\"v117OutGuardNote\" class=\"notice\"><b>Time Out Rule:</b><br>Submit today's Shift Output / Daily Tasklist first. Time Out is locked until at least one completed work item is recorded.</div>");
+          }
+        }catch(_){}
+      },170);
+      return out;
+    };
+  }
+  console.log('V117 time out requires shift output loaded');
+})();
+/* ================= END V117 ================= */
+/* ================= V118 CLEAN LAUNCH HARDENING ================= */
+(function(){
+  if(window.__VPOINTS_V118_CLEAN_LAUNCH__)return;
+  window.__VPOINTS_V118_CLEAN_LAUNCH__=true;
+  window.VSCORE_FINAL_BUILD='V118_CLEAN_LAUNCH_HARDENING';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const phDate=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
+  const me=()=>String(S?.profile?.id||'');
+  const role=()=>String(S?.profile?.role||'').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos=()=>String(S?.profile?.position||'').toUpperCase();
+  const retail=()=>['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos());
+  const manager=()=>retail()||/manager|team_leader|branch|fsqa/.test(role()+' '+pos());
+  const toastSafe=(m,t='ok')=>{try{toast(m,t)}catch(_){console.log(m)}};
+  const status=t=>String(t?.status||'assigned').toLowerCase().replace(/[\s-]+/g,'_');
+  const openMission=t=>/assigned_mission|mission|fsqa|problem/i.test(String(t?.source_type||'')+' '+String(t?.task_type||''))&&!/daily_output|shift_output|tasklist|self_tasklist/i.test(String(t?.source_type||'')+' '+String(t?.task_type||''));
+  const closedMission=t=>['approved','completed','closed','cancelled','expired','missed','closed_expired'].includes(status(t));
+  const expiredMission=t=>openMission(t)&&t?.due_at&&new Date(t.due_at).getTime()<Date.now()&&!closedMission(t)&&!t?.proof_url;
+
+  function style118(){
+    if(Q('#v118-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v118-style">
+      body.v118-auth .auth-card{grid-template-columns:minmax(300px,430px) 1fr!important;align-items:start}.auth-panel{order:-1}.auth-panel .notice{font-size:13px;padding:10px}.auth-panel .tabs{margin:8px 0}.auth-panel .field label{font-size:12px}.auth-panel input{font-size:18px;font-weight:900;border:2px solid #c7d2fe!important;background:#fff!important}.hero h1{font-size:28px!important;line-height:1.05}.hero h2{font-size:18px!important}.hero p,.hero .notice{font-size:12px!important;line-height:1.35}
+      #v116TimeGuardNote,#v117OutGuardNote,.v107-note{font-size:11px!important;line-height:1.35!important;padding:7px 9px!important;margin:6px 0!important;border-radius:10px!important}.v107-section-title{font-size:13px!important;margin-top:8px!important}.v115-place{font-size:11px!important;font-weight:600!important;line-height:1.3!important;padding:6px 8px!important}
+      .v118-upload-note{font-size:11px;color:#64748b;font-weight:800;margin-top:4px}.v118-preview{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.v118-preview img{width:54px;height:46px;object-fit:cover;border-radius:9px;border:1px solid #e5e7eb;background:#fff}
+      .v118-expired{border-left:6px solid #dc2626!important;background:#fff7f7!important}.v118-expired .v118-missed{display:inline-block;background:#fee2e2;color:#991b1b;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:1000;margin-top:6px}
+      .v118-absence-summary{margin-top:10px;padding:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:14px;font-size:12px}.v118-absence-summary b{color:#7f1d1d}.v118-absence-grid{display:grid;gap:6px;margin-top:7px}.v118-absence-row{background:#fff;border:1px solid #fde68a;border-radius:10px;padding:7px 9px}
+      .v118-qr-clean .v53-qr,.v118-qr-clean .v54-qrhelp,.v118-qr-clean .v72-qrbox,.v118-qr-clean .v99-rate-card{max-width:360px;margin:auto}.v118-profile-note{font-size:12px;color:#64748b;text-align:center;margin-top:6px}
+      .v118-read-wrap{max-height:92px;overflow:hidden;position:relative}.v118-read-wrap.open{max-height:none}.v118-read-more{margin-top:6px}
+      .v118-concern-flow{display:grid;gap:7px;margin:10px 0}.v118-flow-step{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:8px;font-size:12px}.v118-flow-step b{color:#7f1d1d}
+      @media(max-width:760px){body.v118-auth .auth-card{display:flex!important;flex-direction:column}.auth-panel{order:0}.hero{padding-top:8px!important}.hero h1{font-size:24px!important}.hero p{display:none}.modal-card{font-size:14px}}
+    </style>`);
+  }
+  style118();
+
+  function setAuthMode(){
+    document.body.classList.add('v118-auth');
+    const h=Q('.hero h1'); if(h)h.innerHTML='Welcome,<br>Ka-Varda';
+    const p=Q('.hero p'); if(p)p.textContent='V-Points employee access.';
+    const notice=Q('.hero .notice'); if(notice)notice.innerHTML='<b>No Proof, No Point.</b>';
+    const email=Q('#loginEmail'); if(email){email.placeholder='Email'; email.autocomplete='username'}
+    const pass=Q('#loginPass'); if(pass){pass.placeholder='Password'; pass.autocomplete='current-password'}
+  }
+  const oldRenderAuth118=window.renderAuth;
+  if(typeof oldRenderAuth118==='function'){
+    window.renderAuth=renderAuth=function(){const out=oldRenderAuth118.apply(this,arguments);setTimeout(setAuthMode,20);return out};
+  }
+  setTimeout(setAuthMode,120);
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(setAuthMode,160));
+
+  function compressFile(file,max=1000){
+    if(!file)return Promise.resolve('');
+    try{if(typeof imageData==='function')return imageData(file,max)}catch(_){}
+    return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file)});
+  }
+  async function uploadFiles118(input,folder='Evidence',kind='proof'){
+    const files=Array.from(input?.files||[]).slice(0,5);
+    if(!files.length)return [];
+    try{if(typeof v49UploadFiles==='function'){const arr=await v49UploadFiles({files},folder,kind);if(Array.isArray(arr)&&arr.length)return arr.slice(0,5)}}catch(e){console.warn('v118 v49 upload fallback',e.message)}
+    try{if(typeof v48UploadImages==='function'){const arr=await v48UploadImages({files},5,folder,kind);if(Array.isArray(arr)&&arr.length)return arr.slice(0,5)}}catch(e){console.warn('v118 v48 upload fallback',e.message)}
+    const out=[];
+    for(const f of files){out.push({url:await compressFile(f,1000),name:f.name,storage:'local-fallback',uploadedAt:new Date().toISOString()})}
+    return out;
+  }
+  function proofString(arr){return JSON.stringify((arr||[]).slice(0,5))}
+  function firstUrl(raw){
+    try{const j=typeof raw==='string'?JSON.parse(raw):raw;if(Array.isArray(j))return firstUrl(j[0]);if(j&&typeof j==='object')return j.url||j.thumbnailUrl||j.directViewUrl||j.viewUrl||j.photo_url||''}catch(_){}
+    return String(raw||'');
+  }
+  window.v118UploadFiles=uploadFiles118;
+  window.v118FirstUrl=firstUrl;
+
+  function decorateUploads(root=document){
+    A('input[type="file"]',root).forEach(inp=>{
+      const id=String(inp.id||inp.name||'').toLowerCase();
+      if(/attproof|attendance|profile_picture|avatar|logo/.test(id))return;
+      inp.multiple=true; inp.setAttribute('data-max-files','5');
+      if(!inp.closest('.field')?.querySelector('.v118-upload-note'))inp.insertAdjacentHTML('afterend','<div class="v118-upload-note">You can attach up to 5 photos.</div><div class="v118-preview"></div>');
+      if(!inp.__v118Preview){
+        inp.__v118Preview=true;
+        inp.addEventListener('change',()=>{
+          if(inp.files.length>5){toastSafe('Maximum 5 photos only. Extra photos were ignored.','error');}
+          const box=inp.closest('.field')?.querySelector('.v118-preview'); if(!box)return;
+          box.innerHTML=Array.from(inp.files||[]).slice(0,5).map(f=>`<img src="${URL.createObjectURL(f)}" alt="">`).join('');
+        });
+      }
+    });
+  }
+
+  const oldProof118=window.proofTask;
+  window.proofTask=proofTask=function(id){
+    const t=(S.tasks||[]).find(x=>String(x.id)===String(id));
+    if(!t)return toastSafe('Mission not found. Please refresh once.','error');
+    if(expiredMission(t)||['expired','missed','closed_expired'].includes(status(t)))return toastSafe('This mission already expired. It is now for monitoring and possible management review.','error');
+    if(String(t.assigned_to_employee_id||'')!==me())return toastSafe('Only the assigned person can submit proof.','error');
+    let items=[];try{items=String(t.task_items||'').split(/\n|\r|\d+\.|-/).map(x=>x.trim()).filter(Boolean).slice(0,15)}catch(_){}
+    modal(`<div class="v82-proof"><h2>Submit Mission Proof</h2><h3>${E(t.title||'Mission')}</h3><div class="notice"><b>Required:</b> Attach up to 5 proof photos and submit before the due time.</div>${items.map((x,i)=>`<label class="v82-task"><input type="checkbox" checked> <span>${i+1}. ${E(x)}</span></label>`).join('')}<div class="field"><label>Proof Photos</label><input id="v118MissionPhotos" type="file" accept="image/*" multiple class="input" required></div><button id="v118MissionSubmit" class="btn green full">Submit Proof</button><button class="btn dark full" style="margin-top:10px" onclick="closeModal()">Close</button><div id="v118MissionMsg" class="small muted" style="margin-top:8px"></div></div>`);
+    decorateUploads(Q('.modal-card')||document);
+    Q('#v118MissionSubmit').onclick=async ev=>{
+      const btn=ev.currentTarget,msg=Q('#v118MissionMsg'),input=Q('#v118MissionPhotos');
+      try{
+        if(!input.files.length)throw new Error('Please attach at least one proof photo.');
+        btn.disabled=true;btn.textContent='Saving proof...'; if(msg)msg.textContent='Uploading up to 5 photos...';
+        const imgs=await uploadFiles118(input,'08 Mission Proof','mission_proof');
+        if(!imgs.length)throw new Error('Proof upload failed. Please try again.');
+        let r=await sb.from('vscore_tasks').update({proof_url:proofString(imgs),photo_json:proofString(imgs),status:'submitted',submitted_at:new Date().toISOString()}).eq('id',id);
+        if(r.error)r=await sb.from('vscore_tasks').update({proof_url:proofString(imgs),status:'submitted'}).eq('id',id);
+        if(r.error)throw r.error;
+        toastSafe('Mission proof submitted with '+imgs.length+' photo(s).','ok');
+        closeModal(); await loadData(); renderPage();
+      }catch(e){console.error(e);btn.disabled=false;btn.textContent='Submit Proof';if(msg)msg.textContent=e.message||'Saving failed.';toastSafe(e.message||'Saving failed.','error')}
+    };
+  };
+
+  document.addEventListener('submit',async ev=>{
+    if(ev.target?.id!=='v96OutputForm')return;
+    ev.preventDefault();ev.stopImmediatePropagation();ev.stopPropagation();
+    const form=ev.target,btn=ev.submitter,input=Q('#v96OutputProof',form)||Q('#v96OutputProof');
+    if(form.dataset.v118Submitting==='1')return;
+    form.dataset.v118Submitting='1'; if(btn){btn.disabled=true;btn.textContent='Submitting...'}
+    try{
+      const selected=A('.v96Done').map(cb=>({task:cb.value,done:cb.checked,remarks:''}));
+      const extra=String(Q('#v96Extra')?.value||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).map(x=>({task:x,done:true,remarks:''}));
+      const remarks=String(Q('#v96Remarks')?.value||'').trim();
+      const rows=[...selected,...extra].filter(x=>x.task);
+      if(!rows.some(x=>x.done))throw new Error('Please check at least one completed item or add completed work.');
+      rows.forEach(x=>{if(x.done&&remarks)x.remarks=remarks});
+      if(!input?.files?.length)throw new Error('Daily proof photo is required.');
+      const imgs=await uploadFiles118(input,'08 Tasklist Proof','shift_output');
+      const rec={title:phDate()+' Shift Output',task_items:JSON.stringify(rows),assigned_to_employee_id:S.profile.id,assigned_by_employee_id:S.profile.id,branch:S.profile.branch,source_type:'daily_output',task_type:'daily_output',status:'shared',proof_url:proofString(imgs),photo_json:proofString(imgs),submitted_at:new Date().toISOString(),merit_points:0};
+      let r=await sb.from('vscore_tasks').insert(rec);
+      if(r.error){delete rec.task_type;delete rec.merit_points;r=await sb.from('vscore_tasks').insert(rec)}
+      if(r.error)throw r.error;
+      toastSafe('Shift output submitted with '+imgs.length+' photo(s).','ok');
+      await loadData();S.tab='tasklist';renderPage();
+    }catch(e){console.error(e);toastSafe(e.message||'Output submit failed.','error');delete form.dataset.v118Submitting;if(btn){btn.disabled=false;btn.textContent='Submit Shift Output'}}
+  },true);
+
+  async function notify118(employeeId,title,message,type='mission_expired',sourceId=''){
+    if(!employeeId||!sb?.from)return;
+    try{await sb.from('vscore_notifications').insert({employee_id:employeeId,title,message,type,source_type:'mission',source_id:sourceId,created_by:S.profile?.id||null,is_active:true,created_at:new Date().toISOString()})}catch(_){}
+  }
+  async function expireMissions118(){
+    if(!S?.tasks?.length)return;
+    const list=S.tasks.filter(expiredMission);
+    for(const t of list){
+      const key='v118_expired_'+t.id;
+      if(localStorage.getItem(key))continue;
+      localStorage.setItem(key,'1');
+      try{
+        let r=await sb.from('vscore_tasks').update({status:'expired',demerit_subject:true,expired_at:new Date().toISOString(),resolution:'Mission expired without proof. For management demerit review.'}).eq('id',t.id);
+        if(r.error)r=await sb.from('vscore_tasks').update({status:'expired'}).eq('id',t.id);
+        if(!r.error){t.status='expired';t.demerit_subject=true}
+      }catch(_){t.status='expired'}
+      const staff=(typeof emp==='function'?emp(t.assigned_to_employee_id):{})||{};
+      const giver=(typeof emp==='function'?emp(t.assigned_by_employee_id):{})||{};
+      await notify118(t.assigned_to_employee_id,'Mission expired',`Your mission "${t.title||'Mission'}" expired. It is now closed for monitoring and may be reviewed by management.`, 'mission_expired', t.id);
+      await notify118(t.assigned_by_employee_id,'Mission expired - review for action',`${staff.full_name||'A staff member'} missed mission "${t.title||'Mission'}". Please review for coaching or demerit recommendation.`, 'mission_expired_review', t.id);
+      const heads=(S.allEmployees||S.employees||[]).filter(e=>/retail|head|executive|management|hr|admin/i.test(String(e.role||e.position||''))).slice(0,12);
+      for(const h of heads)await notify118(h.id,'Expired mission for Retail review',`${staff.full_name||'Employee'} missed mission "${t.title||'Mission'}" from ${giver.full_name||'Management'}.`, 'mission_expired_review', t.id);
+      try{if(typeof auditEvent==='function')await auditEvent('Mission expired for demerit review','vscore_tasks',`${staff.full_name||'-'} | ${t.title||'-'}`)}catch(_){}
+    }
+  }
+  const oldLoad118=window.loadData;
+  if(typeof oldLoad118==='function'){
+    window.loadData=loadData=async function(){const out=await oldLoad118.apply(this,arguments);try{await expireMissions118()}catch(e){console.warn('V118 expire mission skipped',e.message)}return out};
+  }
+  const oldShowMissionPopup118=window.showMissionPopup;
+  window.showMissionPopup=function(){
+    try{(S.tasks||[]).forEach(t=>{if(expiredMission(t)){t.status='expired';t.demerit_subject=true}})}catch(_){}
+    if(typeof oldShowMissionPopup118==='function')return oldShowMissionPopup118.apply(this,arguments);
+  };
+
+  const oldMissionActions118=window.missionActions;
+  if(typeof oldMissionActions118==='function'){
+    window.missionActions=missionActions=function(t,manageFlag){
+      if(expiredMission(t)||['expired','missed','closed_expired'].includes(status(t)))return '<span class="v118-missed">Mission expired - for monitoring/review</span>';
+      return oldMissionActions118.apply(this,arguments);
+    };
+  }
+
+  function addAttendanceSummary(){
+    if(String(S?.tab)!=='attendance')return;
+    const host=Q('.v107-monitor'); if(!host||Q('#v118AbsenceSummary'))return;
+    const today=phDate(),rows={};
+    (S.attendanceLogs||[]).forEach(r=>{const d=String(r.work_date||r.created_at||'').slice(0,10),id=String(r.employee_id||''),k=id+'|'+d,e=(typeof emp==='function'?emp(id):{})||{};rows[k]=rows[k]||{id,employee:e.full_name||'-',branch:r.branch||e.branch||'',date:d,tin:null,tout:null};if(String(r.event_type)==='time_in')rows[k].tin=r;if(String(r.event_type)==='time_out')rows[k].tout=r});
+    const allMissing=Object.values(rows).filter(r=>r.tin&&!r.tout).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const miss=allMissing.filter(r=>r.date===today);
+    if(!allMissing.length)return;
+    host.insertAdjacentHTML('beforebegin',`<div id="v118AbsenceSummary" class="v118-absence-summary"><b>Missing Time Out Summary</b><br>${miss.length} missing today. ${allMissing.length} missing Time Out record(s) in the loaded attendance range.<div class="v118-absence-grid">${allMissing.slice(0,10).map(r=>`<div class="v118-absence-row">${E(r.employee)} - ${E(r.branch)}<br><span class="small muted">${E(r.date)} | IN: ${E(new Date(r.tin.created_at).toLocaleTimeString())} | OUT: missing</span></div>`).join('')}</div></div>`);
+  }
+
+  function cleanProfileQR(){
+    if(String(S?.tab)!=='profile')return;
+    const page=Q('#page'); if(!page)return;
+    page.classList.add('v118-qr-clean');
+    const cards=A('.card,.v53-card,.v54-qrhelp,.v72-card,.v99-rate-card,.v72-qrbox',page).filter(el=>/customer.*(qr|rate)|rate my service|service qr/i.test(el.textContent||'')||el.querySelector('img[src*="qrserver"]'));
+    cards.forEach((el,i)=>{if(i>0)el.remove()});
+    const first=cards[0]; if(first&&!first.querySelector('.v118-profile-note'))first.insertAdjacentHTML('beforeend','<div class="v118-profile-note">Customer-only QR. No self-rating.</div>');
+  }
+
+  function compactPolicies(){
+    if(String(S?.tab)!=='policies')return;
+    A('td',Q('#page')||document).forEach(el=>{
+      if(el.__v118Read||String(el.textContent||'').length<220)return;
+      el.__v118Read=true;
+      const wrap=document.createElement('div');wrap.className='v118-read-wrap';
+      while(el.firstChild)wrap.appendChild(el.firstChild);
+      el.appendChild(wrap);
+      const btn=document.createElement('button');btn.type='button';btn.className='btn sm ghost v118-read-more';btn.textContent='Read more';
+      btn.onclick=()=>{wrap.classList.toggle('open');btn.textContent=wrap.classList.contains('open')?'Show less':'Read more'};
+      el.appendChild(btn);
+    });
+  }
+
+  const oldConcern118=window.concernPage;
+  if(typeof oldConcern118==='function'){
+    window.concernPage=concernPage=function(){
+      let html=oldConcern118.apply(this,arguments)||'';
+      if(!/v118-concern-flow/.test(html)){
+        html=html.replace(/<form id="concernForm">/,`<div class="v118-concern-flow"><div class="v118-flow-step"><b>1. Report</b> - staff submits concern with proof.</div><div class="v118-flow-step"><b>2. Review</b> - manager checks story, evidence, and VARDA ACT basis.</div><div class="v118-flow-step"><b>3. Explain</b> - involved employee may be asked for explanation.</div><div class="v118-flow-step"><b>4. Final action</b> - Retail validates merit/demerit or closes with no points.</div></div><form id="concernForm">`);
+      }
+      return html;
+    };
+  }
+  const oldSubmitConcern118=window.submitConcern;
+  if(typeof oldSubmitConcern118==='function'){
+    window.submitConcern=submitConcern=async function(e){
+      const out=await oldSubmitConcern118.apply(this,arguments);
+      try{toastSafe('Concern submitted. It will move through manager review, explanation if needed, then Retail final action.','ok')}catch(_){}
+      return out;
+    };
+  }
+
+  function decorateAll(){
+    style118();
+    decorateUploads(document);
+    cleanProfileQR();
+    compactPolicies();
+    addAttendanceSummary();
+    A('.v107-row').forEach(el=>{if(/expired|missed/i.test(el.textContent||''))el.classList.add('v118-expired')});
+  }
+  const oldRender118=window.renderPage;
+  if(typeof oldRender118==='function'){
+    window.renderPage=renderPage=function(){const out=oldRender118.apply(this,arguments);setTimeout(decorateAll,120);return out};
+  }
+  const oldBind118=window.bind;
+  if(typeof oldBind118==='function'){
+    window.bind=bind=function(){const out=oldBind118.apply(this,arguments);setTimeout(decorateAll,40);return out};
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(decorateAll,300));
+  setTimeout(decorateAll,500);
+  console.log('V118 clean launch hardening loaded');
+})();
+/* ================= END V118 ================= */
+/* ================= V119 POLICY LIBRARY RESTORE ================= */
+(function(){
+  if(window.__VPOINTS_V119_POLICY_RESTORE__)return;
+  window.__VPOINTS_V119_POLICY_RESTORE__=true;
+  window.VSCORE_FINAL_BUILD='V119_POLICY_LIBRARY_RESTORE';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const txt=p=>String(p?.policy_code||'')+' '+String(p?.title||p?.policy_title||'')+' '+String(p?.description||'')+' '+String(p?.category||p?.department_owner||'')+' '+String(p?.severity||'')+' '+String(p?.keywords||'')+' '+String(p?.evidence_required||'')+' '+String(p?.recommended_action||'');
+  const title=p=>(p?.policy_code?String(p.policy_code)+' - ':'')+String(p?.title||p?.policy_title||'Policy');
+  const pts=p=>{let n=Number(p?.points??p?.deduction_points??0)||0;if(n>0)n=-Math.abs(n);return n};
+  const money119=n=>typeof money==='function'?money(n):String(n);
+  const evidence=p=>p?.evidence_required||p?.evidence_requirement||'Photo/time-stamped proof and manager report required.';
+  const due=p=>p?.due_process_required||p?.due_process||p?.due_process_requirement||'Employee statement / management review required before final action.';
+  const action=p=>p?.recommended_action||p?.corrective_action||p?.recommended_corrective_action||'Assign coaching, correction, or recovery mission based on severity and evidence.';
+
+  function style119(){
+    if(Q('#v119-policy-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v119-policy-style">
+      .v119-policy-note{font-size:13px;line-height:1.45;margin:6px 0 12px;color:#64748b}
+      .v119-policy-list{display:grid;gap:10px;margin-top:10px}
+      .v119-policy-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:13px;box-shadow:0 10px 24px rgba(15,23,42,.045)}
+      .v119-policy-card h4{margin:0 0 5px;color:#7f1d1d;font-size:17px;line-height:1.2}
+      .v119-policy-line{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:6px 0}
+      .v119-policy-desc{font-size:13px;color:#334155;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+      .v119-policy-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+      .v119-policy-modal-grid{display:grid;gap:9px}.v119-policy-modal-grid div{border:1px solid #e5e7eb;background:#f8fafc;border-radius:12px;padding:10px}
+      .v119-policy-modal-grid b{color:#7f1d1d}
+      .v48-policy-top .v118-read-wrap{max-height:none!important;overflow:visible!important}
+      .v48-policy-top>.v118-read-more{display:none!important}
+      @media(max-width:700px){.v119-policy-card{padding:12px}.v119-policy-card h4{font-size:16px}}
+    </style>`);
+  }
+
+  function renderCards119(arr,canEdit){
+    arr=arr||[];
+    return `<div class="v119-policy-list">${arr.map(p=>{
+      const sev=String(p.severity||'').toLowerCase();
+      return `<div class="v119-policy-card" data-policy-id="${E(p.id)}">
+        <h4>${E(title(p))}</h4>
+        <div class="v119-policy-line"><span class="pill ${sev==='critical'?'red':sev==='major'?'orange':'yellow'}">${E(p.severity||'Policy')}</span><span class="pill blue">${E(p.department_owner||p.category||'General')}</span><span class="pill red">${E(money119(pts(p)))}</span></div>
+        <div class="v119-policy-desc">${E(p.description||p.manual_basis||p.source||'Tap View Full Policy to read the full basis, evidence requirement, due process, and recommended action.')}</div>
+        <div class="v119-policy-actions"><button type="button" class="btn sm blue viewPolicy119" data-id="${E(p.id)}">View Full Policy</button>${canEdit?`<button class="btn sm ghost editPolicy" data-id="${E(p.id)}">Edit</button><button class="btn sm dark delPolicy" data-id="${E(p.id)}">Delete</button>`:''}</div>
+      </div>`;
+    }).join('')||'<div class="empty">No policy rules yet.</div>'}</div>`;
+  }
+
+  window.policyTable=policyTable=function(arr,canEdit){
+    style119();
+    arr=arr||[];
+    return `<div class="field"><label>Search Policy</label><input id="policySearchBox" class="input" placeholder="Search VARDA ACT, hairnet, attendance, FSQA, cash, complaint..."></div><div class="v119-policy-note">Tap a policy to view full basis, evidence, due process, points, and recommended action.</div><div id="policyTableWrap">${renderCards119(arr,canEdit)}</div>`;
+  };
+
+  window.viewPolicy119=function(id){
+    const p=(S.policies||[]).find(x=>String(x.id)===String(id));
+    if(!p)return;
+    modal(`<div class="split" style="justify-content:space-between;align-items:center"><h2>${E(title(p))}</h2><button class="btn sm dark" onclick="closeModal()">Close</button></div>
+      <div class="v119-policy-modal-grid">
+        <div><b>Rule Meaning</b><br>${E(p.description||p.manual_basis||'-')}</div>
+        <div><b>Department / Severity</b><br>${E(p.department_owner||p.category||'General')} / ${E(p.severity||'Policy')}</div>
+        <div><b>Reference Points</b><br>${E(money119(pts(p)))}<br><span class="small muted">Retail / Head Office final approval only.</span></div>
+        <div><b>Evidence Needed</b><br>${E(evidence(p))}</div>
+        <div><b>Due Process</b><br>${E(due(p))}</div>
+        <div><b>Recommended Action</b><br>${E(action(p))}</div>
+        <div><b>Basis / Source</b><br>${E(p.source||p.manual_basis||p.keywords||'-')}</div>
+      </div>`);
+  };
+
+  function bindPolicy119(root=document){
+    style119();
+    const search=Q('#policySearchBox',root);
+    if(search&&!search.__v119){
+      search.__v119=true;
+      search.oninput=()=>{
+        const q=String(search.value||'').toLowerCase().trim();
+        const wrap=Q('#policyTableWrap');
+        if(!wrap)return;
+        const arr=(S.policies||[]).filter(p=>!q||txt(p).toLowerCase().includes(q));
+        wrap.innerHTML=renderCards119(arr,typeof isOwner==='function'&&isOwner());
+      };
+    }
+  }
+
+  document.addEventListener('click',ev=>{
+    const view=ev.target.closest?.('.viewPolicy119');
+    if(view){ev.preventDefault();viewPolicy119(view.dataset.id);return}
+  });
+
+  const oldRender119=window.renderPage;
+  if(typeof oldRender119==='function'){
+    window.renderPage=renderPage=function(){const out=oldRender119.apply(this,arguments);setTimeout(()=>bindPolicy119(Q('#page')||document),80);return out};
+  }
+  const oldBind119=window.bind;
+  if(typeof oldBind119==='function'){
+    window.bind=bind=function(){const out=oldBind119.apply(this,arguments);setTimeout(()=>bindPolicy119(Q('#page')||document),20);return out};
+  }
+  setTimeout(()=>bindPolicy119(document),300);
+  console.log('V119 policy library restore loaded');
+})();
+/* ================= END V119 ================= */
+/* ================= V120 CLEAN PIN LOGIN + REWARDS + SPLIT LEADERBOARDS ================= */
+(function(){
+  if(window.__VPOINTS_V120_CLEAN_PIN_REWARDS__)return;
+  window.__VPOINTS_V120_CLEAN_PIN_REWARDS__=true;
+  window.VSCORE_FINAL_BUILD='V120_CLEAN_PIN_REWARDS_LEADERBOARDS';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const points=e=>Number(e?.current_points??e?.starting_points??100)||0;
+  const money120=n=>typeof money==='function'?money(n):String(Number(n||0).toFixed(2)).replace(/\.00$/,'');
+  const roleText=e=>String(e?.role||'')+' '+String(e?.position||'');
+  const leaderEmp=e=>/manager|leader|fsqa|retail|head|executive|admin|hr|management/i.test(roleText(e));
+  const employeeNo=e=>{try{return typeof employeeNumber100==='function'?employeeNumber100(e):(e.employee_number||e.employee_no||e.staff_number||'')}catch(_){return e?.employee_number||e?.employee_no||''}};
+  const randomPin=()=>String(Math.floor(1000+Math.random()*9000));
+
+  function style120(){
+    if(Q('#v120-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v120-style">
+      *{box-sizing:border-box}html,body,#root{max-width:100%;overflow-x:hidden!important}.main,#page,.card,.notice,.modal-card{max-width:100%;min-width:0}img,video,canvas{max-width:100%;height:auto}input,select,textarea,button{max-width:100%}
+      .auth{background:#fff!important}.auth-card{width:min(430px,100%)!important;margin:auto!important;box-shadow:none!important;border:0!important;background:#fff!important}.hero{padding:14px 18px 4px!important;text-align:center!important}.hero .notice,.hero p{display:none!important}.hero h1{font-size:24px!important}.hero h2{font-size:13px!important;color:#64748b!important}.auth-panel{background:#fff!important;border:0!important;box-shadow:none!important;padding:8px 20px 20px!important}.auth-panel .notice.success{display:none!important}.auth-panel .tabs{display:none!important}
+      .v120-login-title{text-align:center;margin:8px 0 16px}.v120-login-title b{font-size:22px;color:#111827}.v120-login-title span{display:block;font-size:12px;color:#64748b;font-weight:800;margin-top:3px}
+      .v120-pin-box{display:grid;gap:12px}.v120-pin-box .field label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0;font-weight:1000}.v120-pin-box input{height:50px;border-radius:18px!important;border:1px solid #e5e7eb!important;font-size:20px!important;text-align:center;font-weight:1000;background:#fff!important}
+      .v120-pin-dots{display:flex;justify-content:center;gap:12px;margin:7px 0}.v120-pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid #cbd5e1;background:#fff}.v120-pin-dot.on{background:#22c55e;border-color:#22c55e}
+      .v120-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:8px auto;max-width:330px}.v120-key{height:72px;border:0;border-radius:999px;background:#f1f5f9;font-size:32px;font-weight:900;color:#111827}.v120-key:active{transform:scale(.97);background:#dcfce7}.v120-login-btn{height:52px;border-radius:999px!important}.v120-login-alt{font-size:12px;text-align:center;color:#64748b}
+      .v120-reward-hero{background:linear-gradient(135deg,#fff,#f0fdf4 48%,#eff6ff);border:1px solid #dcfce7;border-radius:20px;padding:16px;margin-bottom:12px}.v120-reward-hero h2{margin:0;color:#14532d}.v120-reward-points{font-size:44px;font-weight:1000;color:#16a34a;line-height:1}.v120-reward-tabs{display:flex;gap:8px;overflow:auto;margin:10px 0}.v120-reward-tab{white-space:nowrap;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:9px 13px;font-weight:1000;color:#64748b}.v120-reward-tab.active{background:#22c55e;color:#fff;border-color:#22c55e}.v120-reward-search{display:flex;gap:8px;align-items:center;background:#fff;border:2px solid #bbf7d0;border-radius:999px;padding:8px 12px;margin:10px 0}.v120-reward-search input{border:0!important;outline:0;font-size:16px;text-align:left!important;font-weight:800;width:100%}
+      .v120-reward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.v120-reward-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:12px;box-shadow:0 12px 28px rgba(15,23,42,.055);display:grid;gap:8px;align-content:start}.v120-reward-img{width:100%;aspect-ratio:1/1;object-fit:contain;border-radius:14px;background:#f8fafc;border:1px solid #eef2f7}.v120-reward-card h4{font-size:14px;line-height:1.25;margin:0;color:#111827}.v120-reward-cost{font-weight:1000;color:#16a34a}.v120-reward-card .btn{border-radius:999px!important}
+      .v120-leader-board{display:grid;gap:12px;margin:0 0 14px}.v120-leader-head{background:linear-gradient(135deg,#fff7ed,#fff,#eff6ff);border:1px solid #fde68a;border-radius:18px;padding:13px}.v120-leader-head h2{margin:0;color:#7f1d1d}.v120-leader-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.v120-leader-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:12px;box-shadow:0 12px 28px rgba(15,23,42,.055)}.v120-rank-row{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-top:1px solid #f1f5f9;padding:9px 0}.v120-rank-row:first-of-type{border-top:0}.v120-medal{width:34px;height:34px;border-radius:999px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:1000}.v120-medal.gold{background:#facc15;color:#713f12}.v120-medal.silver{background:#e2e8f0;color:#334155}.v120-medal.bronze{background:#fed7aa;color:#7c2d12}.v120-full-list{font-size:12px;color:#475569;margin-top:8px}.v99-board{display:none!important}
+      body.v120-training-clean .topbar{position:relative!important;top:auto!important;z-index:10!important}body.v120-training-clean #page{padding-top:4px!important}.training-card,.academy-card{scroll-margin-top:18px}
+      @media(max-width:760px){.v120-reward-grid,.v120-leader-groups{grid-template-columns:1fr 1fr}.v120-key{height:68px}.auth-card{min-height:100svh!important}.v120-leader-card h3{font-size:16px}}
+      @media(max-width:430px){.v120-reward-grid{grid-template-columns:1fr 1fr;gap:9px}.v120-reward-card{padding:10px}.v120-leader-groups{grid-template-columns:1fr}.v120-key{height:62px;font-size:28px}.auth-panel{padding-left:14px!important;padding-right:14px!important}}
+    </style>`);
+  }
+
+  window.loginForm=loginForm=function(){
+    style120();
+    return `<form id="loginForm" class="v120-pin-box">
+      <div class="v120-login-title"><b>Welcome to V-Points</b><span>Use your employee number and PIN</span></div>
+      <div class="field"><label>Employee Number</label><input id="loginEmployeeNo" class="input" autocomplete="username" placeholder="VG-2026-001" required></div>
+      <div class="field"><label>PIN</label><input id="loginPin" class="input" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4-digit PIN" maxlength="32" required></div>
+      <div class="v120-pin-dots">${[1,2,3,4].map(i=>`<span class="v120-pin-dot" data-dot="${i}"></span>`).join('')}</div>
+      <div class="v120-keypad">${[1,2,3,4,5,6,7,8,9,'',0,'back'].map(x=>x===''?'<span></span>':`<button type="button" class="v120-key" data-key="${x}">${x==='back'?'⌫':x}</button>`).join('')}</div>
+      <button class="btn green full v120-login-btn">Sign In</button>
+      <div class="v120-login-alt">Forgot PIN? Ask your manager or Retail admin to reset it.</div>
+    </form>`;
+  };
+
+  function refreshPinDots120(){
+    const pin=Q('#loginPin'); if(!pin)return;
+    A('.v120-pin-dot').forEach((d,i)=>d.classList.toggle('on',i<String(pin.value||'').length&&i<4));
+  }
+  function bindPin120(root=document){
+    const pin=Q('#loginPin',root);
+    if(pin&&!pin.__v120){pin.__v120=true;pin.addEventListener('input',refreshPinDots120)}
+    A('.v120-key',root).forEach(b=>{if(b.__v120)return;b.__v120=true;b.onclick=()=>{const p=Q('#loginPin');if(!p)return;if(b.dataset.key==='back')p.value=p.value.slice(0,-1);else if(p.value.length<4)p.value+=b.dataset.key;p.dispatchEvent(new Event('input',{bubbles:true}));};});
+  }
+
+  async function findEmployeeByLogin120(raw){
+    const cred=String(raw||'').trim();
+    if(!cred)return null;
+    const tries=[];
+    ['employee_number','employee_no','staff_number','vpoints_employee_number'].forEach(col=>tries.push(()=>sb.from('employees').select('*').eq(col,cred).maybeSingle()));
+    if(cred.includes('@'))tries.push(()=>sb.from('employees').select('*').ilike('email',cred.toLowerCase()).maybeSingle());
+    for(const run of tries){try{const r=await run();if(!r.error&&r.data)return r.data}catch(_){}}
+    try{
+      const s=await sb.from('app_settings').select('*').eq('setting_value',cred).limit(5);
+      const row=(s.data||[]).find(x=>/^v?points?_?employee_number_|^employee_number_/i.test(String(x.setting_key||'')));
+      const id=String(row?.setting_key||'').replace(/^vpoints_employee_number_|^employee_number_/i,'');
+      if(id){const r=await sb.from('employees').select('*').eq('id',id).maybeSingle();if(!r.error&&r.data)return r.data}
+    }catch(_){}
+    return null;
+  }
+  function validPin120(emp,pin){
+    const p=String(pin||'');
+    const vals=[emp?.pin_code,emp?.login_pin,emp?.mpin,emp?.employee_pin,emp?.temp_password,emp?.login_password_backup].map(x=>String(x||'')).filter(Boolean);
+    return vals.includes(p);
+  }
+  window.signIn=signIn=async function(e){
+    e.preventDefault();
+    const b=e.submitter, cred=(Q('#loginEmployeeNo')?.value||Q('#loginEmail')?.value||'').trim(), pin=Q('#loginPin')?.value||Q('#loginPass')?.value||'';
+    await act(b,{busy:'Checking...',success:'Login Accepted',reset:'Sign In Again'},async()=>{
+      const empRow=await findEmployeeByLogin120(cred);
+      if(!empRow)throw new Error('No employee account found. Please check employee number or ask your manager.');
+      if(empRow.is_active===false||String(empRow.activation_status||'').toLowerCase().includes('deleted'))throw new Error('This account is inactive. Please contact your manager or Retail admin.');
+      if(!validPin120(empRow,pin))throw new Error('Incorrect PIN.');
+      try{await sb.from('employees').update({activation_status:'activated',is_active:true,last_login_at:new Date().toISOString(),activated_at:empRow.activated_at||new Date().toISOString()}).eq('id',empRow.id)}catch(_){}
+      S.user={id:'direct-'+empRow.id,email:empRow.email,employee_id:empRow.id};
+      S.profile={...empRow,activation_status:'activated',is_active:true};
+      saveSession(S.profile);
+    },boot);
+  };
+
+  function enhancePinCreate120(){
+    const pass=Q('#staffPass'); if(!pass)return;
+    const field=pass.closest('.field');
+    const label=field?.querySelector('label'); if(label)label.textContent='4-digit Login PIN';
+    pass.type='text';pass.inputMode='numeric';pass.maxLength=4;pass.pattern='[0-9]{4}';pass.placeholder='Example: 1234';
+    if(!/^\d{4}$/.test(String(pass.value||'')))pass.value=randomPin();
+    let note=field?.querySelector('.v120-pin-note');
+    if(!note&&field)field.insertAdjacentHTML('beforeend','<div class="small muted v120-pin-note">Employee logs in using Employee Number + this 4-digit PIN.</div>');
+  }
+
+  const oldCredential120=window.credential;
+  window.credential=credential=function(e){
+    const no=employeeNo(e), pin=e?.temp_password||e?.login_password_backup||'';
+    modal(`<div class="notice success"><h2>Staff Credential Slip</h2><h3>${E(e.full_name)}</h3><p><b>Employee Number:</b> ${E(no)}<br><b>PIN:</b> ${E(pin)}<br><b>Email backup:</b> ${E(e.email||'-')}<br><b>Branch:</b> ${E(e.branch||'-')}<br><b>Position:</b> ${E(e.position||'-')}</p><button class="btn blue" onclick="saveCred('${E(e.id)}')">Save as Image</button> <button class="btn dark" onclick="closeModal()">Close</button></div>`);
+  };
+  window.saveCred=saveCred=function(id){
+    const e=(typeof emp==='function'?emp(id):null)||{};
+    const c=document.createElement('canvas');c.width=1000;c.height=700;const x=c.getContext('2d');
+    x.fillStyle='#fff';x.fillRect(0,0,1000,700);x.strokeStyle='#16a34a';x.lineWidth=10;x.strokeRect(20,20,960,660);
+    x.fillStyle='#7f1d1d';x.font='bold 46px Arial';x.fillText('V-Points Login Slip',60,90);
+    x.fillStyle='#111827';x.font='bold 34px Arial';x.fillText(e.full_name||'',60,155);
+    x.font='bold 30px Arial';x.fillText('Employee Number: '+employeeNo(e),60,225);
+    x.fillStyle='#64748b';x.font='bold 22px Arial';x.fillText('4-DIGIT PIN',60,310);
+    x.fillStyle='#16a34a';x.font='bold 64px Arial';x.fillText(e.temp_password||e.login_password_backup||'',60,380);
+    x.fillStyle='#111827';x.font='24px Arial';x.fillText('Branch: '+(e.branch||''),60,450);x.fillText('Position: '+(e.position||''),60,490);
+    x.fillStyle='#64748b';x.font='22px Arial';x.fillText('Instruction: Open V-Points > enter Employee Number and PIN.',60,610);
+    const a=document.createElement('a');a.download=(employeeNo(e)||'vpoints')+'-pin-login.png';a.href=c.toDataURL();a.click();
+  };
+
+  function rewardCard120(r,canEdit){
+    const ok=typeof rewardAvailable==='function'?rewardAvailable(r,S.profile):points(S.profile)>=Number(r.required_points||0);
+    const imgHtml=r.image_url?`<img class="v120-reward-img" src="${E(r.image_url)}">`:`<div class="v120-reward-img" style="display:grid;place-items:center;font-weight:1000;color:#94a3b8">Reward</div>`;
+    return `<div class="v120-reward-card" data-reward-text="${E((r.title||'')+' '+(r.details||''))}">${imgHtml}<h4>${E(r.title||'Reward')}</h4><div class="v120-reward-cost">Redeem for: ${E(money120(r.required_points||0))} pts</div><div class="small muted">${E(r.details||r.requirement||'')}</div>${!canEdit?`<button class="btn ${ok?'green':'ghost'} claimReward" data-id="${E(r.id)}" ${ok?'':'disabled'}>${ok?'Redeem':'Need More V-Points'}</button>`:`<button class="btn sm dark delReward" data-id="${E(r.id)}">Delete Reward</button>`}</div>`;
+  }
+  window.rewardsPage=rewardsPage=function(){
+    style120();
+    const canEdit=typeof isOwner==='function'&&isOwner(), pts=points(S.profile), rewards=(S.rewards||[]).filter(r=>r.is_active!==false);
+    const add=canEdit?`<div class="card"><h3>Add Reward</h3><form id="rewardForm"><div class="field"><label>Reward Name</label><input id="rewardTitle" class="input" required></div><div class="field"><label>Details</label><textarea id="rewardDetails" required></textarea></div><div class="grid two"><div class="field"><label>Required V-Points</label><input id="rewardRequired" type="number" step="0.01" value="100" class="input"></div><div class="field"><label>Deduct points when claimed?</label><select id="rewardDeduct"><option value="false">No - qualification only</option><option value="true">Yes - consume points</option></select></div></div><div class="field"><label>Requirement / Achieve Me</label><textarea id="rewardReq" required></textarea></div><div class="field"><label>Image</label><input id="rewardFile" type="file" accept="image/*" class="input"></div><button class="btn green full">Upload Reward</button></form></div>`:'';
+    return `${add}<div class="v120-reward-hero"><h2>Rewards Catalogue</h2><div class="v120-reward-points">${E(money120(pts))}</div><div class="small muted">Available V-Points</div><div class="v120-reward-tabs"><span class="v120-reward-tab active">Rewards Catalogue</span><span class="v120-reward-tab">Claims</span><span class="v120-reward-tab">Achievements</span></div><div class="v120-reward-search"><span>Search</span><input id="rewardSearch120" placeholder="Reward name"></div></div><div class="v120-reward-grid" id="rewardGrid120">${rewards.map(r=>rewardCard120(r,canEdit)).join('')||'<div class="empty">No rewards yet.</div>'}</div>`;
+  };
+
+  function visibleEmployees120(){
+    let rows=[...(S.employees||[])].filter(e=>e&&e.is_active!==false);
+    if(!(typeof isOwner==='function'&&isOwner())&&S.profile?.branch)rows=rows.filter(e=>String(e.branch)===String(S.profile.branch)||String(e.id)===String(S.profile.id));
+    return [...new Map(rows.map(e=>[String(e.id||e.email),e])).values()].sort((a,b)=>points(b)-points(a));
+  }
+  function leaderGroup120(title,rows){
+    const top=rows.slice(0,3), full=rows.slice(0,20);
+    return `<div class="v120-leader-card"><h3>${E(title)}</h3>${top.map((e,i)=>`<div class="v120-rank-row"><span class="v120-medal ${i===0?'gold':i===1?'silver':'bronze'}">${i+1}</span><div><b>${E(e.full_name||'-')}</b><br><span class="small muted">${E(e.position||'')} - ${E(e.branch||'')}</span></div><b>${E(money120(points(e)))}</b></div>`).join('')||'<div class="empty">No employees in this group.</div>'}<details class="v120-full-list"><summary>Highest to lowest</summary>${full.map((e,i)=>`<div>${i+1}. ${E(e.full_name||'-')} - ${E(money120(points(e)))} pts</div>`).join('')}</details></div>`;
+  }
+  function splitLeaderboard120(){
+    if(!(typeof isManager==='function'&&isManager()))return '';
+    const rows=visibleEmployees120(), staff=rows.filter(e=>!leaderEmp(e)), leaders=rows.filter(leaderEmp);
+    return `<div id="v120LeaderMount" class="v120-leader-board"><div class="v120-leader-head"><h2>V-Points Leaderboards</h2><div class="small muted">Separated Top 3 for staff and leaders/managers. Lists are sorted highest to lowest.</div></div><div class="v120-leader-groups">${leaderGroup120('Top Staff',staff)}${leaderGroup120('Top Leaders / Managers',leaders)}</div></div>`;
+  }
+  function injectLeader120(){
+    if(!S?.profile||String(S.tab)!=='dashboard')return;
+    const page=Q('#page'); if(!page||Q('#v120LeaderMount',page))return;
+    const html=splitLeaderboard120(); if(html)page.insertAdjacentHTML('afterbegin',html);
+  }
+
+  function bind120(root=document){
+    style120(); bindPin120(root); enhancePinCreate120(); injectLeader120();
+    document.body.classList.toggle('v120-training-clean',String(S?.tab||'')==='training');
+    const rs=Q('#rewardSearch120',root);
+    if(rs&&!rs.__v120){rs.__v120=true;rs.oninput=()=>{const q=rs.value.toLowerCase().trim();A('.v120-reward-card').forEach(c=>c.style.display=!q||String(c.dataset.rewardText||'').toLowerCase().includes(q)?'grid':'none')};}
+  }
+  const oldRenderAuth120=window.renderAuth;
+  if(typeof oldRenderAuth120==='function'){
+    window.renderAuth=renderAuth=function(){const out=oldRenderAuth120.apply(this,arguments);setTimeout(()=>bind120(document),30);return out};
+  }
+  const oldRenderPage120=window.renderPage;
+  if(typeof oldRenderPage120==='function'){
+    window.renderPage=renderPage=function(){const out=oldRenderPage120.apply(this,arguments);setTimeout(()=>bind120(Q('#page')||document),70);return out};
+  }
+  const oldBind120=window.bind;
+  if(typeof oldBind120==='function'){
+    window.bind=bind=function(){const out=oldBind120.apply(this,arguments);setTimeout(()=>bind120(document),30);return out};
+  }
+  setTimeout(()=>{if(Q('#loginForm')&&!Q('#loginEmployeeNo')&&typeof renderAuth==='function')renderAuth('login');bind120(document)},220);
+  console.log('V120 clean PIN login and rewards loaded');
+})();
+/* ================= END V120 ================= */
+/* ================= V121 PROFILE FIRST VIEW ================= */
+(function(){
+  if(window.__VPOINTS_V121_PROFILE_FIRST__)return;
+  window.__VPOINTS_V121_PROFILE_FIRST__=true;
+  window.VSCORE_FINAL_BUILD='V121_PROFILE_FIRST_VIEW';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const no=e=>{try{return typeof employeeNumber100==='function'?employeeNumber100(e):(e.employee_number||e.employee_no||'')}catch(_){return e?.employee_number||e?.employee_no||''}};
+  const pts=e=>Number(e?.current_points??100)||0;
+  const money121=n=>typeof money==='function'?money(n):String(Number(n||0).toFixed(2)).replace(/\.00$/,'');
+  const status121=e=>{try{return typeof standing==='function'?standing(e.current_points||100):{label:'Active',color:'green'}}catch(_){return {label:'Active',color:'green'}}};
+
+  function style121(){
+    if(Q('#v121-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v121-style">
+      .v121-profile{display:grid;gap:14px}
+      .v121-profile-card{background:linear-gradient(135deg,#fff,#f8fafc);border:1px solid #e5e7eb;border-radius:20px;padding:16px;box-shadow:0 14px 34px rgba(15,23,42,.06)}
+      .v121-profile-top{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+      .v121-photo{width:96px;height:96px;border-radius:24px;object-fit:cover;background:#f1f5f9;border:1px solid #e5e7eb;box-shadow:0 10px 22px rgba(15,23,42,.08)}
+      .v121-photo-empty{display:grid;place-items:center;font-size:34px;font-weight:1000;color:#94a3b8}
+      .v121-name{font-size:24px;font-weight:1000;color:#7f1d1d;line-height:1.05}
+      .v121-sub{font-size:13px;color:#64748b;font-weight:800;margin-top:4px}
+      .v121-pill-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+      .v121-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+      .v121-metric{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:10px}
+      .v121-metric span{display:block;font-size:11px;color:#64748b;text-transform:uppercase;font-weight:1000}
+      .v121-metric b{display:block;font-size:20px;color:#111827;margin-top:2px}
+      .v121-docs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
+      .v121-doc{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:9px;min-height:88px;display:grid;gap:5px;align-content:start}
+      .v121-doc img{width:100%;height:82px;object-fit:cover;border-radius:10px;background:#f8fafc;border:1px solid #eef2f7}
+      .v121-doc b{font-size:12px;color:#111827}.v121-doc span{font-size:11px;color:#64748b;font-weight:800}
+      .v121-edit-card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:16px;box-shadow:0 14px 34px rgba(15,23,42,.04)}
+      .v121-edit-card h3{margin-top:0;color:#7f1d1d}
+      @media(max-width:760px){.v121-profile-top{grid-template-columns:1fr;text-align:center}.v121-photo{margin:auto}.v121-pill-row{justify-content:center}.v121-metrics{grid-template-columns:1fr 1fr}.v121-docs{grid-template-columns:1fr 1fr}.v121-name{font-size:22px}}
+    </style>`);
+  }
+  function docCard(label,url){
+    if(!url)return `<div class="v121-doc"><b>${E(label)}</b><span>Not uploaded yet</span></div>`;
+    return `<button type="button" class="v121-doc" onclick="zoom('${E(url)}')"><img src="${E(url)}" alt=""><b>${E(label)}</b><span>Tap to preview</span></button>`;
+  }
+  function uploadedProfile121(p){
+    const st=status121(p);
+    const photo=p.profile_picture_url?`<img class="v121-photo" src="${E(p.profile_picture_url)}" alt="">`:`<div class="v121-photo v121-photo-empty">${E(String(p.full_name||'V').trim().charAt(0)||'V')}</div>`;
+    return `<div class="v121-profile-card">
+      <div class="v121-profile-top">${photo}<div><div class="v121-name">${E(p.real_name||p.full_name||'Ka-Varda')}</div><div class="v121-sub">${E(p.position||'Employee')} - ${E(p.branch||'')}</div><div class="v121-pill-row"><span class="pill blue">${E(no(p)||'No employee number')}</span><span class="pill ${E(st.color||'green')}">${E(st.label||'Active')}</span>${p.profile_completed?'<span class="pill green">Profile Updated</span>':'<span class="pill yellow">Needs Update</span>'}</div></div></div>
+      <div class="v121-metrics"><div class="v121-metric"><span>V-Points</span><b>${E(money121(pts(p)))}</b></div><div class="v121-metric"><span>Agency</span><b>${E(p.agency||'-')}</b></div><div class="v121-metric"><span>Age</span><b>${E(p.age||'-')}</b></div></div>
+      <div class="v121-metric" style="margin-top:8px"><span>Current Address</span><b style="font-size:14px;line-height:1.35">${E(p.current_address||'Not added yet')}</b></div>
+      <div class="v121-docs">${docCard('Health Card',p.health_card_url)}${docCard('Certification',p.certification_url)}${docCard('Valid ID',p.valid_id_url)}</div>
+      <div class="v121-pill-row" style="margin-top:12px">${p.facebook_url?`<a class="btn sm blue" href="${E(p.facebook_url)}" target="_blank">Open Facebook</a>`:''}<button type="button" class="btn sm ghost" onclick="saveCred('${E(p.id)}')">Save Login Slip</button></div>
+    </div>`;
+  }
+  function editForm121(p){
+    return `<div class="v121-edit-card"><h3>Edit / Update Profile</h3><form id="profileForm">
+      <div class="grid two"><div class="field"><label>Real Name</label><input id="profName" class="input" value="${E(p.real_name||p.full_name||'')}" required></div><div class="field"><label>Agency</label><input id="profAgency" class="input" value="${E(p.agency||'')}"></div></div>
+      <div class="grid two"><div class="field"><label>Age</label><input id="profAge" type="number" class="input" value="${E(p.age||'')}"></div><div class="field"><label>Facebook Link Optional</label><input id="profFacebook" class="input" placeholder="https://facebook.com/..." value="${E(p.facebook_url||'')}"></div></div>
+      <div class="field"><label>Current Address</label><textarea id="profAddress" required>${E(p.current_address||'')}</textarea></div>
+      <div class="grid two"><div class="field"><label>1x1 Profile Picture</label><input id="profPic" type="file" accept="image/*" class="input"></div><div class="field"><label>Health Card</label><input id="profHealth" type="file" accept="image/*" class="input"></div></div>
+      <div class="grid two"><div class="field"><label>Certification</label><input id="profCert" type="file" accept="image/*" class="input"></div><div class="field"><label>Valid ID</label><input id="profId" type="file" accept="image/*" class="input"></div></div>
+      <button class="btn green full">Update Profile</button>
+    </form></div>`;
+  }
+  window.profilePage=profilePage=function(){
+    style121();
+    const p=S.profile||{};
+    return `<div class="v121-profile">${uploadedProfile121(p)}${editForm121(p)}</div>`;
+  };
+  const oldRender121=window.renderPage;
+  if(typeof oldRender121==='function'){
+    window.renderPage=renderPage=function(){const out=oldRender121.apply(this,arguments);style121();return out};
+  }
+  setTimeout(style121,200);
+  console.log('V121 profile first view loaded');
+})();
+/* ================= END V121 ================= */
+/* ================= V122 EMAIL PIN LOGIN ================= */
+(function(){
+  if(window.__VPOINTS_V122_EMAIL_PIN__)return;
+  window.__VPOINTS_V122_EMAIL_PIN__=true;
+  window.VSCORE_FINAL_BUILD='V122_EMAIL_PIN_LOGIN';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const randomPin122=()=>String(Math.floor(1000+Math.random()*9000));
+  const empNo122=e=>{try{return typeof employeeNumber100==='function'?employeeNumber100(e):(e?.employee_number||e?.employee_no||e?.staff_number||'')}catch(_){return e?.employee_number||e?.employee_no||e?.staff_number||''}};
+  function pinCandidates122(e){
+    const vals=[e?.pin_code,e?.login_pin,e?.mpin,e?.employee_pin,e?.temp_password,e?.login_password_backup].map(x=>String(x||'').trim()).filter(Boolean);
+    const set=new Set(vals);
+    vals.forEach(v=>{
+      const d=v.replace(/\D/g,'');
+      if(d.length>=4){set.add(d.slice(0,4));set.add(d.slice(-4));}
+    });
+    return [...set];
+  }
+  const pin122=e=>pinCandidates122(e).find(v=>/^\d{4}$/.test(v))||pinCandidates122(e)[0]||'';
+
+  function style122(){
+    if(Q('#v122-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v122-style">
+      .v122-login-hint{text-align:center;color:#64748b;font-size:12px;font-weight:800;margin-top:-4px}
+      .v122-access-note{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:10px;color:#14532d;font-size:12px;font-weight:800}
+      .v122-slip-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+      @media(max-width:520px){.v122-slip-row{grid-template-columns:1fr}}
+    </style>`);
+  }
+
+  window.loginForm=loginForm=function(){
+    style122();
+    return `<form id="loginForm" class="v120-pin-box">
+      <div class="v120-login-title"><b>Welcome to V-Points</b><span>Sign in with email and PIN</span></div>
+      <div class="field"><label>Email</label><input id="loginEmail" class="input" type="email" autocomplete="username" placeholder="employee@company.com" required></div>
+      <div class="field"><label>PIN Code</label><input id="loginPin" class="input" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4-digit PIN" maxlength="32" required></div>
+      <div class="v120-pin-dots">${[1,2,3,4].map(i=>`<span class="v120-pin-dot" data-dot="${i}"></span>`).join('')}</div>
+      <div class="v120-keypad">${[1,2,3,4,5,6,7,8,9,'',0,'back'].map(x=>x===''?'<span></span>':`<button type="button" class="v120-key" data-key="${x}">${x==='back'?'⌫':x}</button>`).join('')}</div>
+      <button class="btn green full v120-login-btn">Sign In</button>
+      <div class="v122-login-hint">Forgot PIN? Ask your manager or Retail admin to reset it.</div>
+    </form>`;
+  };
+
+  function bindPin122(root=document){
+    const pin=Q('#loginPin',root);
+    if(pin&&!pin.__v122){
+      pin.__v122=true;
+      pin.addEventListener('input',()=>A('.v120-pin-dot').forEach((d,i)=>d.classList.toggle('on',i<String(pin.value||'').length&&i<4)));
+    }
+    A('.v120-key',root).forEach(b=>{
+      if(b.__v122)return;
+      b.__v122=true;
+      b.onclick=()=>{
+        const p=Q('#loginPin');if(!p)return;
+        if(b.dataset.key==='back')p.value=p.value.slice(0,-1);
+        else if(p.value.length<4)p.value+=b.dataset.key;
+        p.dispatchEvent(new Event('input',{bubbles:true}));
+      };
+    });
+  }
+
+  async function findEmployeeByEmail122(raw){
+    const cred=String(raw||'').trim();
+    if(!cred)return null;
+    const tries=[];
+    tries.push(()=>sb.from('employees').select('*').ilike('email',cred.toLowerCase()).maybeSingle());
+    if(!cred.includes('@')){
+      ['employee_number','employee_no','staff_number','vpoints_employee_number'].forEach(col=>tries.push(()=>sb.from('employees').select('*').eq(col,cred).maybeSingle()));
+    }
+    for(const run of tries){
+      try{const r=await run();if(!r.error&&r.data)return r.data}catch(_){}
+    }
+    return null;
+  }
+
+  window.signIn=signIn=async function(e){
+    e.preventDefault();
+    const b=e.submitter, email=(Q('#loginEmail')?.value||Q('#loginEmployeeNo')?.value||'').trim(), pin=Q('#loginPin')?.value||'';
+    await act(b,{busy:'Checking...',success:'Login Accepted',reset:'Sign In Again'},async()=>{
+      const empRow=await findEmployeeByEmail122(email);
+      if(!empRow)throw new Error('No account found for this email. Please check with your manager.');
+      if(empRow.is_active===false||String(empRow.activation_status||'').toLowerCase().includes('deleted'))throw new Error('This account is inactive. Please contact your manager or Retail admin.');
+      if(!pinCandidates122(empRow).includes(String(pin).trim()))throw new Error('Incorrect PIN code.');
+      const pinClean=String(pin||'').trim();
+      const patch={activation_status:'activated',is_active:true,last_login_at:new Date().toISOString(),activated_at:empRow.activated_at||new Date().toISOString()};
+      if(/^\d{4}$/.test(pinClean)){patch.temp_password=pinClean;patch.login_password_backup=pinClean;}
+      try{await sb.from('employees').update(patch).eq('id',empRow.id)}catch(_){}
+      S.user={id:'direct-'+empRow.id,email:empRow.email,employee_id:empRow.id};
+      S.profile={...empRow,activation_status:'activated',is_active:true};
+      saveSession(S.profile);
+    },boot);
+  };
+
+  function enhanceAccountCreate122(root=document){
+    const email=Q('#staffEmail',root);
+    if(email){
+      const label=email.closest('.field')?.querySelector('label');if(label)label.textContent='Email Login';
+      email.placeholder='employee@company.com';
+      email.autocomplete='email';
+    }
+    const pass=Q('#staffPass',root);
+    if(pass){
+      const label=pass.closest('.field')?.querySelector('label');if(label)label.textContent='4-digit PIN Code';
+      pass.type='text';pass.inputMode='numeric';pass.maxLength=4;pass.pattern='[0-9]{4}';pass.placeholder='Example: 1234';
+      if(!/^\d{4}$/.test(String(pass.value||'')))pass.value=randomPin122();
+      if(!Q('.v122-access-note',pass.closest('.field')||document)){
+        pass.closest('.field')?.insertAdjacentHTML('beforeend','<div class="v122-access-note">Login will be Email + this 4-digit PIN. Employee number stays as the record ID.</div>');
+      }
+    }
+    const box=Q('#v100EmpNoBox',root);
+    if(box){
+      const label=box.querySelector('label');if(label)label.textContent='Employee Number (Record ID - Auto)';
+      const note=box.querySelector('.small');if(note)note.textContent='Internal record number only. Login uses Email + PIN.';
+    }
+  }
+
+  window.credential=credential=function(e){
+    const pin=pin122(e), no=empNo122(e);
+    modal(`<div class="notice success"><h2>Email + PIN Login Slip</h2><h3>${E(e.full_name)}</h3>
+      <p><b>Email Login:</b> ${E(e.email||'-')}<br><b>PIN Code:</b> ${E(pin||'-')}<br><b>Employee Number:</b> ${E(no||'-')}<br><b>Branch:</b> ${E(e.branch||'-')}<br><b>Position:</b> ${E(e.position||'-')}</p>
+      <button class="btn blue" onclick="saveCred('${E(e.id)}')">Save as Image</button> <button class="btn dark" onclick="closeModal()">Close</button></div>`);
+  };
+
+  window.saveCred=saveCred=function(id){
+    const e=(typeof emp==='function'?emp(id):null)||{};
+    const c=document.createElement('canvas');c.width=1000;c.height=700;const x=c.getContext('2d');
+    x.fillStyle='#fff';x.fillRect(0,0,1000,700);x.strokeStyle='#16a34a';x.lineWidth=10;x.strokeRect(20,20,960,660);
+    x.fillStyle='#7f1d1d';x.font='bold 46px Arial';x.fillText('V-Points Email + PIN Login Slip',60,90);
+    x.fillStyle='#111827';x.font='bold 34px Arial';x.fillText(e.full_name||'',60,155);
+    x.fillStyle='#64748b';x.font='bold 22px Arial';x.fillText('EMAIL LOGIN',60,230);
+    x.fillStyle='#111827';x.font='bold 34px Arial';x.fillText(e.email||'',60,275);
+    x.fillStyle='#64748b';x.font='bold 22px Arial';x.fillText('4-DIGIT PIN CODE',60,350);
+    x.fillStyle='#16a34a';x.font='bold 64px Arial';x.fillText(pin122(e),60,425);
+    x.fillStyle='#111827';x.font='23px Arial';x.fillText('Employee No: '+empNo122(e),60,495);x.fillText('Branch: '+(e.branch||''),60,535);x.fillText('Position: '+(e.position||''),60,575);
+    x.fillStyle='#64748b';x.font='21px Arial';x.fillText('Instruction: Open V-Points, enter Email and PIN code.',60,635);
+    const a=document.createElement('a');a.download=(String(e.email||empNo122(e)||'vpoints').replace(/[^a-z0-9]+/gi,'_'))+'-email-pin-login.png';a.href=c.toDataURL();a.click();
+  };
+
+  async function savePin122(id,pin){
+    const patch={temp_password:pin,login_password_backup:pin,pin_code:pin,updated_at:new Date().toISOString()};
+    let r=await sb.from('employees').update(patch).eq('id',id);
+    if(r.error&&/pin_code|column|schema/i.test(String(r.error.message||''))){
+      delete patch.pin_code;
+      r=await sb.from('employees').update(patch).eq('id',id);
+    }
+    if(r.error)throw r.error;
+    try{await sb.from('audit_trail').insert({action:'account_pin_reset',table_name:'employees',record_id:id,changed_by:S.profile?.id,details:'Email + PIN login reset'})}catch(_){}
+  }
+  window.v122ResetPin=async function(id,btn){
+    const e=(typeof emp==='function'?emp(id):null)||(S.allEmployees||S.employees||[]).find(x=>String(x.id)===String(id))||{};
+    const suggested=/^\d{4}$/.test(pin122(e))?pin122(e):randomPin122();
+    const next=prompt(`Set 4-digit PIN for ${e.full_name||'this account'}:`,suggested);
+    if(next===null)return;
+    if(!/^\d{4}$/.test(String(next||'')))return toast('PIN must be exactly 4 numbers.','error');
+    await act(btn||document.createElement('button'),{busy:'Saving...',success:'PIN Saved',reset:'Reset PIN',toast:'PIN updated.'},async()=>savePin122(id,String(next)),async()=>{await loadData();renderPage()});
+  };
+
+  if(typeof window.acctTable==='function'){
+    window.acctTable=acctTable=function(arr){
+      arr=arr||[];
+      return `<table><thead><tr><th>Employee No.</th><th>Name</th><th>Email Login</th><th>PIN Backup</th><th>Branch</th><th>Status</th><th>Action</th></tr></thead><tbody>${arr.map(e=>`<tr><td><b>${E(empNo122(e))}</b></td><td>${E(e.full_name||'-')}</td><td>${E(e.email||'-')}</td><td>${E(pin122(e)||'-')}</td><td>${E(e.branch||'-')}</td><td>${typeof activePill==='function'?activePill(e):(e.is_active===false?'<span class="pill red">Inactive</span>':'<span class="pill green">Active</span>')}</td><td><button class="btn sm blue" onclick="v122ResetPin('${E(e.id)}',this)">Reset PIN</button> <button class="btn sm dark delAcct" data-id="${E(e.id)}">Permanent Remove</button></td></tr>`).join('')||'<tr><td colspan="7"><div class="empty">No accounts.</div></td></tr>'}</tbody></table>`;
+    };
+  }
+
+  function enhanceAccountBackup122(root=document){
+    A('.v87DeleteAcct,.delAcct',root).forEach(btn=>{
+      if(btn.__v122ResetAdded)return;
+      btn.__v122ResetAdded=true;
+      const id=btn.dataset.id;
+      if(!id||A('[data-v122-reset]',btn.parentElement||root).some(x=>String(x.dataset.v122Reset)===String(id)))return;
+      btn.insertAdjacentHTML('beforebegin',`<button type="button" class="btn sm blue" data-v122-reset="${E(id)}" onclick="v122ResetPin('${E(id)}',this)">Reset PIN</button> `);
+    });
+  }
+
+  const oldEmployees122=window.employeesPage;
+  if(typeof oldEmployees122==='function'){
+    window.employeesPage=employeesPage=function(){
+      let html=String(oldEmployees122.apply(this,arguments)||'');
+      html=html.replace(/Temporary Password/g,'4-digit PIN Code').replace(/Password Backup/g,'PIN Backup');
+      return html;
+    };
+  }
+  const oldAccounts122=window.accountsPage;
+  if(typeof oldAccounts122==='function'){
+    window.accountsPage=accountsPage=function(){
+      let html=String(oldAccounts122.apply(this,arguments)||'');
+      html=html.replace(/Email\/Login/g,'Email Login').replace(/Password Backup/g,'PIN Backup').replace(/Temporary Password/g,'PIN Code');
+      return html;
+    };
+  }
+
+  function bind122(root=document){
+    style122();
+    bindPin122(root);
+    enhanceAccountCreate122(root);
+    enhanceAccountBackup122(root);
+  }
+  const oldRenderAuth122=window.renderAuth;
+  if(typeof oldRenderAuth122==='function'){
+    window.renderAuth=renderAuth=function(){const out=oldRenderAuth122.apply(this,arguments);setTimeout(()=>bind122(document),40);return out};
+  }
+  const oldRenderPage122=window.renderPage;
+  if(typeof oldRenderPage122==='function'){
+    window.renderPage=renderPage=function(){const out=oldRenderPage122.apply(this,arguments);setTimeout(()=>bind122(Q('#page')||document),80);return out};
+  }
+  const oldBind122=window.bind;
+  if(typeof oldBind122==='function'){
+    window.bind=bind=function(){const out=oldBind122.apply(this,arguments);setTimeout(()=>bind122(document),40);return out};
+  }
+  setTimeout(()=>{if(Q('#loginForm')&&!Q('#loginEmail')&&typeof renderAuth==='function')renderAuth('login');bind122(document)},280);
+  console.log('V122 email and PIN login loaded');
+})();
+/* ================= END V122 ================= */
+/* ================= V123 ACCOUNT PIN CONTROL + BUTTON FIX ================= */
+(function(){
+  if(window.__VPOINTS_V123_ACCOUNT_BUTTON_FIX__)return;
+  window.__VPOINTS_V123_ACCOUNT_BUTTON_FIX__=true;
+  window.VSCORE_FINAL_BUILD='V123_ACCOUNT_PIN_CONTROL';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const msg=(m,t='ok')=>{try{toast(m,t)}catch(_){alert(m)}};
+  const me=()=>String(S?.profile?.id||'');
+  const role=()=>String(S?.profile?.role||'').toLowerCase();
+  const pos=()=>String(S?.profile?.position||'').toUpperCase();
+  const retail=()=>{try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){} return /retail|head|office|admin|management|master|hr/.test(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos())};
+  const manager=()=>retail()||/manager|leader|fsqa|branch/.test(role()+' '+pos().toLowerCase());
+  const empNo=e=>{try{return typeof employeeNumber100==='function'?employeeNumber100(e):(e?.employee_number||e?.employee_no||e?.staff_number||'')}catch(_){return e?.employee_number||e?.employee_no||e?.staff_number||''}};
+  const findEmp=id=>[...(S.accountBackupRows||[]),...(S.allEmployees||[]),...(S.employees||[])].find(e=>String(e.id)===String(id))||(typeof emp==='function'?emp(id):null)||{};
+  const isLeader=e=>/retail|head|office|admin|management|master|hr|manager|leader|fsqa|branch/i.test(String(e?.role||'')+' '+String(e?.position||''));
+  const canControl=e=>{
+    if(!e?.id||String(e.id)===me())return false;
+    if(retail())return true;
+    if(!manager())return false;
+    return String(e.branch||'')===String(S?.profile?.branch||'')&&!isLeader(e);
+  };
+  const rows=()=>[...(S.accountBackupRows&&S.accountBackupRows.length?S.accountBackupRows:S.allEmployees||S.employees||[])].filter(e=>e&&e.id);
+  const randomPin=()=>String(Math.floor(1000+Math.random()*9000));
+  function currentPin(e){
+    const vals=[e?.pin_code,e?.login_pin,e?.mpin,e?.employee_pin,e?.temp_password,e?.login_password_backup].map(x=>String(x||'').trim()).filter(Boolean);
+    for(const v of vals)if(/^\d{4}$/.test(v))return v;
+    for(const v of vals){const d=v.replace(/\D/g,'');if(d.length>=4)return d.slice(-4)}
+    return '';
+  }
+  function pinFor(e,used){
+    let p=currentPin(e);
+    if(!/^\d{4}$/.test(p))p=randomPin();
+    while(used.has(p))p=randomPin();
+    used.add(p);
+    return p;
+  }
+  async function savePin(id,pin){
+    const patch={temp_password:pin,login_password_backup:pin,pin_code:pin,updated_at:new Date().toISOString()};
+    let r=await sb.from('employees').update(patch).eq('id',id);
+    if(r.error&&/pin_code|column|schema/i.test(String(r.error.message||''))){
+      delete patch.pin_code;
+      r=await sb.from('employees').update(patch).eq('id',id);
+    }
+    if(r.error)throw r.error;
+  }
+
+  window.v123ResetPin=async function(id,btn){
+    const e=findEmp(id);
+    if(!canControl(e))return msg('You cannot reset this account PIN.','error');
+    const suggested=currentPin(e)||randomPin();
+    const pin=prompt(`Set 4-digit PIN for ${e.full_name||e.email||'this account'}:`,suggested);
+    if(pin===null)return;
+    if(!/^\d{4}$/.test(String(pin||'')))return msg('PIN must be exactly 4 numbers.','error');
+    await act(btn||document.createElement('button'),{busy:'Saving...',success:'PIN Saved',reset:'Reset PIN',toast:'PIN updated.'},async()=>{
+      await savePin(id,String(pin));
+      try{await sb.from('audit_trail').insert({action:'account_pin_reset',table_name:'employees',record_id:id,changed_by:S.profile?.id,details:'Manual Email + PIN reset'})}catch(_){}
+    },async()=>{await loadData();renderPage()});
+  };
+  window.v122ResetPin=window.v123ResetPin;
+
+  window.v123ConvertVisiblePins=async function(btn){
+    if(!manager())return msg('Only management can convert account PINs.','error');
+    const targets=rows().filter(canControl);
+    if(!targets.length)return msg('No controlled accounts available to convert.','error');
+    if(!confirm(`Convert ${targets.length} visible controlled account(s) to Email + 4-digit PIN login?`))return;
+    const used=new Set();
+    const made=[];
+    await act(btn||document.createElement('button'),{busy:'Converting...',success:'Converted',reset:'Convert Visible Accounts to PIN',toast:'Accounts converted to PIN.'},async()=>{
+      for(const e of targets){
+        const pin=pinFor(e,used);
+        await savePin(e.id,pin);
+        made.push({name:e.full_name||e.email||'-',email:e.email||'-',pin,empNo:empNo(e)||'-'});
+      }
+      try{await sb.from('audit_trail').insert({action:'bulk_account_pin_convert',table_name:'employees',record_id:S.profile?.id,changed_by:S.profile?.id,details:`Converted ${made.length} accounts to Email + PIN`})}catch(_){}
+    },async()=>{await loadData();renderPage();v123ShowPinResult(made)});
+  };
+
+  window.v123SetAllVisiblePin=async function(btn){
+    if(!retail())return msg('Only Retail / Executive can set one PIN for many accounts.','error');
+    const targets=rows().filter(canControl);
+    if(!targets.length)return msg('No controlled accounts available.','error');
+    const pin=prompt(`Set ONE temporary 4-digit PIN for ${targets.length} visible controlled account(s):`,'2026');
+    if(pin===null)return;
+    if(!/^\d{4}$/.test(String(pin||'')))return msg('PIN must be exactly 4 numbers.','error');
+    if(!confirm('This sets the same temporary PIN for many accounts. Use only for launch/reset, then ask staff to change their PIN. Continue?'))return;
+    await act(btn||document.createElement('button'),{busy:'Saving...',success:'PIN Set',reset:'Set One Temporary PIN',toast:'Temporary PIN applied.'},async()=>{
+      for(const e of targets)await savePin(e.id,String(pin));
+      try{await sb.from('audit_trail').insert({action:'bulk_account_same_pin',table_name:'employees',record_id:S.profile?.id,changed_by:S.profile?.id,details:`Set one launch PIN for ${targets.length} accounts`})}catch(_){}
+    },async()=>{await loadData();renderPage()});
+  };
+
+  window.v123ShowPinResult=function(list){
+    if(!Array.isArray(list)||!list.length)return;
+    modal(`<div class="split" style="justify-content:space-between;align-items:flex-start"><div><h2>PIN Conversion Complete</h2><p class="muted">Use these Email + PIN logins for launch. You can also save each login slip from Account Backup.</p></div><button class="btn sm dark" onclick="closeModal()">Close</button></div>
+      <table><thead><tr><th>Employee No.</th><th>Name</th><th>Email</th><th>PIN</th></tr></thead><tbody>${list.map(x=>`<tr><td>${E(x.empNo)}</td><td>${E(x.name)}</td><td>${E(x.email)}</td><td><b>${E(x.pin)}</b></td></tr>`).join('')}</tbody></table>
+      <button class="btn green full" onclick="closeModal()">Done</button>`);
+  };
+
+  function controlsHtml(){
+    if(!manager())return '';
+    return `<div id="v123PinControl" class="notice success" style="margin:10px 0 14px">
+      <b>Management PIN Control</b><br>
+      <span class="small">Convert old password backups into Email + 4-digit PIN login. Individual account buttons are now directly wired.</span>
+      <div class="split" style="margin-top:10px">
+        <button type="button" class="btn sm blue" id="v123BulkConvert">Convert Visible Accounts to PIN</button>
+        ${retail()?'<button type="button" class="btn sm orange" id="v123SamePin">Set One Temporary PIN</button>':''}
+        <button type="button" class="btn sm ghost" id="v123RefreshAccounts">Refresh Accounts</button>
+      </div>
+    </div>`;
+  }
+
+  const oldAccounts123=window.accountsPage;
+  if(typeof oldAccounts123==='function'){
+    window.accountsPage=accountsPage=function(){
+      let html=String(oldAccounts123.apply(this,arguments)||'');
+      html=html.replace(/Email\/Login/g,'Email Login').replace(/Password Backup/g,'PIN Backup').replace(/Temporary Password/g,'PIN Code');
+      if(!/v123PinControl/.test(html)){
+        html=html.replace(/(<div class="card"><h3>[^<]*(?:Account Backup|Branch Staff Access)[^<]*<\/h3>)/,`$1${controlsHtml()}`);
+      }
+      return html;
+    };
+  }
+
+  function insertResetButtons(root=document){
+    A('.v87-account',root).forEach(card=>{
+      const actions=Q('.v87-actions',card); if(!actions)return;
+      const id=(Q('.v87KickAcct,.v87RestoreAcct,.v87DeleteAcct,[data-v122-reset]',actions)||{}).dataset?.id||(Q('[data-v122-reset]',actions)||{}).dataset?.v122Reset;
+      if(!id||Q('[data-v123-reset]',actions))return;
+      const e=findEmp(id);
+      if(!canControl(e))return;
+      const del=Q('.v87DeleteAcct',actions);
+      const html=`<button type="button" class="btn sm blue" data-v123-reset="${E(id)}">Reset PIN</button>`;
+      if(del)del.insertAdjacentHTML('beforebegin',html+' ');else actions.insertAdjacentHTML('beforeend',html);
+    });
+  }
+  function bind123(root=document){
+    insertResetButtons(root);
+    const bulk=Q('#v123BulkConvert',root); if(bulk&&!bulk.__v123){bulk.__v123=true;bulk.onclick=()=>v123ConvertVisiblePins(bulk)}
+    const same=Q('#v123SamePin',root); if(same&&!same.__v123){same.__v123=true;same.onclick=()=>v123SetAllVisiblePin(same)}
+    const refresh=Q('#v123RefreshAccounts',root); if(refresh&&!refresh.__v123){refresh.__v123=true;refresh.onclick=async()=>{await loadData();renderPage()}}
+  }
+
+  document.addEventListener('click',function(ev){
+    const btn=ev.target?.closest?.('button');
+    if(!btn)return;
+    const inAccount=btn.closest('.v87-account,#v87AcctList')||btn.classList.contains('delAcct')||btn.dataset.v123Reset||btn.dataset.v122Reset;
+    if(!inAccount)return;
+    const id=btn.dataset.id||btn.dataset.v123Reset||btn.dataset.v122Reset;
+    if(!id)return;
+    if(btn.classList.contains('v87KickAcct')||/kick\s*\/\s*disable login/i.test(btn.textContent||'')){
+      ev.preventDefault();ev.stopImmediatePropagation();return window.v87KickAccount?window.v87KickAccount(id,btn):msg('Kick action is not available.','error');
+    }
+    if(btn.classList.contains('v87RestoreAcct')||/restore login/i.test(btn.textContent||'')){
+      ev.preventDefault();ev.stopImmediatePropagation();return window.v87RestoreAccount?window.v87RestoreAccount(id,btn):msg('Restore action is not available.','error');
+    }
+    if(btn.dataset.v123Reset||btn.dataset.v122Reset||/reset pin/i.test(btn.textContent||'')){
+      ev.preventDefault();ev.stopImmediatePropagation();return window.v123ResetPin(id,btn);
+    }
+    if(btn.classList.contains('v87DeleteAcct')||btn.classList.contains('delAcct')||/permanent remove/i.test(btn.textContent||'')){
+      ev.preventDefault();ev.stopImmediatePropagation();return window.v111PermanentDeleteAccount?window.v111PermanentDeleteAccount(id,btn):(window.v87PermanentRemove?window.v87PermanentRemove(id,btn):msg('Permanent remove is not available.','error'));
+    }
+  },true);
+
+  const oldRenderPage123=window.renderPage;
+  if(typeof oldRenderPage123==='function'){
+    window.renderPage=renderPage=function(){const out=oldRenderPage123.apply(this,arguments);setTimeout(()=>bind123(Q('#page')||document),80);setTimeout(()=>bind123(document),260);return out};
+  }
+  const oldBind123=window.bind;
+  if(typeof oldBind123==='function'){
+    window.bind=bind=function(){const out=oldBind123.apply(this,arguments);setTimeout(()=>bind123(document),60);return out};
+  }
+  setTimeout(()=>bind123(document),500);
+  console.log('V123 account PIN control and button fix loaded');
+})();
+/* ================= END V123 ================= */
+/* ================= V124 SIMPLE FIRST USE GUIDE QUEUE ================= */
+(function(){
+  if(window.__VPOINTS_V124_SIMPLE_GUIDE__)return;
+  window.__VPOINTS_V124_SIMPLE_GUIDE__=true;
+  window.VSCORE_FINAL_BUILD='V124_SIMPLE_GUIDE_QUEUE';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const TERMS_VERSION='V105_COMPANY_USE_AGREEMENT';
+  let active=false, step=0, pendingMemo=false, pendingMission=false, pendingRank=false, highlightTimer=null;
+
+  function style(){
+    if(Q('#v124-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v124-style">
+      body.v124-guide-active #v112Stack{display:none!important}
+      body.v124-guide-active #memoLock{display:none!important}
+      #v124GuideBtn{position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:6300;border:0;border-radius:14px;background:#111827;color:#fff;padding:10px 13px;font-weight:1000;box-shadow:0 12px 28px rgba(15,23,42,.22);min-height:40px}
+      #v124Coach{position:fixed;inset:0;z-index:99992;pointer-events:none;background:rgba(248,250,252,.10)}
+      #v124Ring{position:fixed;z-index:99993;border:3px solid #2563eb;border-radius:18px;box-shadow:0 0 0 4px rgba(37,99,235,.16),0 14px 34px rgba(15,23,42,.14);pointer-events:none;transition:all .16s ease;background:rgba(255,255,255,.03)}
+      #v124Card{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99994;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:14px;box-shadow:0 18px 55px rgba(15,23,42,.22);pointer-events:auto;max-width:560px;margin:auto}
+      #v124Card h3{margin:3px 0 6px;color:#7f1d1d;font-size:21px;line-height:1.08}
+      #v124Card p{margin:0;color:#475569;font-weight:800;line-height:1.38;font-size:14px}
+      .v124-kicker{font-size:11px;color:#64748b;text-transform:uppercase;font-weight:1000}
+      .v124-progress{display:grid;grid-template-columns:repeat(var(--v124-count,5),1fr);gap:5px;margin:12px 0}
+      .v124-progress span{height:5px;border-radius:999px;background:#e5e7eb}.v124-progress span.on{background:#2563eb}
+      .v124-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.v124-actions .wide{grid-column:1/-1}
+      .v124-target-label{display:inline-flex;margin-top:9px;border-radius:999px;background:#dbeafe;color:#1e40af;padding:5px 9px;font-size:12px;font-weight:1000}
+      @media(min-width:760px){#v124Card{left:auto;right:18px;bottom:18px;width:390px;margin:0}}
+    </style>`);
+  }
+  function id(){return String(S?.profile?.id||'anon')}
+  function key(){return `VPOINTS_COACH_DONE_${id()}_V124_SIMPLE`}
+  function oldKey(){return `VPOINTS_COACH_DONE_${id()}_V106`}
+  function done(){try{return localStorage.getItem(key())==='1'}catch(_){return false}}
+  function markDone(){try{localStorage.setItem(key(),'1');localStorage.setItem(oldKey(),'1')}catch(_){}}
+  function termsOk(){
+    try{
+      if(Q('#termsGate'))return false;
+      return localStorage.getItem(`VPOINTS_TERMS_${id()}_${TERMS_VERSION}`)==='1'||(S.termsRows||[]).some(t=>String(t.accepted_version||'')===TERMS_VERSION);
+    }catch(_){return true}
+  }
+  function blockPopups(){return !!S?.profile&&(active||(!done()&&termsOk()))}
+  function role(){return String(S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_')}
+  function pos(){return String(S?.profile?.position||'').toUpperCase()}
+  function retail(){return ['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos())}
+  function manager(){return retail()||['manager','branch_manager','team_leader','fsqa_officer','branch_leader'].includes(role())||/MANAGER|TEAM LEADER|FSQA|BRANCH LEADER/.test(pos())}
+  function first(){return String(S?.profile?.full_name||'Ka-Varda').trim().split(/\s+/)[0]||'Ka-Varda'}
+
+  function steps(){
+    if(retail())return [
+      {tab:'app_menu',title:'Welcome, Management',body:`Hi ${first()}, this quick guide shows the main control points. Other alerts will wait until you finish.`},
+      {tab:'accounts',title:'Accounts and PINs',body:'Create users, reset PINs, and convert old accounts to Email + PIN login.',target:['#v123PinControl','#staffForm','.v87-account','[data-v101-tab="accounts"]','[data-tab="accounts"]']},
+      {tab:'attendance',title:'Attendance Monitor',body:'Review branch attendance, proof photos, missing records, hours, and downloadable cut-off summaries.',target:['#v108AttendanceMonitor','.v108-row','.v95-kpis','.v95-card','[data-v101-tab="attendance"]','[data-tab="attendance"]']},
+      {tab:'case_center',title:'Cases and Approvals',body:'Use Case Center and Approvals for evidence review, final point decisions, and closing actions.',target:['#caseCenter','.v95-card','[data-v101-tab="case_center"]','[data-tab="case_center"]']},
+      {tab:'missions',title:'Missions and Recognition',body:'Assign missions, monitor proof, and use News Feed or ratings to recognize valid positive work.',target:['#missionForm','.v95-card','[data-v101-tab="missions"]','[data-tab="missions"]']},
+      {tab:'app_menu',title:'Ready to Launch',body:'You can open Guide again from the small button. Alerts will now continue normally.',final:true}
+    ];
+    if(manager())return [
+      {tab:'app_menu',title:'Welcome, Leader',body:`Hi ${first()}, this quick guide shows your daily manager flow. Alerts will wait until you finish.`},
+      {tab:'profile',title:'Profile First',body:'Keep your own profile and uploaded records clear before managing the team.',target:['.v121-profile-card','#profileForm','[data-v101-tab="profile"]','[data-tab="profile"]']},
+      {tab:'attendance',title:'Time Clock and Monitoring',body:'Use your own Time In/Out and monitor your branch attendance from the same workspace.',target:['#attProof59','#attProof','.v108-row','.v95-card','[data-v101-tab="attendance"]','[data-tab="attendance"]']},
+      {tab:'tasklist',title:'Shift Output',body:'Save daily objectives once, then check completed work and submit proof before Time Out.',target:['#v96OutputForm','#v95OutputForm','[data-v101-tab="tasklist"]','[data-tab="tasklist"]']},
+      {tab:'missions',title:'Missions and Memos',body:'Assign missions, validate proof, publish memos, and monitor acknowledgments for your team.',target:['#missionForm','#memoForm','.v95-card','[data-v101-tab="missions"]','[data-tab="missions"]']},
+      {tab:'app_menu',title:'Ready to Work',body:'You can open Guide again from the small button. Alerts will now continue normally.',final:true}
+    ];
+    return [
+      {tab:'app_menu',title:'Welcome to V-Points',body:`Hi ${first()}, this fast guide shows what you need every shift. Alerts will wait until you finish.`},
+      {tab:'profile',title:'Update Profile',body:'Open Profile first. Your photo, ID, contact details, and uploaded documents appear here.',target:['.v121-profile-card','#profileForm','[data-v101-tab="profile"]','[data-tab="profile"]']},
+      {tab:'attendance',title:'Time Clock',body:'Use Time In and Time Out every shift. Proof photo and trusted time protect your record.',target:['#attProof59','#attProof','.v95-card','[data-v101-tab="attendance"]','[data-tab="attendance"]']},
+      {tab:'tasklist',title:'Shift Output',body:'Check completed daily objectives, upload proof, and submit your output before leaving.',target:['#v96OutputForm','#v95OutputForm','[data-v101-tab="tasklist"]','[data-tab="tasklist"]']},
+      {tab:'training',title:'My Training',body:'Open assigned training, review each page, and mark it done so your completion appears on your profile.',target:['.openTraining','.completeTraining','.empty','[data-v101-tab="training"]','[data-tab="training"]']},
+      {tab:'missions',title:'Missions and Memos',body:'Accept missions assigned to you, upload proof, and acknowledge required memos.',target:['#missionForm','.v95-card','[data-v101-tab="missions"]','[data-tab="missions"]']},
+      {tab:'app_menu',title:'You Are Ready',body:'Nice, you are ready to be a V-Pointer. Alerts will now continue normally.',final:true}
+    ];
+  }
+  function openTab(tab,cb){
+    if(!tab){setTimeout(()=>cb&&cb(),80);return}
+    try{if(typeof v92Go==='function')v92Go(tab);else{S.tab=tab;renderPage()}}catch(_){try{S.tab=tab;renderPage()}catch(__){}}
+    setTimeout(()=>cb&&cb(),460);
+  }
+  function visible(el){
+    if(!el)return false;
+    const r=el.getBoundingClientRect?.();
+    if(!r||r.width<4||r.height<4)return false;
+    const cs=typeof getComputedStyle==='function'?getComputedStyle(el):null;
+    return cs?.display!=='none'&&cs?.visibility!=='hidden';
+  }
+  function targetFor(st){
+    const list=Array.isArray(st.target)?st.target:[st.target];
+    for(const s of list.filter(Boolean)){const el=Q(s);if(visible(el))return el}
+    return null;
+  }
+  function clearRing(){Q('#v124Ring')?.remove(); if(highlightTimer)clearTimeout(highlightTimer)}
+  function highlight(el){
+    clearRing();
+    if(!el)return;
+    try{el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'})}catch(_){}
+    highlightTimer=setTimeout(()=>{
+      const r=el.getBoundingClientRect(), pad=7;
+      const ring=document.createElement('div');
+      ring.id='v124Ring';
+      ring.style.left=Math.max(6,r.left-pad)+'px';
+      ring.style.top=Math.max(6,r.top-pad)+'px';
+      ring.style.width=Math.min((window.innerWidth||360)-12,Math.max(42,r.width+pad*2))+'px';
+      ring.style.height=Math.max(42,r.height+pad*2)+'px';
+      document.body.appendChild(ring);
+    },220);
+  }
+  function cleanup(){
+    clearRing();
+    Q('#v124Coach')?.remove();
+    document.body.classList.remove('v124-guide-active');
+    active=false;
+  }
+  function finish(skipped=false){
+    markDone();
+    cleanup();
+    Q('#v124GuideBtn')?.remove();
+    try{toast(skipped?'Guide finished.':'Nice, you are ready to be a V-Pointer!','ok')}catch(_){}
+    setTimeout(flushPopups,850);
+  }
+  function flushPopups(){
+    if(!S?.profile)return;
+    document.body.classList.remove('v124-guide-active');
+    if(pendingRank&&typeof v113ShowLeaderboardHype==='function'){pendingRank=false;try{v113ShowLeaderboardHype(true)}catch(_){}}
+    if(pendingMemo){pendingMemo=false;try{oldShowMemo&&oldShowMemo()}catch(_){}}
+    if(pendingMission){pendingMission=false;try{oldShowMission&&oldShowMission()}catch(_){}}
+  }
+  function render(){
+    style();
+    const list=steps();
+    if(step>=list.length)return finish(false);
+    const st=list[step];
+    let root=Q('#v124Coach');
+    if(!root){root=document.createElement('div');root.id='v124Coach';document.body.appendChild(root)}
+    const progress=list.map((_,i)=>`<span class="${i<=step?'on':''}"></span>`).join('');
+    root.innerHTML=`<div id="v124Card" style="--v124-count:${list.length}">
+      <div class="v124-kicker">V-Points Guide ${step+1} of ${list.length}</div>
+      <h3>${E(st.title)}</h3>
+      <p>${E(st.body)}</p>
+      ${st.target?'<span class="v124-target-label">Highlighted area</span>':''}
+      <div class="v124-progress">${progress}</div>
+      <div class="v124-actions">
+        ${step?'<button type="button" class="btn ghost" id="v124Back">Back</button>':'<button type="button" class="btn ghost" id="v124Skip">Skip Guide</button>'}
+        <button type="button" class="btn blue" id="v124Next">${st.final?'Finish':'Next'}</button>
+        ${st.final?'':'<button type="button" class="btn ghost wide" id="v124FinishLater">Finish Guide</button>'}
+      </div>
+    </div>`;
+    Q('#v124Back')&&(Q('#v124Back').onclick=()=>{step=Math.max(0,step-1);render()});
+    Q('#v124Skip')&&(Q('#v124Skip').onclick=()=>finish(true));
+    Q('#v124FinishLater')&&(Q('#v124FinishLater').onclick=()=>finish(true));
+    Q('#v124Next').onclick=()=>{if(st.final)return finish(false);step++;render()};
+    if(st.tab&&String(S?.tab||'')!==st.tab)openTab(st.tab,()=>highlight(targetFor(st)));
+    else setTimeout(()=>highlight(targetFor(st)),120);
+  }
+  function start(force=false){
+    if(active||!S?.profile)return;
+    try{localStorage.setItem(oldKey(),'1')}catch(_){}
+    Q('#v106Coach')?.remove();Q('#v106GuideBtn')?.remove();Q('#memoLock')?.remove();
+    if(!force&&(done()||!termsOk()))return;
+    active=true;step=0;pendingMemo=true;pendingMission=true;
+    style();
+    document.body.classList.add('v124-guide-active');
+    openTab('app_menu',()=>setTimeout(render,160));
+  }
+  window.vpointsStartGuide=()=>{try{localStorage.removeItem(key())}catch(_){};start(true)};
+  window.v106StartGuide=window.vpointsStartGuide;
+  window.v124StartGuide=window.vpointsStartGuide;
+
+  function injectButton(){
+    style();
+    Q('#v106GuideBtn')?.remove();
+    if(!S?.profile||Q('#termsGate')){Q('#v124GuideBtn')?.remove();return}
+    if(Q('#v124GuideBtn'))return;
+    document.body.insertAdjacentHTML('beforeend','<button type="button" id="v124GuideBtn">Guide</button>');
+    Q('#v124GuideBtn').onclick=()=>window.vpointsStartGuide();
+  }
+
+  const oldShowMemo=window.showMemoLock;
+  if(typeof oldShowMemo==='function'){
+    window.showMemoLock=showMemoLock=function(){
+      if(blockPopups()){pendingMemo=true;Q('#memoLock')?.remove();return}
+      return oldShowMemo.apply(this,arguments);
+    };
+  }
+  const oldShowMission=window.showMissionPopup;
+  if(typeof oldShowMission==='function'){
+    window.showMissionPopup=showMissionPopup=function(){
+      if(blockPopups()){pendingMission=true;return}
+      return oldShowMission.apply(this,arguments);
+    };
+  }
+  const oldRank=window.v113ShowLeaderboardHype;
+  if(typeof oldRank==='function'){
+    window.v113ShowLeaderboardHype=function(force){
+      if(blockPopups()){pendingRank=true;return}
+      return oldRank.apply(this,arguments);
+    };
+  }
+  const oldModal=window.modal;
+  if(typeof oldModal==='function'){
+    window.modal=modal=function(html){
+      if(blockPopups()&&/v113-rank-wrap/i.test(String(html||''))){pendingRank=true;return}
+      return oldModal.apply(this,arguments);
+    };
+  }
+  const oldRenderApp=window.renderApp;
+  if(typeof oldRenderApp==='function'){
+    window.renderApp=renderApp=function(){
+      const out=oldRenderApp.apply(this,arguments);
+      try{localStorage.setItem(oldKey(),'1')}catch(_){}
+      setTimeout(()=>{injectButton();start(false)},650);
+      return out;
+    };
+  }
+  const oldRenderPage=window.renderPage;
+  if(typeof oldRenderPage==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRenderPage.apply(this,arguments);
+      setTimeout(injectButton,120);
+      return out;
+    };
+  }
+  document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&active)finish(true)});
+  window.addEventListener('resize',()=>{if(active)render()});
+  setTimeout(()=>{injectButton();start(false)},1400);
+  console.log('V124 simple first-use guide and popup queue loaded');
+})();
+/* ================= END V124 ================= */
+/* ================= V125 GUIDE VISIBILITY CLEANUP ================= */
+(function(){
+  if(window.__VPOINTS_V125_GUIDE_VISIBILITY__)return;
+  window.__VPOINTS_V125_GUIDE_VISIBILITY__=true;
+  window.VSCORE_FINAL_BUILD='V126_STAFF_TRAINING_GUIDE_RESTORED';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+
+  function style125(){
+    if(Q('#v125-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v125-style">
+      #v124Coach{background:transparent!important;pointer-events:none!important}
+      body.v124-guide-active .modal:has(#v47GotWelcome){display:none!important}
+      body.v124-guide-active #v106Coach,
+      body.v124-guide-active #v106Spot,
+      body.v124-guide-active #v106Hand,
+      body.v124-guide-active #v106GuideBtn{display:none!important}
+      body.v124-guide-active .modal-card:has(#v47GotWelcome){display:none!important}
+      #v124Ring{background:transparent!important;box-shadow:0 0 0 3px rgba(37,99,235,.18),0 8px 22px rgba(15,23,42,.12)!important}
+      #v124Card{box-shadow:0 14px 42px rgba(15,23,42,.18)!important}
+    </style>`);
+  }
+  function profileId125(){return String(window.S?.profile?.id||'anon')}
+  function markLegacyGuideDone125(){
+    try{localStorage.setItem('vscore_v47_welcome_'+profileId125(),'1')}catch(_){}
+    try{localStorage.setItem(`VPOINTS_COACH_DONE_${profileId125()}_V106`,'1')}catch(_){}
+  }
+  function isLegacyGuideText125(text){
+    text=String(text||'');
+    return /Your daily guide inside V-Points|For Employees|Got it.+Start V-Points|Welcome,\s*Ka-Varda/i.test(text);
+  }
+  function removeLegacyGuide125(){
+    style125();
+    markLegacyGuideDone125();
+    Q('#v106Coach')?.remove();Q('#v106Spot')?.remove();Q('#v106Hand')?.remove();Q('#v106GuideBtn')?.remove();
+    A('.modal').forEach(m=>{
+      const text=m.textContent||'';
+      if(Q('#v47GotWelcome',m)||isLegacyGuideText125(text))m.remove();
+    });
+  }
+
+  const oldModal125=window.modal;
+  if(typeof oldModal125==='function'){
+    window.modal=modal=function(html){
+      if(isLegacyGuideText125(html)){
+        markLegacyGuideDone125();
+        setTimeout(removeLegacyGuide125,20);
+        return null;
+      }
+      const out=oldModal125.apply(this,arguments);
+      setTimeout(removeLegacyGuide125,30);
+      return out;
+    };
+  }
+  const oldRenderApp125=window.renderApp;
+  if(typeof oldRenderApp125==='function'){
+    window.renderApp=renderApp=function(){
+      markLegacyGuideDone125();
+      const out=oldRenderApp125.apply(this,arguments);
+      setTimeout(removeLegacyGuide125,120);
+      setTimeout(removeLegacyGuide125,950);
+      setTimeout(removeLegacyGuide125,1800);
+      return out;
+    };
+  }
+  const oldRenderPage125=window.renderPage;
+  if(typeof oldRenderPage125==='function'){
+    window.renderPage=renderPage=function(){
+      const out=oldRenderPage125.apply(this,arguments);
+      setTimeout(removeLegacyGuide125,120);
+      return out;
+    };
+  }
+  if(typeof MutationObserver!=='undefined'){
+    const mo=new MutationObserver(()=>removeLegacyGuide125());
+    setTimeout(()=>{if(document.body)mo.observe(document.body,{childList:true,subtree:true})},200);
+  }
+  setTimeout(removeLegacyGuide125,300);
+  setTimeout(removeLegacyGuide125,1200);
+  console.log('V125 guide visibility cleanup loaded');
+})();
+/* ================= END V125 ================= */
+/* ================= V127 COMPACT PHONE LOGIN ================= */
+(function(){
+  if(window.__VPOINTS_V127_COMPACT_LOGIN__)return;
+  window.__VPOINTS_V127_COMPACT_LOGIN__=true;
+  window.VSCORE_FINAL_BUILD='V127_COMPACT_PHONE_LOGIN';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+
+  function style127(){
+    if(Q('#v127-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v127-style">
+      body.v127-auth-compact{background:#fff!important}
+      body.v127-auth-compact .auth{min-height:100svh!important;align-items:start!important;place-items:start center!important;padding:10px 12px 14px!important;background:#fff!important}
+      body.v127-auth-compact .auth-card{width:min(390px,100%)!important;min-height:auto!important;margin:0 auto!important;border-radius:22px!important;display:flex!important;flex-direction:column!important;box-shadow:none!important;overflow:visible!important}
+      body.v127-auth-compact .hero{padding:8px 12px 2px!important;text-align:center!important;background:#fff!important}
+      body.v127-auth-compact .hero .logo{width:48px!important;height:48px!important;border-radius:14px!important;margin:0 auto 6px!important;font-size:18px!important}
+      body.v127-auth-compact .hero h1{font-size:21px!important;line-height:1.02!important;margin:4px 0 1px!important}
+      body.v127-auth-compact .hero h2{font-size:12px!important;margin:0!important;color:#64748b!important}
+      body.v127-auth-compact .hero p,
+      body.v127-auth-compact .hero .notice{display:none!important}
+      body.v127-auth-compact .auth-panel{padding:4px 12px 10px!important;background:#fff!important}
+      body.v127-auth-compact #v105InstallCard{margin:0 0 8px!important;padding:8px 10px!important;border-radius:14px!important;box-shadow:none!important}
+      body.v127-auth-compact #v105InstallCard .v105-install-head{gap:8px!important;align-items:center!important}
+      body.v127-auth-compact #v105InstallCard .v105-install-icon{width:30px!important;height:30px!important;border-radius:10px!important;font-size:11px!important}
+      body.v127-auth-compact #v105InstallCard h3{font-size:14px!important;margin:0!important}
+      body.v127-auth-compact #v105InstallCard p{font-size:11px!important;line-height:1.25!important}
+      body.v127-auth-compact #v105InstallCard .v105-install-actions{grid-template-columns:1fr 1fr!important;gap:6px!important;margin-top:8px!important}
+      body.v127-auth-compact #v105InstallCard .btn{min-height:34px!important;padding:7px 9px!important;border-radius:11px!important;font-size:12px!important}
+      body.v127-auth-compact .v120-login-title{margin:2px 0 8px!important;text-align:center!important}
+      body.v127-auth-compact .v120-login-title b{font-size:19px!important;line-height:1.05!important}
+      body.v127-auth-compact .v120-login-title span{font-size:11px!important;margin-top:1px!important}
+      body.v127-auth-compact .v120-pin-box{gap:7px!important}
+      body.v127-auth-compact .field{margin:5px 0!important}
+      body.v127-auth-compact .field label{font-size:10px!important;margin-bottom:4px!important;letter-spacing:0!important}
+      body.v127-auth-compact .v120-pin-box input,
+      body.v127-auth-compact #loginEmployeeNo,
+      body.v127-auth-compact #loginPin{height:42px!important;border-radius:13px!important;font-size:16px!important;padding:8px 10px!important}
+      body.v127-auth-compact .v120-pin-dots{gap:8px!important;margin:2px 0 3px!important}
+      body.v127-auth-compact .v120-pin-dot{width:12px!important;height:12px!important;border-width:2px!important}
+      body.v127-auth-compact .v120-keypad{max-width:270px!important;gap:7px!important;margin:2px auto 6px!important}
+      body.v127-auth-compact .v120-key{height:49px!important;font-size:24px!important;line-height:1!important;box-shadow:none!important}
+      body.v127-auth-compact .v120-login-btn{height:43px!important;min-height:43px!important;border-radius:999px!important;font-size:15px!important}
+      body.v127-auth-compact .v120-login-alt{font-size:11px!important;line-height:1.25!important;margin-top:0!important}
+      body.v127-auth-compact .notice.success{padding:8px!important;font-size:12px!important;border-radius:12px!important}
+      body.v127-auth-compact .tabs{margin:6px 0!important}
+      @media(max-width:380px){
+        body.v127-auth-compact .auth{padding:8px 10px!important}
+        body.v127-auth-compact .v120-keypad{max-width:250px!important;gap:6px!important}
+        body.v127-auth-compact .v120-key{height:45px!important;font-size:22px!important}
+        body.v127-auth-compact .hero .logo{width:42px!important;height:42px!important}
+        body.v127-auth-compact .hero h1{font-size:19px!important}
+      }
+    </style>`);
+  }
+  function sync127(){
+    style127();
+    const isAuth=!!(Q('#root .auth')&&!Q('#root .app'));
+    document.body.classList.toggle('v127-auth-compact',isAuth);
+  }
+  const oldRenderAuth127=window.renderAuth;
+  if(typeof oldRenderAuth127==='function'){
+    window.renderAuth=renderAuth=function(){const out=oldRenderAuth127.apply(this,arguments);setTimeout(sync127,20);setTimeout(sync127,180);return out};
+  }
+  const oldRenderApp127=window.renderApp;
+  if(typeof oldRenderApp127==='function'){
+    window.renderApp=renderApp=function(){document.body.classList.remove('v127-auth-compact');return oldRenderApp127.apply(this,arguments)};
+  }
+  setTimeout(sync127,300);
+  console.log('V127 compact phone login loaded');
+})();
+/* ================= END V127 ================= */
+/* ================= V128 LAUNCH POLISH + CASE SUMMARY + QUIZ SAMPLES ================= */
+(function(){
+  if(window.__VPOINTS_V128_LAUNCH_POLISH__)return;
+  window.__VPOINTS_V128_LAUNCH_POLISH__=true;
+  window.VSCORE_FINAL_BUILD='V128_LAUNCH_READY_POLISH';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const msg=(m,t='ok')=>{try{toast(m,t)}catch(_){console[t==='error'?'error':'log'](m)}};
+  const me=()=>String(window.S?.profile?.id||'');
+  const role=()=>String(window.S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos=()=>String(window.S?.profile?.position||'').toUpperCase();
+  const retail=()=>['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos());
+  const lead=()=>!retail()&&(['manager','branch_manager','team_leader','fsqa_officer','branch_leader'].includes(role())||/TEAM LEADER|BRANCH|FSQA|MANAGER/.test(pos()));
+  const manager=()=>retail()||lead();
+  const closedSet=new Set(['closed','approved','cancelled','done','completed','validated','resolved_true','resolved_false','closed / deducted','closed_/_deducted','rejected']);
+
+  function style128(){
+    if(Q('#v128-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v128-style">
+      body.v128-launch{background:#f5f7fb!important;color:#111827}
+      body.v128-launch .main{background:#f5f7fb!important;padding:14px!important}
+      body.v128-launch .topbar{border:1px solid #e5e7eb!important;border-left:5px solid #b91c1c!important;border-top:0!important;border-radius:18px!important;padding:12px 14px!important;box-shadow:0 10px 24px rgba(15,23,42,.055)!important;background:#fff!important}
+      body.v128-launch .topbar h2{font-size:22px!important;line-height:1.08!important;letter-spacing:0!important}
+      body.v128-launch .card,
+      body.v128-launch .v95-card,
+      body.v128-launch .v95-case,
+      body.v128-launch .v101-tool,
+      body.v128-launch .v119-policy-card,
+      body.v128-launch .academy-card,
+      body.v128-launch .notice{border-radius:14px!important;box-shadow:0 8px 20px rgba(15,23,42,.045)!important}
+      body.v128-launch .card,
+      body.v128-launch .v95-card,
+      body.v128-launch .academy-card{padding:14px!important}
+      body.v128-launch h1,body.v128-launch h2,body.v128-launch h3,body.v128-launch h4{letter-spacing:0!important}
+      body.v128-launch .btn{border-radius:12px!important;min-height:38px!important;padding:9px 12px!important;box-shadow:none!important;touch-action:manipulation}
+      body.v128-launch .btn.sm{min-height:32px!important;padding:7px 9px!important}
+      body.v128-launch input,body.v128-launch select,body.v128-launch textarea{border-radius:12px!important;border-color:#dbe2ea!important;background:#fff!important}
+      body.v128-launch .v95-hero,
+      body.v128-launch .v62-hero,
+      body.v128-launch .v85-hero,
+      body.v128-launch .academy-hero{background:#fff!important;color:#111827!important;border:1px solid #e5e7eb!important;border-left:5px solid #b91c1c!important;border-radius:16px!important;padding:13px!important;box-shadow:0 8px 22px rgba(15,23,42,.045)!important}
+      body.v128-launch .v95-hero h2,
+      body.v128-launch .v62-hero h2,
+      body.v128-launch .v85-hero h2,
+      body.v128-launch .academy-hero h2{color:#7f1d1d!important;font-size:22px!important;line-height:1.08!important}
+      body.v128-launch .v95-hero p,
+      body.v128-launch .v62-hero p,
+      body.v128-launch .v85-hero p,
+      body.v128-launch .academy-hero p{font-size:13px!important;line-height:1.35!important;color:#64748b!important}
+      .v128-summary{background:#fff;border:1px solid #e5e7eb;border-left:5px solid #2563eb;border-radius:16px;padding:13px;margin:0 0 12px;box-shadow:0 8px 22px rgba(15,23,42,.045)}
+      .v128-summary-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+      .v128-summary h3{margin:0;color:#7f1d1d}.v128-summary p{margin:4px 0 0;color:#64748b;font-size:13px;line-height:1.35}
+      .v128-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.v128-kpi{border:1px solid #e5e7eb;background:#f8fafc;border-radius:12px;padding:9px}.v128-kpi span{display:block;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:1000}.v128-kpi b{display:block;font-size:23px;color:#111827;margin-top:2px}
+      .v128-process{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:10px}.v128-step{border:1px solid #e5e7eb;background:#fff;border-radius:11px;padding:7px;font-size:11px;color:#475569;font-weight:900}.v128-step b{display:block;color:#7f1d1d}
+      .v128-case-process{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}.v128-chip{border-radius:999px;padding:4px 7px;background:#f1f5f9;color:#475569;font-size:10px;font-weight:1000}.v128-chip.on{background:#dbeafe;color:#1e40af}.v128-chip.done{background:#dcfce7;color:#166534}
+      .v128-quiz-help{border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:11px;margin:9px 0;color:#1e3a8a;font-size:12px;line-height:1.4}.v128-quiz-help pre{white-space:pre-wrap;background:#fff;border:1px solid #dbeafe;border-radius:12px;padding:9px;margin:8px 0 0;color:#0f172a;font-size:11px;line-height:1.35}
+      @media(max-width:760px){body.v128-launch .main{padding:10px!important}.v128-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v128-process{grid-template-columns:1fr}.v128-summary-head{display:grid}.v128-summary .btn{width:100%}body.v128-launch .topbar h2{font-size:19px!important}}
+    </style>`);
+  }
+
+  function personName(id){try{return typeof emp==='function'?(emp(id)?.full_name||'-'):'-'}catch(_){return '-'}}
+  function personBranch(id,fallback=''){try{return typeof emp==='function'?(emp(id)?.branch||fallback):fallback}catch(_){return fallback}}
+  function photo128(raw){
+    if(!raw)return '';
+    if(Array.isArray(raw))return photo128(raw[0]);
+    if(typeof raw==='object')return raw.thumbnailUrl||raw.url||raw.directViewUrl||raw.viewUrl||raw.photo_url||'';
+    const s=String(raw||'').trim();
+    try{return photo128(JSON.parse(s))}catch(_){return s}
+  }
+  function status128(raw){
+    const s=String(raw||'open').toLowerCase().replace(/[_-]+/g,' ').trim();
+    if(closedSet.has(s)||/closed|validated|resolved|cancelled|rejected|approved|completed/.test(s))return 'closed';
+    if(/action|accepted|assigned|explain|progress|acknowledge/.test(s))return 'action';
+    if(/review|validation|submitted|pending merit|under review/.test(s))return 'review';
+    return 'open';
+  }
+  function row128(type,table,id,title,person,branch,status,details,evidence,created,record){
+    return {key:type+':'+id,type,table,id,title:title||'Case',person:person||'-',branch:branch||'-',status:status128(status),raw:status||'open',details:details||'',evidence:photo128(evidence),created_at:created||record?.created_at||'',record:record||{}};
+  }
+  function caseRows128(){
+    const rows=[];
+    (S?.reports||[]).forEach(r=>rows.push(row128('report','investigation_reports',r.id,'Private report / investigation',personName(r.reported_employee_id)||r.reported_name_manual,r.branch||personBranch(r.reported_employee_id),r.status,r.story||r.description,r.evidence_url,r.created_at||r.happened_at,r)));
+    (S?.violations||[]).forEach(v=>rows.push(row128('violation','violations',v.id,v.violation_type||v.type_name||'Violation report',personName(v.employee_id),v.branch||personBranch(v.employee_id),v.status||v.action_status,v.description||v.manager_remarks,v.evidence_url,v.created_at,v)));
+    (S?.tasks||[]).filter(t=>/case|corrective|fsqa|problem|mission/i.test(String(t.source_type||'')+' '+String(t.title||''))||['submitted','pending_merit','for_validation','under_review'].includes(String(t.status||'').toLowerCase())).forEach(t=>rows.push(row128('task','vscore_tasks',t.id,t.title||'Mission / corrective action',personName(t.assigned_to_employee_id),t.branch||personBranch(t.assigned_to_employee_id),t.status,t.task_items||t.description,t.proof_url,t.created_at,t)));
+    (S?.fsqa||[]).forEach(f=>{const critical=String(f.critical_failure||f.has_critical||f.critical||'false')==='true'||Number(f.score||f.score_percent||100)<85;if(!critical&&status128(f.status||f.rectification_status)==='closed')return;rows.push(row128('fsqa','fsqa_audits',f.id,'FSQA issue '+(f.score||f.score_percent||''),f.branch||'Branch',f.branch||'',f.status||f.rectification_status,f.findings||f.notes,f.evidence_url||f.audit_evidence_url,f.created_at,f))});
+    return rows.filter(c=>retail()||String(c.branch)===String(S?.profile?.branch||'')||String(c.record?.employee_id||c.record?.assigned_to_employee_id||c.record?.reported_employee_id||'')===me()).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+  }
+  function shownRows128(){
+    const rows=caseRows128(), filter=localStorage.getItem('v95_case_filter')||localStorage.getItem('v62_case_filter')||'active';
+    return filter==='active'?rows.filter(c=>c.status!=='closed'):filter==='all'?rows:rows.filter(c=>c.status===filter);
+  }
+  function counts128(rows=caseRows128()){
+    return {active:rows.filter(c=>c.status!=='closed').length,open:rows.filter(c=>c.status==='open').length,action:rows.filter(c=>c.status==='action').length,review:rows.filter(c=>c.status==='review').length,closed:rows.filter(c=>c.status==='closed').length,total:rows.length};
+  }
+  function processHtml128(st){
+    const n=st==='closed'?5:st==='review'?4:st==='action'?3:1;
+    return `<div class="v128-case-process">${['1 Report','2 Evidence','3 Action','4 Retail Review','5 Closed'].map((x,i)=>`<span class="v128-chip ${i+1<n?'done':i+1===n?'on':''}">${x}</span>`).join('')}</div>`;
+  }
+  window.v128SetCaseFilter=function(filter){localStorage.setItem('v95_case_filter',filter);localStorage.setItem('v62_case_filter',filter);try{renderPage()}catch(_){}};
+  window.v128OpenCaseSummary=function(){
+    const rows=caseRows128(), c=counts128(rows);
+    const table=rows.slice(0,120).map(x=>`<tr><td><b>${E(x.title)}</b><br><span class="small muted">${E(x.type)} / ${E(x.raw)}</span></td><td>${E(x.person)}<br><span class="small muted">${E(x.branch)}</span></td><td>${E(x.status)}</td><td>${E(x.created_at?new Date(x.created_at).toLocaleString():'-')}</td><td><button class="btn sm ghost" onclick="v95CaseDetails('${E(x.key)}')">Details</button>${x.status!=='closed'&&retail()?` <button class="btn sm green" onclick="v128OpenCloseCase('${E(x.key)}')">Close</button>`:''}</td></tr>`).join('');
+    modal(`<h2>Retail Case Summary</h2><div class="v128-kpis"><div class="v128-kpi"><span>Active</span><b>${c.active}</b></div><div class="v128-kpi"><span>Action</span><b>${c.action}</b></div><div class="v128-kpi"><span>Review</span><b>${c.review}</b></div><div class="v128-kpi"><span>Closed</span><b>${c.closed}</b></div></div><div class="notice success" style="margin:10px 0"><b>Process:</b> Report -> Evidence -> Action / Explanation -> Retail Review -> Final Close.</div><div style="overflow:auto"><table><thead><tr><th>Case</th><th>Person / Branch</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody>${table||'<tr><td colspan="5"><div class="empty">No cases loaded.</div></td></tr>'}</tbody></table></div><button class="btn dark full" onclick="closeModal()">Close Summary</button>`);
+  };
+  async function safeUpdate128(table,id,patches){
+    let last=null;
+    for(const p of patches){try{const r=await sb.from(table).update(p).eq('id',id);if(!r.error)return r;last=r.error}catch(e){last=e}}
+    if(last)throw last;
+  }
+  async function audit128(action,table,details){try{if(typeof auditEvent==='function')await auditEvent(action,table,details)}catch(_){}}
+  window.v128OpenCloseCase=function(key){
+    const c=caseRows128().find(x=>String(x.key)===String(key));
+    if(!c)return msg('Case not found. Please refresh once.','error');
+    if(!retail()&&c.type!=='task')return msg('Final case closing is for Retail / Executive. Branch leaders can validate and recommend.','error');
+    modal(`<h2>Final Close Case</h2><div class="notice"><b>${E(c.title)}</b><br>${E(c.person)} - ${E(c.branch)}<br><span class="small muted">Current status: ${E(c.raw)}</span></div>${processHtml128('review')}<div class="field"><label>Final closing decision / summary</label><textarea id="v128CloseNote" required placeholder="Example: Evidence reviewed. Corrective action completed. Case closed by Retail."></textarea></div><button class="btn green full" id="v128CloseSubmit">Close Case Now</button><button class="btn dark full" style="margin-top:8px" onclick="closeModal()">Back</button>`);
+    Q('#v128CloseSubmit').onclick=ev=>window.v128CloseCase(key,ev.currentTarget);
+  };
+  window.v128CloseCase=async function(key,btn){
+    const c=caseRows128().find(x=>String(x.key)===String(key));
+    if(!c)return msg('Case not found. Please refresh once.','error');
+    if(!retail()&&c.type!=='task')return msg('Final case closing is for Retail / Executive.','error');
+    const note=String(Q('#v128CloseNote')?.value||'').trim()||'Closed with management validation';
+    await act(btn,{busy:'Closing...',success:'Closed',reset:'Closed',toast:'Case closed and summary saved.'},async()=>{
+      const now=new Date().toISOString();
+      await safeUpdate128(c.table,c.id,[{status:'closed',resolution:note,manager_remarks:note,closing_summary:note,closed_at:now,resolved_at:now,resolved_by:me(),validated_by:me(),validated_at:now,updated_at:now},{status:'closed',resolution:note,updated_at:now},{status:'closed'}]);
+      await audit128('Case final closed',c.table,`${c.title}: ${note}`);
+    },async()=>{try{closeModal()}catch(_){};await loadData();renderPage()});
+  };
+  window.v95CloseCase=function(key,btn){return window.v128OpenCloseCase(key,btn)};
+  window.v62CloseCase=function(key,btn){return window.v128OpenCloseCase(key,btn)};
+  window.v95CaseDetails=function(key){
+    const c=caseRows128().find(x=>String(x.key)===String(key));if(!c)return msg('Case not found. Please refresh once.','error');
+    const u=c.evidence;modal(`<h2>${E(c.title)}</h2>${processHtml128(c.status)}<p><b>Status:</b> ${E(c.raw)}<br><b>Employee/Branch:</b> ${E(c.person)} - ${E(c.branch)}<br><b>Date:</b> ${E(c.created_at?new Date(c.created_at).toLocaleString():'-')}</p><div class="notice" style="white-space:pre-wrap">${E((c.details||'No details.').slice(0,2400))}</div>${u?`<div class="v95-photo-row"><img style="width:100%;height:auto;max-height:50vh;object-fit:contain" src="${E((typeof v39DriveDisplayUrl==='function'?v39DriveDisplayUrl(u):u))}"></div>`:''}<div class="v95-row" style="margin-top:10px">${c.status!=='closed'&&retail()?`<button class="btn green" onclick="v128OpenCloseCase('${E(c.key)}')">Final Close</button>`:''}<button class="btn dark" onclick="closeModal()">Close</button></div>`);
+  };
+
+  function decorateCases128(root=document){
+    if(String(S?.tab||'')!=='case_center')return;
+    const page=Q('#page');if(!page)return;
+    const rows=caseRows128(), c=counts128(rows);
+    if(!Q('#v128CaseSummary',page)){
+      page.insertAdjacentHTML('afterbegin',`<div id="v128CaseSummary" class="v128-summary"><div class="v128-summary-head"><div><h3>Launch Case Control</h3><p>Retail can view every case summary and final close. Branch leaders can monitor, validate, recommend, and submit proof.</p></div><div class="v95-row"><button class="btn blue" onclick="v128OpenCaseSummary()">View Full Summary</button><button class="btn ghost" onclick="v128SetCaseFilter('closed')">Closed Cases</button></div></div><div class="v128-kpis"><div class="v128-kpi"><span>Active</span><b>${c.active}</b></div><div class="v128-kpi"><span>Open</span><b>${c.open}</b></div><div class="v128-kpi"><span>For Review</span><b>${c.review}</b></div><div class="v128-kpi"><span>Closed</span><b>${c.closed}</b></div></div><div class="v128-process"><div class="v128-step"><b>1 Report</b>Concern, violation, mission, or FSQA issue.</div><div class="v128-step"><b>2 Evidence</b>Photo, story, time, branch, and involved staff.</div><div class="v128-step"><b>3 Action</b>Explanation, coaching, mission, or proof.</div><div class="v128-step"><b>4 Retail Review</b>Final points and validation.</div><div class="v128-step"><b>5 Closed</b>Saved summary and audit trail.</div></div></div>`);
+    }
+    const shown=shownRows128();
+    A('.v95-case',page).forEach((card,i)=>{if(Q('.v128-case-process',card))return;const row=shown[i];if(row){const meta=Q('.v95-case-meta',card)||Q('.v95-case-title',card);meta?.insertAdjacentHTML('afterend',processHtml128(row.status));}});
+  }
+
+  function quizSample128(){return `1. What should staff submit before Time Out?\nA. Shift output with proof photo\nB. Nothing, just leave the branch\nC. A random screenshot\nD. Only a verbal update\nCorrect Answer: A\n\n2. What is valid mission proof?\nA. Clear photo or document showing the completed task\nB. Empty photo\nC. Unrelated image\nD. No proof needed\nCorrect Answer: A`;}
+  window.v128FillQuizSample=function(){
+    const sample=quizSample128();
+    const paste=Q('#acadQuizText')||Q('#trQuizText');
+    if(paste){paste.value=sample;paste.dispatchEvent(new Event('input',{bubbles:true}));try{acadPreviewQuiz?.();v27PreviewQuiz?.();v25QuizParseCount?.()}catch(_){};msg('Sample quiz format added.','ok');return;}
+    const vals={v26Q:'What should staff submit before Time Out?',v26A:'Shift output with proof photo',v26B:'Nothing, just leave the branch',v26C:'A random screenshot',v26D:'Only a verbal update',v26Exp:'Daily output protects attendance and work records.'};
+    Object.entries(vals).forEach(([id,val])=>{const el=Q('#'+id);if(el)el.value=val});
+    const correct=Q('#v26Correct');if(correct)correct.value='A';
+    msg('Sample structured question filled.','ok');
+  };
+  function decorateQuiz128(root=document){
+    const paste=Q('#acadQuizText',root)||Q('#trQuizText',root);
+    if(paste){
+      paste.placeholder=quizSample128();
+      if(!Q('#v128QuizHelp',paste.closest('.field')||root)){
+        paste.insertAdjacentHTML('afterend',`<div id="v128QuizHelp" class="v128-quiz-help"><b>Question paste format</b><br>Use number, A/B/C/D choices, then Correct Answer. <button type="button" class="btn sm blue" onclick="v128FillQuizSample()">Use Sample Format</button><pre>${E(quizSample128())}</pre></div>`);
+      }
+    }
+    const q=Q('#v26Q',root);
+    if(q){
+      q.placeholder='Example: What should staff submit before Time Out?';
+      [['#v26A','Shift output with proof photo'],['#v26B','Nothing, just leave the branch'],['#v26C','A random screenshot'],['#v26D','Only a verbal update'],['#v26Exp','Daily output protects attendance and work records.']].forEach(([s,ph])=>{const el=Q(s,root);if(el)el.placeholder=ph});
+      const host=Q('#v26QuizList',root)||q.closest('.field');
+      if(host&&!Q('#v128BuilderHelp',root))host.insertAdjacentHTML('beforebegin',`<div id="v128BuilderHelp" class="v128-quiz-help"><b>Structured exam sample</b><br>Fill the question, options A-D, choose the correct answer, then tap Add Question. <button type="button" class="btn sm blue" onclick="v128FillQuizSample()">Fill Sample Question</button></div>`);
+    }
+  }
+
+  function decorate128(root=document){
+    style128();
+    document.body.classList.toggle('v128-launch',!!(S?.profile&&Q('#root .app')));
+    decorateCases128(root);
+    decorateQuiz128(root);
+  }
+  const oldRenderPage128=window.renderPage;
+  if(typeof oldRenderPage128==='function'){
+    window.renderPage=renderPage=function(){const out=oldRenderPage128.apply(this,arguments);setTimeout(()=>decorate128(Q('#page')||document),40);setTimeout(()=>decorate128(document),220);return out};
+  }
+  const oldRenderApp128=window.renderApp;
+  if(typeof oldRenderApp128==='function'){
+    window.renderApp=renderApp=function(){const out=oldRenderApp128.apply(this,arguments);setTimeout(()=>decorate128(document),80);setTimeout(()=>decorate128(document),360);return out};
+  }
+  const oldBind128=window.bind;
+  if(typeof oldBind128==='function'){
+    window.bind=bind=function(){const out=oldBind128.apply(this,arguments);setTimeout(()=>decorate128(document),50);return out};
+  }
+  setTimeout(()=>decorate128(document),600);
+  console.log('V128 launch polish loaded');
+})();
+/* ================= END V128 ================= */
+/* ================= V129 ACCOUNT BRANCH SCOPE + SHOW PIN ================= */
+(function(){
+  if(window.__VPOINTS_V129_ACCOUNT_SCOPE__)return;
+  window.__VPOINTS_V129_ACCOUNT_SCOPE__=true;
+  window.VSCORE_FINAL_BUILD='V129_ACCOUNT_BRANCH_SCOPE_SHOW_PIN';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const msg=(m,t='ok')=>{try{toast(m,t)}catch(_){console[t==='error'?'error':'log'](m)}};
+  const role=()=>String(S?.profile?.role||'employee').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos=()=>String(S?.profile?.position||'').toUpperCase();
+  const me=()=>String(S?.profile?.id||'');
+  const isNational=b=>String(b||'').trim().toUpperCase()==='NATIONAL BRANCH';
+  const retail=()=>['retail_head','national_retail_head','head_office_admin','head_office','executive','management','master','hr','admin'].includes(role())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/.test(pos())||isNational(S?.profile?.branch);
+  const branchLeader=()=>!retail()&&(['manager','branch_manager','team_leader','fsqa_officer','branch_leader'].includes(role())||/TEAM LEADER|BRANCH|FSQA|MANAGER/.test(pos()));
+  const canCreate=()=>retail()||branchLeader();
+  const managerPosition=p=>/MANAGER|TEAM LEADER|BRANCH LEADER|FSQA/i.test(String(p||''));
+  const highPowerPosition=p=>/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR/i.test(String(p||''));
+  const posToRole129=p=>{try{return typeof posToRole==='function'?posToRole(p):(/TEAM LEADER/i.test(p)?'team_leader':/MANAGER/i.test(p)?'manager':/FSQA/i.test(p)?'fsqa_officer':/RETAIL/i.test(p)?'retail_head':'employee')}catch(_){return 'employee'}};
+
+  function style129(){
+    if(Q('#v129-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v129-style">
+      .v129-password-wrap{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center}
+      .v129-password-wrap .input{min-width:0}
+      .v129-show-pin{white-space:nowrap;min-height:38px!important}
+      #v129AccessBox{border:1px solid #dbeafe;background:#eff6ff;border-radius:14px;padding:11px;margin:10px 0}
+      .v129-branch-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:220px;overflow:auto;margin-top:8px}
+      .v129-check{display:flex;gap:7px;align-items:flex-start;background:#fff;border:1px solid #dbeafe;border-radius:11px;padding:8px;font-size:12px;font-weight:900;color:#334155}
+      .v129-check input{width:18px;height:18px;flex:0 0 auto}
+      .v129-help{font-size:12px;color:#475569;line-height:1.35;font-weight:800}
+      .v129-hidden-legacy{display:none!important}
+      @media(max-width:560px){.v129-branch-grid{grid-template-columns:1fr}.v129-password-wrap{grid-template-columns:1fr}.v129-show-pin{width:100%}}
+    </style>`);
+  }
+  function parseArr(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.map(String).filter(Boolean);
+    if(typeof v==='object')return Object.values(v).flatMap(parseArr);
+    const s=String(v||'').trim();
+    try{return parseArr(JSON.parse(s))}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function allBranches(){
+    const out=[...(typeof defaultBranches!=='undefined'?defaultBranches:[]),...(S?.branches||[]).map(b=>b.branch_name||b.name||b.branch),...(S?.employees||[]).map(e=>e.branch),...(S?.allEmployees||[]).map(e=>e.branch),S?.profile?.branch].filter(Boolean);
+    return [...new Set(out.map(String))].sort((a,b)=>a.localeCompare(b));
+  }
+  function settingAccess(id=me()){
+    const set=S?.settings||{}, keys=['branch_access_'+id,'manager_branch_access_'+id,'assigned_branches_'+id,'v77_branch_access_'+id,'v77_manager_branch_access_'+id];
+    let out=[];
+    keys.forEach(k=>out.push(...parseArr(set[k])));
+    keys.forEach(k=>{try{out.push(...parseArr(localStorage.getItem(k)))}catch(_){}});
+    return out;
+  }
+  function creatorBranches(){
+    if(retail())return allBranches();
+    const p=S?.profile||{};
+    const out=[p.branch,...parseArr(p.assigned_branches),...parseArr(p.managed_branches),...parseArr(p.access_branches),...parseArr(p.branch_access),...parseArr(p.branch_scope),...settingAccess(p.id)].filter(Boolean);
+    return [...new Set(out.map(String).filter(b=>!isNational(b)))].sort((a,b)=>a.localeCompare(b));
+  }
+  function targetBranchesFor(position){
+    let list=creatorBranches();
+    if(retail()){
+      list=allBranches();
+      if(managerPosition(position)||!highPowerPosition(position))list=list.filter(b=>!isNational(b));
+    }else{
+      list=list.filter(b=>!isNational(b));
+    }
+    if(!list.length&&!isNational(S?.profile?.branch))list=[S?.profile?.branch].filter(Boolean);
+    return [...new Set(list)].filter(Boolean);
+  }
+  function refreshSelectOptions(sel,items){
+    if(!sel||!items.length)return;
+    const current=sel.value;
+    sel.innerHTML=items.map(b=>`<option value="${E(b)}">${E(b)}</option>`).join('');
+    sel.value=items.includes(current)?current:items[0];
+  }
+  function ensureBranchSelect(){
+    let el=Q('#staffBranch');
+    if(!el)return null;
+    if(el.tagName!=='SELECT'){
+      if(typeof el.replaceWith!=='function')return el;
+      const sel=document.createElement('select');
+      sel.id='staffBranch'; sel.className='input'; sel.value=el.value||'';
+      el.replaceWith(sel); el=sel;
+    }
+    return el;
+  }
+  function selectedExtraAccess(){
+    return A('.v129BranchAccess:checked').map(x=>x.value).filter(Boolean);
+  }
+  function renderAccessBox(position,branches,home){
+    let box=Q('#v129AccessBox');
+    const show=retail()&&managerPosition(position);
+    if(!show){box?.remove();return}
+    const field=Q('#staffBranch')?.closest('.field')||Q('#staffBranch')?.parentElement;
+    if(!field)return;
+    const checks=branches.filter(b=>!isNational(b)).map(b=>`<label class="v129-check"><input type="checkbox" class="v129BranchAccess" value="${E(b)}" ${b===home?'checked':''}> <span>${E(b)}</span></label>`).join('');
+    const html=`<div id="v129AccessBox"><label style="font-size:12px;text-transform:uppercase;font-weight:1000;color:#1e40af">Managed Branch Access</label><div class="v129-help">For Team Leaders / Branch Managers / FSQA. Choose 2 or more branches if they handle multiple stores. National Branch is not used here because National means all branches.</div><div class="v129-branch-grid">${checks}</div><div id="v129AccessCount" class="small muted" style="margin-top:7px"></div></div>`;
+    if(!box)field.insertAdjacentHTML('afterend',html);else box.outerHTML=html;
+    A('.v129BranchAccess').forEach(cb=>cb.onchange=updateAccessCount);
+    updateAccessCount();
+  }
+  function updateAccessCount(){
+    const c=Q('#v129AccessCount'), n=selectedExtraAccess().length;
+    if(c)c.textContent=n?`${n} branch access selected`:'Choose managed branches';
+  }
+  function hideLegacyAccessBoxes(){
+    ['#v95StoreAccess','#v82AccessBox','#v80AccessBox','#v78AccessBlock'].forEach(s=>Q(s)?.classList.add('v129-hidden-legacy'));
+  }
+  function applyBranchRules(){
+    style129();
+    const form=Q('#staffForm');if(!form)return;
+    if(String(form.tagName||'').toUpperCase()!=='FORM')return;
+    hideLegacyAccessBoxes();
+    const position=Q('#staffPosition')?.value||'FRONT STAFF';
+    const sel=ensureBranchSelect();
+    const branches=targetBranchesFor(position);
+    refreshSelectOptions(sel,branches);
+    if(branchLeader()&&!retail()){
+      const noteId='v129BranchScopeNote';
+      if(!Q('#'+noteId,form)){
+        const host=sel?.closest('.field')||form;
+        host.insertAdjacentHTML('beforeend',`<div id="${noteId}" class="small muted">Branch options are limited to branches assigned to your account. National Branch is reserved for Retail / Head Office only.</div>`);
+      }
+    }
+    renderAccessBox(position,branches,sel?.value||branches[0]||'');
+  }
+  function addShowPin(root=document){
+    style129();
+    ['loginPin','loginPass','actTemp','actPass','staffPass'].forEach(id=>{
+      const input=Q('#'+id,root);if(!input||input.dataset.v129Show)return;
+      if(String(input.tagName||'').toUpperCase()!=='INPUT')return;
+      if(!input.parentNode||typeof input.parentNode.insertBefore!=='function')return;
+      input.dataset.v129Show='1';
+      if(id==='staffPass'||id==='actTemp'||id==='actPass')input.type='password';
+      const wrap=document.createElement('div');
+      wrap.className='v129-password-wrap';
+      input.parentNode.insertBefore(wrap,input);
+      wrap.appendChild(input);
+      const btn=document.createElement('button');
+      btn.type='button';btn.className='btn sm ghost v129-show-pin';btn.textContent='Show';
+      btn.onclick=()=>{const show=input.type==='password';input.type=show?'text':'password';btn.textContent=show?'Hide':'Show'};
+      wrap.appendChild(btn);
+    });
+  }
+  function year(){return String(new Date().getFullYear())}
+  function pad(n){return String(Math.max(1,Number(n||1))).padStart(3,'0')}
+  function storedEmpNo(e){
+    if(!e)return '';
+    const direct=e.employee_number||e.employee_no||e.employee_code||e.staff_number||e.vpoints_employee_number;
+    if(direct)return String(direct);
+    const id=String(e.id||'');if(!id)return '';
+    const keys=['employee_number_'+id,'vpoints_employee_number_'+id,'staff_number_'+id];
+    for(const k of keys){try{if(S?.settings?.[k])return String(S.settings[k]); if(localStorage.getItem(k))return String(localStorage.getItem(k))}catch(_){}}
+    return '';
+  }
+  function nextEmpNo(){
+    const y=year(), rows=[...(S?.allEmployees||[]),...(S?.employees||[])], seen=new Set();let max=0,count=0;
+    rows.forEach(e=>{const k=e?.id||e?.email;if(!k||seen.has(k))return;seen.add(k);count++;const m=storedEmpNo(e).match(/^VG-(\d{4})-(\d+)$/i);if(m&&m[1]===y)max=Math.max(max,Number(m[2]||0))});
+    return `VG-${y}-${pad((max||count)+1)}`;
+  }
+  async function saveSetting(key,value){
+    try{let r=await sb.from('app_settings').upsert({setting_key:key,setting_value:value,updated_at:new Date().toISOString()},{onConflict:'setting_key'});if(r.error)r=await sb.from('app_settings').insert({setting_key:key,setting_value:value,updated_at:new Date().toISOString()});return r}catch(e){return {error:e}}
+  }
+  async function insertEmployee(rec){
+    const tries=[rec,(()=>{const x={...rec};delete x.assigned_branches;return x})(),(()=>{const x={...rec};delete x.employee_number;return x})(),(()=>{const x={...rec};delete x.employee_number;delete x.assigned_branches;return x})()];
+    let last=null;
+    for(const p of tries){const r=await sb.from('employees').insert(p).select().single();if(!r.error)return {...(r.data||p),employee_number:rec.employee_number,assigned_branches:rec.assigned_branches};last=r.error;const m=String(r.error.message||'').toLowerCase();if(!/employee_number|assigned_branches|column|schema|cache/.test(m))break}
+    throw last||new Error('Could not create employee.');
+  }
+  async function saveEmpNo(id,num){
+    if(!id||!num)return;
+    try{localStorage.setItem('employee_number_'+id,num);localStorage.setItem('vpoints_employee_number_'+id,num)}catch(_){}
+    if(S?.settings){S.settings['employee_number_'+id]=num;S.settings['vpoints_employee_number_'+id]=num}
+    await saveSetting('employee_number_'+id,num);
+    await saveSetting('vpoints_employee_number_'+id,num);
+    try{await sb.from('employees').update({employee_number:num}).eq('id',id)}catch(_){}
+  }
+  window.createStaff=createStaff=async function(e){
+    if(e?.preventDefault)e.preventDefault();
+    const b=e?.submitter||Q('#staffForm button[type="submit"],#staffForm button');
+    applyBranchRules();
+    await act(b,{busy:'Creating...',success:'Created',reset:'Create Another Staff',toast:'Account created with correct branch access.'},async()=>{
+      if(!canCreate())throw new Error('Only Retail, managers, or team leaders can create accounts.');
+      const position=Q('#staffPosition')?.value||'FRONT STAFF';
+      const newRole=posToRole129(position);
+      if(branchLeader()&&!retail()&&(managerPosition(position)||highPowerPosition(position)||/manager|leader|fsqa|retail|head|hr/i.test(newRole)))throw new Error('Managers / Team Leaders can create normal staff only. Leader or Retail accounts need Retail approval.');
+      const allowed=targetBranchesFor(position);
+      const home=Q('#staffBranch')?.value||allowed[0]||'';
+      if(!allowed.includes(home))throw new Error('You can only assign staff to branches under your account.');
+      if(isNational(home)&&!highPowerPosition(position))throw new Error('National Branch is reserved for Retail / Head Office. Choose a real branch.');
+      let access=[home];
+      if(retail()&&managerPosition(position))access=[...new Set([home,...selectedExtraAccess()].filter(Boolean).filter(b=>!isNational(b)))];
+      if(retail()&&highPowerPosition(position)&&isNational(home))access=[...new Set(allBranches())];
+      const pin=String(Q('#staffPass')?.value||'').trim()||String(Math.floor(1000+Math.random()*9000));
+      const empNo=nextEmpNo();
+      const rec={employee_number:empNo,full_name:Q('#staffName')?.value.trim(),email:Q('#staffEmail')?.value.trim().toLowerCase(),branch:home,position,role:newRole,temp_password:pin,login_password_backup:pin,activation_status:'not_activated',is_active:true,profile_completed:false,starting_points:100,current_points:100,assigned_branches:access,account_created_by:me(),account_created_at:new Date().toISOString()};
+      if(!rec.full_name||!rec.email)throw new Error('Please complete name and email.');
+      const empNew=await insertEmployee(rec);
+      await saveEmpNo(empNew.id,empNo);
+      try{await saveSetting('branch_access_'+empNew.id,JSON.stringify(access));await saveSetting('v77_branch_access_'+empNew.id,JSON.stringify(access));await saveSetting('manager_branch_access_'+empNew.id,JSON.stringify(access))}catch(_){}
+      try{await sb.from('employees').update({assigned_branches:access}).eq('id',empNew.id)}catch(_){}
+      return {...empNew,employee_number:empNo,assigned_branches:access};
+    },async empNew=>{await loadData();renderPage();try{credential(empNew)}catch(_){msg('Account created: '+(empNew.employee_number||empNew.email),'ok')}});
+  };
+
+  function decorate129(root=document){
+    style129();
+    addShowPin(root);
+    applyBranchRules();
+  }
+  document.addEventListener('change',ev=>{if(ev.target&&['staffPosition','staffBranch'].includes(ev.target.id))setTimeout(applyBranchRules,20)});
+  const oldRenderAuth129=window.renderAuth;
+  if(typeof oldRenderAuth129==='function')window.renderAuth=renderAuth=function(){const out=oldRenderAuth129.apply(this,arguments);setTimeout(()=>decorate129(document),40);setTimeout(()=>decorate129(document),240);return out};
+  const oldRenderPage129=window.renderPage;
+  if(typeof oldRenderPage129==='function')window.renderPage=renderPage=function(){const out=oldRenderPage129.apply(this,arguments);setTimeout(()=>decorate129(Q('#page')||document),70);setTimeout(()=>decorate129(document),260);return out};
+  const oldBind129=window.bind;
+  if(typeof oldBind129==='function')window.bind=bind=function(){const out=oldBind129.apply(this,arguments);setTimeout(()=>decorate129(document),50);return out};
+  setTimeout(()=>decorate129(document),700);
+  console.log('V129 account branch scope and show PIN loaded');
+})();
+/* ================= END V129 ================= */
 </script></body></html>
