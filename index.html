@@ -19013,4 +19013,323 @@ init();
   console.log('V129 account branch scope and show PIN loaded');
 })();
 /* ================= END V129 ================= */
+/* ================= V130 FACTORY RESET CLEAR CONFIRMATION ================= */
+(function(){
+  if(window.__VPOINTS_V130_FACTORY_RESET_CLEAR__)return;
+  window.__VPOINTS_V130_FACTORY_RESET_CLEAR__=true;
+  window.VSCORE_FINAL_BUILD='V130_FACTORY_RESET_CLEAR_CONFIRMATION';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  function addStyle(){
+    if(Q('#v130FactoryResetStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v130FactoryResetStyle">
+      .v130-reset-card{border:1px solid rgba(185,28,28,.18);box-shadow:0 18px 48px rgba(15,23,42,.08)}
+      .v130-reset-card .notice{font-size:13px;line-height:1.45}
+      .v130-reset-modal{max-width:560px}
+      .v130-reset-modal h2{margin-bottom:6px}
+      .v130-reset-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+      .v130-reset-summary div{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:12px}
+      .v130-reset-summary b{display:block;font-size:24px;color:#7f1d1d}
+      .v130-reset-check{display:flex;gap:10px;align-items:flex-start;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:12px 0}
+      .v130-reset-check input{width:22px;height:22px;margin-top:2px}
+      .v130-reset-modal .field{margin-top:10px}
+      .v130-reset-log{max-height:180px;overflow:auto;background:#0f172a;color:#e5e7eb;border-radius:14px;padding:12px;font-size:12px;line-height:1.45;white-space:pre-wrap}
+      @media(max-width:540px){.v130-reset-summary{grid-template-columns:1fr}.v130-reset-modal{max-width:calc(100vw - 20px)}}
+    </style>`);
+  }
+  function ownerAllowed(){
+    try{
+      if(typeof v110OwnerAllowed==='function')return v110OwnerAllowed();
+      const p=S?.profile||{}, text=`${p.role||''} ${p.position||''}`.toLowerCase();
+      return /retail|head|owner|executive|admin|management/.test(text);
+    }catch(_){return false}
+  }
+  function mother(){
+    try{
+      if(typeof v110Mother==='function')return v110Mother();
+      const rows=[...(S?.allEmployees||[]),...(S?.employees||[])].filter(Boolean);
+      const retail=rows.find(e=>/retail|head|owner|executive|management/i.test(`${e.role||''} ${e.position||''}`));
+      return retail||S?.profile||{};
+    }catch(_){return S?.profile||{}}
+  }
+  function tableList(){
+    const base=Array.isArray(window.V110_TABLES)?window.V110_TABLES:[];
+    return [...new Set([...base,
+      'vscore_task_comments','vscore_task_reactions','vscore_task_acknowledgments','vscore_tasks',
+      'vscore_forms','vscore_policy_acknowledgments','fsqa_audits','investigation_reports',
+      'reward_claims','rewards','memo_acknowledgments','memos','achievements','violations',
+      'ledger','audit_trail','attendance_logs','vscore_attendance_logs','vscore_news_posts',
+      'vscore_social_posts','vscore_notifications','vscore_chat_messages','vscore_chat_rooms',
+      'vscore_training_completions','vscore_training_attempts','vscore_training_modules'
+    ])];
+  }
+  async function previewPlan(){
+    if(typeof v110BuildPlan==='function'){
+      try{return await v110BuildPlan()}catch(e){console.warn(e)}
+    }
+    return {
+      mother:mother(),
+      tableRows:{},
+      driveIds:[],
+      bucketFiles:{},
+      errors:['Preview count is limited in this browser, but reset can still run.']
+    };
+  }
+  function planHtml(plan){
+    const m=plan?.mother||mother();
+    const tableRows=plan?.tableRows||{};
+    const rows=Object.values(tableRows).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0);
+    const drive=(plan?.driveIds||[]).length;
+    const buckets=Object.values(plan?.bucketFiles||{}).reduce((a,b)=>a+(Array.isArray(b)?b.length:0),0);
+    const nonMother=[...(S?.allEmployees||[]),...(S?.employees||[])].filter(e=>e&&String(e.id)!==String(m?.id)).length;
+    return `<div class="v130-reset-summary">
+      <div><span class="small muted">Records found</span><b>${rows}</b></div>
+      <div><span class="small muted">Accounts removed</span><b>${nonMother}</b></div>
+      <div><span class="small muted">Drive files linked</span><b>${drive}</b></div>
+      <div><span class="small muted">Storage files linked</span><b>${buckets}</b></div>
+    </div>
+    <div class="notice success"><b>Mother account kept</b><br>${esc(m?.full_name||'Mother Retail Account')}<br>${esc(m?.email||m?.employee_number||'')}</div>
+    ${(plan?.errors||[]).length?`<div class="notice danger"><b>Manual check needed:</b><br>${(plan.errors||[]).slice(0,5).map(esc).join('<br>')}</div>`:''}`;
+  }
+  function readConfirm(){
+    return {
+      reset:String(Q('#v130ResetWord')?.value||'').trim(),
+      email:String(Q('#v130MotherEmail')?.value||'').trim().toLowerCase(),
+      code:String(Q('#v130FinalCode')?.value||'').trim(),
+      keep:!!Q('#v130KeepMother')?.checked
+    };
+  }
+  function validateConfirm(m){
+    const v=readConfirm();
+    if(v.reset!=='RESET V-POINTS')return 'Type RESET V-POINTS exactly.';
+    if(v.email!==String(m?.email||'').trim().toLowerCase())return 'Mother account email does not match.';
+    if(v.code!=='DELETE-ALL-DATA')return 'Type DELETE-ALL-DATA exactly.';
+    if(!v.keep)return 'Check the box confirming the mother Retail account stays.';
+    return '';
+  }
+  async function deleteTable(table){
+    if(typeof v110DeleteTable==='function'){
+      try{return await v110DeleteTable(table)}catch(e){return {ok:false,error:e.message||String(e)}}
+    }
+    const filters=[
+      q=>q.not('id','is',null),
+      q=>q.not('created_at','is',null),
+      q=>q.neq('status','__vpoints_keep__'),
+      q=>q.neq('employee_id','__vpoints_keep__')
+    ];
+    let last='Delete filter was not accepted.';
+    for(const f of filters){
+      try{const r=await f(sb.from(table).delete());if(!r.error)return {ok:true,error:''};last=r.error.message||String(r.error)}catch(e){last=e.message||String(e)}
+    }
+    return {ok:false,error:last};
+  }
+  async function deleteEmployeesExcept(m){
+    if(typeof v110DeleteEmployeesExcept==='function')return await v110DeleteEmployeesExcept(m);
+    const keep=String(m?.id||'');
+    if(!keep)throw new Error('Mother Retail account was not found.');
+    let r=await sb.from('employees').delete().neq('id',keep);
+    if(r.error){
+      r=await sb.from('employees').update({is_active:false,hidden_from_monitoring:true,activation_status:'permanent_deleted'}).neq('id',keep);
+      if(r.error)return {ok:false,error:r.error.message||String(r.error)};
+      return {ok:true,error:'Delete was blocked, so non-mother accounts were disabled instead.'};
+    }
+    return {ok:true,error:''};
+  }
+  async function restoreMother(m){
+    if(typeof v110RestoreMother==='function')return await v110RestoreMother(m);
+    if(!m?.id)return;
+    const patch={is_active:true,hidden_from_monitoring:false,activation_status:'activated',role:m.role||'retail_head',position:m.position||'RETAIL HEAD',branch:m.branch||'NATIONAL BRANCH',current_points:Number(m.current_points||100)};
+    await sb.from('employees').update(patch).eq('id',m.id);
+    S.profile={...(S.profile||{}),...m,...patch};
+    try{saveSession(S.profile)}catch(_){}
+  }
+  function clearLocal(m){
+    try{
+      Object.keys(localStorage).forEach(k=>{
+        if(k==='VSCORE_SESSION')return;
+        if(/^sb-|supabase/i.test(k))return;
+        localStorage.removeItem(k);
+      });
+      localStorage.setItem(`VPOINTS_COACH_DONE_${m?.id||'mother'}_V106`,'1');
+    }catch(_){}
+  }
+  function resetMemory(m){
+    try{
+      Object.keys(S||{}).forEach(k=>{if(Array.isArray(S[k]))S[k]=[]});
+      S.profile={...(S.profile||{}),...m};
+      S.employees=[S.profile];
+      S.allEmployees=[S.profile];
+      S.settings=S.settings||{};
+      S.tab='dashboard';
+    }catch(_){}
+  }
+  async function runReset(btn){
+    const m=mother();
+    const error=validateConfirm(m);
+    if(error)return toast(error,'error');
+    await act(btn||Q('#v130RunReset'),{busy:'Resetting...',success:'Reset Done',reset:'Run Factory Reset',toast:'Factory reset finished. Mother Retail account kept.'},async()=>{
+      const plan=await previewPlan();
+      const logs=[];
+      if(typeof v110DeleteDrive==='function'){
+        try{const d=await v110DeleteDrive(plan.driveIds||[]);logs.push(`Google Drive linked files: ${d.count||0}, failed/skipped: ${(d.failed||0)+(d.skipped?1:0)}`)}catch(e){logs.push(`Google Drive cleanup warning: ${e.message||e}`)}
+      }else logs.push('Google Drive cleanup bridge not available in this browser.');
+      if(typeof v110DeleteStorage==='function'){
+        try{const s=await v110DeleteStorage(plan.bucketFiles||{});logs.push(`Supabase storage buckets checked: ${s.length}`)}catch(e){logs.push(`Storage cleanup warning: ${e.message||e}`)}
+      }
+      for(const table of tableList()){
+        const r=await deleteTable(table);
+        if(!r.ok)logs.push(`${table}: ${r.error}`);
+      }
+      const emp=await deleteEmployeesExcept(m);
+      if(emp?.error)logs.push(`employees: ${emp.error}`);
+      await restoreMother(m);
+      clearLocal(m);
+      resetMemory(m);
+      try{await auditEvent('Factory reset','system','V130 guided reset completed; mother Retail account preserved.')}catch(_){}
+      return logs;
+    },async logs=>{
+      const text=(logs||[]).length?logs.join('\n'):'No warnings. Reset completed cleanly.';
+      modal(`<div class="v130-reset-modal"><h2>Factory Reset Complete</h2><p class="muted">Mother Retail account is still active. You can now create fresh manager and staff accounts.</p><div class="v130-reset-log">${esc(text)}</div><br><button class="btn dark full" onclick="closeModal();try{loadProfile&&loadProfile();loadData&&loadData()}catch(e){};setTimeout(()=>{S.tab='dashboard';renderApp&&renderApp();},200)">Close</button></div>`);
+    });
+  }
+  window.v130OpenFactoryReset=async function(btn){
+    if(!ownerAllowed())return toast('Only Retail / Head Office can run factory reset.','error');
+    addStyle();
+    const m=mother();
+    if(!m?.id||!m?.email)return toast('Mother Retail account is missing. Reset stopped.','error');
+    const plan=await previewPlan();
+    modal(`<div class="v130-reset-modal">
+      <h2>Factory Reset App Data</h2>
+      <p class="muted">This deletes test/live records and all non-mother accounts. The mother Retail account remains so you do not get locked out.</p>
+      ${planHtml(plan)}
+      <div class="field"><label>Step 1: type RESET V-POINTS</label><input id="v130ResetWord" class="input" autocomplete="off" placeholder="RESET V-POINTS"></div>
+      <div class="field"><label>Step 2: type mother account email</label><input id="v130MotherEmail" class="input" autocomplete="off" placeholder="${esc(m.email||'')}"></div>
+      <div class="field"><label>Step 3: type DELETE-ALL-DATA</label><input id="v130FinalCode" class="input" autocomplete="off" placeholder="DELETE-ALL-DATA"></div>
+      <label class="v130-reset-check"><input id="v130KeepMother" type="checkbox"><span><b>Keep mother Retail account active</b><br><span class="small muted">This protects the app from total lockout after reset.</span></span></label>
+      <div class="split"><button class="btn gray" onclick="closeModal()">Close</button><button id="v130RunReset" class="btn dark" onclick="v130RunFactoryReset(this)">Run Factory Reset</button></div>
+    </div>`);
+  };
+  window.v130RunFactoryReset=runReset;
+  window.factoryReset=factoryReset=function(btn){return window.v130OpenFactoryReset(btn)};
+  function card(){
+    addStyle();
+    return `<div class="card v130-reset-card"><h3>Factory Reset App Data</h3>
+      <p class="muted">Guided reset for launch day. It previews data first, then deletes app records and non-mother accounts only after exact confirmation.</p>
+      <div class="notice danger"><b>Mother Retail account stays active.</b><br>Use this before final deployment when you want a clean system.</div>
+      <div class="split"><button type="button" class="btn blue" onclick="window.v110FactoryResetPreview?window.v110FactoryResetPreview(this):window.v130OpenFactoryReset(this)">Preview Reset</button><button type="button" class="btn dark" id="v130FactoryReset" onclick="v130OpenFactoryReset(this)">Open Factory Reset</button></div>
+      <p class="small muted">No phone browser popup prompts. The app will tell you exactly what is missing.</p>
+    </div>`;
+  }
+  if(typeof settingsPage==='function'&&!window.__v130SettingsPatch){
+    window.__v130SettingsPatch=true;
+    const old=settingsPage;
+    settingsPage=function(){
+      let html=String(old.apply(this,arguments)||'');
+      const c=card();
+      html=html.replace(/<div class="card v110-reset-card">[\s\S]*?<\/div>\s*(?=<\/div>|<div class="grid|$)/,c);
+      if(!html.includes('v130-reset-card'))html+=`<div class="grid two" style="margin-top:14px">${c}</div>`;
+      return html;
+    };
+    window.settingsPage=settingsPage;
+  }
+  document.addEventListener('click',ev=>{
+    const btn=ev.target?.closest?.('button');
+    if(!btn||btn.id==='v130RunReset')return;
+    const text=String(btn.textContent||'').trim().toLowerCase();
+    if(/factory reset app data|open factory reset/.test(text)){
+      ev.preventDefault();
+      ev.stopPropagation();
+      window.v130OpenFactoryReset(btn);
+    }
+  },true);
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v130BindPatch){
+    window.__v130BindPatch=true;
+    window.bind=bind=function(){
+      const out=oldBind.apply(this,arguments);
+      addStyle();
+      const b=Q('#factoryReset');if(b&&!b.__v130){b.__v130=true;b.onclick=e=>{e.preventDefault();v130OpenFactoryReset(b)}}
+      const r=Q('#v110FactoryReset');if(r&&!r.__v130){r.__v130=true;r.onclick=e=>{e.preventDefault();v130OpenFactoryReset(r)}}
+      return out;
+    };
+  }
+  console.log('V130 factory reset clear confirmation loaded');
+})();
+/* ================= END V130 ================= */
+/* ================= V131 CENTERED LOGIN WELCOME ================= */
+(function(){
+  if(window.__VPOINTS_V131_CENTERED_LOGIN_WELCOME__)return;
+  window.__VPOINTS_V131_CENTERED_LOGIN_WELCOME__=true;
+  window.VSCORE_FINAL_BUILD='V131_CENTERED_LOGIN_WELCOME';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  function style131(){
+    if(Q('#v131-login-welcome-style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v131-login-welcome-style">
+      body.v127-auth-compact .auth,
+      body.v131-auth-center .auth{
+        min-height:100svh!important;
+        place-items:center!important;
+        align-items:center!important;
+        justify-items:center!important;
+        padding:16px 12px!important;
+      }
+      body.v127-auth-compact .auth-card,
+      body.v131-auth-center .auth-card{
+        margin:auto!important;
+        justify-content:center!important;
+      }
+      body.v127-auth-compact .hero,
+      body.v131-auth-center .hero{
+        width:100%!important;
+        min-height:116px!important;
+        display:grid!important;
+        place-items:center!important;
+        text-align:center!important;
+        padding:14px 12px 8px!important;
+      }
+      body.v127-auth-compact .hero .logo,
+      body.v131-auth-center .hero .logo{
+        margin:0 auto 8px!important;
+      }
+      body.v127-auth-compact .hero h1,
+      body.v131-auth-center .hero h1{
+        margin:0 auto 2px!important;
+        max-width:280px!important;
+        text-align:center!important;
+      }
+      body.v127-auth-compact .hero h2,
+      body.v131-auth-center .hero h2{
+        text-align:center!important;
+        margin:0 auto!important;
+      }
+      @media(max-height:640px){
+        body.v127-auth-compact .auth,
+        body.v131-auth-center .auth{place-items:start center!important;padding-top:10px!important}
+        body.v127-auth-compact .hero,
+        body.v131-auth-center .hero{min-height:88px!important;padding-top:8px!important}
+      }
+    </style>`);
+  }
+  function sync131(){
+    style131();
+    const isAuth=!!(Q('#root .auth')&&!Q('#root .app'));
+    document.body.classList.toggle('v131-auth-center',isAuth);
+    const h=Q('.hero h1');
+    if(isAuth&&h)h.innerHTML='Welcome,<br>Ka-Varda';
+  }
+  const oldRenderAuth131=window.renderAuth;
+  if(typeof oldRenderAuth131==='function'){
+    window.renderAuth=renderAuth=function(){const out=oldRenderAuth131.apply(this,arguments);setTimeout(sync131,30);setTimeout(sync131,220);return out};
+  }
+  const oldRenderApp131=window.renderApp;
+  if(typeof oldRenderApp131==='function'){
+    window.renderApp=renderApp=function(){document.body.classList.remove('v131-auth-center');return oldRenderApp131.apply(this,arguments)};
+  }
+  setTimeout(sync131,300);
+  console.log('V131 centered login welcome loaded');
+})();
+/* ================= END V131 ================= */
 </script></body></html>
