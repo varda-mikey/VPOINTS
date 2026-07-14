@@ -19775,6 +19775,10 @@ init();
       .v134-check input{width:18px;height:18px;flex:0 0 auto}
       .v134-note{font-size:12px;line-height:1.38;color:#64748b;font-weight:800;margin-top:6px}
       .v134-hidden{display:none!important}
+      .v138-scope-preview{margin:12px 0;border-left-color:#2563eb;background:#eff6ff;color:#1e3a8a}
+      .v138-scope-preview b{color:#172554}.v138-scope-list{display:grid;gap:5px;margin-top:7px;font-size:12px;line-height:1.35}
+      .v138-scope-list span{display:block}.v138-good{color:#14532d;font-weight:1000}.v138-warn{color:#92400e;font-weight:1000}.v138-bad{color:#991b1b;font-weight:1000}
+      .v138-mini-guide{border:1px solid #bbf7d0;background:#f0fdf4;color:#14532d;border-radius:14px;padding:10px;margin:10px 0;font-size:12px;line-height:1.4;font-weight:850}
       @media(max-width:640px){.v134-level-grid,.v134-store-grid{grid-template-columns:1fr}}
     </style>`);
   }
@@ -19846,26 +19850,32 @@ init();
       return r;
     }catch(e){return {error:e}}
   }
+  function missingColumn134(msg){
+    msg=String(msg||'');
+    return (msg.match(/Could not find the ['"]([^'"]+)['"] column/i)||msg.match(/column ['"]?([a-z0-9_]+)['"]? does not exist/i)||msg.match(/column "([^"]+)"/i)||[])[1]||'';
+  }
   async function insertEmployee134(rec){
-    const tries=[
-      rec,
-      (()=>{const x={...rec};delete x.secondary_branches;delete x.account_level;return x})(),
-      (()=>{const x={...rec};delete x.secondary_branches;delete x.account_level;delete x.assigned_branches;return x})(),
-      (()=>{const x={...rec};delete x.secondary_branches;delete x.account_level;delete x.assigned_branches;delete x.employee_number;return x})()
-    ];
+    const optional=['pin_code','secondary_branches','account_level','assigned_branches','employee_number','profile_completed','account_created_by','account_created_at','updated_at'];
+    const payload={...rec};
     let last=null;
-    for(const p of tries){
-      const r=await sb.from('employees').insert(p).select().single();
-      if(!r.error)return {...(r.data||p),employee_number:rec.employee_number,assigned_branches:rec.assigned_branches,secondary_branches:rec.secondary_branches,account_level:rec.account_level};
+    for(let i=0;i<optional.length+8;i++){
+      const r=await sb.from('employees').insert(payload).select().single();
+      if(!r.error)return {...(r.data||payload),employee_number:rec.employee_number,assigned_branches:rec.assigned_branches,secondary_branches:rec.secondary_branches,account_level:rec.account_level,temp_password:rec.temp_password,login_password_backup:rec.login_password_backup,pin_code:rec.pin_code};
       last=r.error;
-      const msg=String(r.error.message||'').toLowerCase();
-      if(!/column|schema|employee_number|assigned_branches|secondary_branches|account_level|cache/.test(msg))break;
+      const msg=String(r.error.message||r.error.details||r.error.hint||'');
+      const col=missingColumn134(msg);
+      if(col&&Object.prototype.hasOwnProperty.call(payload,col)){delete payload[col];continue;}
+      if(/column|schema|cache/i.test(msg)){
+        const next=optional.find(k=>Object.prototype.hasOwnProperty.call(payload,k));
+        if(next){delete payload[next];continue;}
+      }
+      break;
     }
     throw last||new Error('Could not create account.');
   }
   function levelOptions134(){
     if(!isRetail134())return '<option value="staff">Staff Level</option>';
-    return '<option value="staff">Staff Level</option><option value="leader">Team Leader Level</option><option value="retail">Retail Level</option>';
+    return '<option value="staff">Staff Level - employee</option><option value="leader">Team Leader Level - assigned stores</option><option value="retail">Retail Level - all stores</option>';
   }
   function positionOptions134(level){
     const arr=level==='retail'?[RETAIL_POSITION]:(level==='leader'?LEADER_POSITIONS:STAFF_POSITIONS);
@@ -19878,18 +19888,88 @@ init();
     const set=new Set((checked||[]).map(String));
     return `<div class="v134-store-grid">${stores.map(b=>`<label class="v134-check"><input type="checkbox" class="${cls}" value="${E(b)}" ${set.has(String(b))?'checked':''}> <span>${E(b)}</span></label>`).join('')||'<div class="empty">No assigned stores found.</div>'}</div>`;
   }
+  function positionList134(level){
+    return level==='retail'?[RETAIL_POSITION]:(level==='leader'?LEADER_POSITIONS:STAFF_POSITIONS);
+  }
+  function uniqStores134(list,allowed=null){
+    const out=[], allow=allowed?new Set([...allowed].map(String)):null;
+    (list||[]).forEach(v=>{
+      const s=String(v||'').trim();
+      if(!s||isNationalLike(s))return;
+      if(allow&&!allow.has(s))return;
+      if(!out.includes(s))out.push(s);
+    });
+    return out;
+  }
+  function weakPin134(pin){
+    pin=String(pin||'').trim();
+    return /^(.)\1{3}$/.test(pin)||['1234','4321','0123','9876','1111','0000'].includes(pin);
+  }
+  function saferPin134(){
+    let p='';
+    do{p=String(Math.floor(1000+Math.random()*9000));}while(weakPin134(p));
+    return p;
+  }
+  function validEmail134(email){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email||'').trim());
+  }
+  async function emailExists134(email){
+    email=String(email||'').trim().toLowerCase();
+    const local=[...(S?.allEmployees||[]),...(S?.employees||[])].some(e=>String(e?.email||'').trim().toLowerCase()===email&&String(e?.activation_status||'').toLowerCase()!=='permanent_deleted');
+    if(local)return true;
+    try{
+      const r=await sb.from('employees').select('id,email,activation_status').ilike('email',email).limit(1);
+      if(!r.error&&Array.isArray(r.data))return r.data.some(e=>String(e?.activation_status||'').toLowerCase()!=='permanent_deleted');
+    }catch(_){}
+    return false;
+  }
+  function scopePreview134(){
+    const level=Q('#v134AccountLevel')?.value||'staff';
+    const position=Q('#staffPosition')?.value||positionList134(level)[0]||'';
+    const stores=creatorStores134();
+    const allowed=new Set(stores.map(String));
+    const email=String(Q('#staffEmail')?.value||'').trim()||'enter email';
+    const pin=String(Q('#staffPass')?.value||'').trim();
+    let title='Staff employee', scope='Primary store required', powers='Time In/Out, submit output, memos, training, missions, records only.';
+    let access=[];
+    if(level==='staff'){
+      const primary=Q('#v134PrimaryStore')?.value||stores[0]||'';
+      access=uniqStores134([primary],allowed);
+      const mission=uniqStores134(A('.v134MissionStore:checked').map(x=>x.value),allowed).filter(x=>x!==primary);
+      scope=`Primary: ${primary||'-'}${mission.length?` | Mission-only: ${mission.join(', ')}`:''}`;
+    }else if(level==='leader'){
+      title='Team Leader / branch control';
+      access=uniqStores134(A('.v134AssignedStore:checked').map(x=>x.value),allowed);
+      scope=access.length?`Can monitor/create staff only in: ${access.join(', ')}`:'Choose assigned stores.';
+      powers='Can create staff under assigned stores, assign/validate missions, monitor attendance/output. Cannot final approve points.';
+    }else{
+      title='Retail / national control';
+      access=uniqStores134(stores);
+      scope='All stores / national operation. No branch selector needed.';
+      powers='Can create leaders, assign branch access, monitor all stores, and final close/approve.';
+    }
+    const pinLine=pin?(weakPin134(pin)?'<span class="v138-warn">PIN is easy to guess; app will replace it with a safer generated PIN when saved.</span>':'<span class="v138-good">PIN format ready.</span>'):'<span class="v138-warn">PIN will be auto-generated.</span>';
+    return `<div class="notice success v138-scope-preview"><b>Creation Preview</b><div class="v138-scope-list">
+      <span><b>Account:</b> ${E(title)} / ${E(position)}</span>
+      <span><b>Login:</b> ${E(email)} + 4-digit PIN</span>
+      <span><b>Scope:</b> ${E(scope)}</span>
+      <span><b>Allowed Actions:</b> ${E(powers)}</span>
+      ${pinLine}
+    </div></div>`;
+  }
   function accountForm134(){
     const stores=creatorStores134();
     const level='staff';
     const first=stores[0]||'';
     return `<form id="staffForm" data-v134="1">
-      <div class="field"><label>1. Account Level</label><select id="v134AccountLevel" class="input">${levelOptions134()}</select><div class="v134-note">Choose Staff Level, Team Leader Level, or Retail Level first.</div></div>
+      <div class="field"><label>1. Account Type</label><select id="v134AccountLevel" class="input">${levelOptions134()}</select><div class="v134-note">Choose the account type first. The branch/store choices below will change automatically.</div></div>
       <div class="field"><label>2. Position</label><select id="staffPosition" class="input">${positionOptions134(level)}</select></div>
       <div id="v134BranchArea"></div>
+      <div id="v134ScopePreview"></div>
       <div class="field"><label>Employee Number (Auto)</label><input id="staffEmployeeNumberPreview" class="input" value="${E(nextEmpNo134())}" readonly></div>
       <div class="field"><label>Full Name</label><input id="staffName" class="input" placeholder="Example: Juan Dela Cruz" required></div>
       <div class="field"><label>Email Login</label><input id="staffEmail" type="email" class="input" placeholder="employee@company.com" required></div>
-      <div class="field"><label>4-Digit PIN</label><input id="staffPass" class="input" inputmode="numeric" maxlength="4" placeholder="1234" required></div>
+      <div class="field"><label>4-Digit PIN</label><input id="staffPass" class="input" inputmode="numeric" maxlength="4" placeholder="Auto-generated, e.g. 4839" required><div class="v134-note">Use the generated PIN. Avoid 0000, 1111, or 1234 for live accounts.</div></div>
       <input id="staffBranch" type="hidden" value="${E(first)}">
       <div class="field"><label>Access Role Auto Category</label><input id="staffRoleView" class="input" readonly value="Employee"></div>
       <button class="btn full green">Create Account + Credential Slip</button>
@@ -19897,12 +19977,12 @@ init();
   }
   function staffBranchHtml134(stores,primary,missionChecked=[]){
     primary=primary||stores[0]||'';
-    return `<div class="field"><label>3. Primary Store</label><select id="v134PrimaryStore" class="input">${storeOptions134(stores,primary)}</select><div class="v134-note">Staff use one primary store for attendance and normal monitoring.</div></div>
-      <div class="field"><label>Secondary Stores For Mission Only</label>${checkboxGrid134(stores.filter(b=>b!==primary), 'v134MissionStore', missionChecked)}<div class="v134-note">Optional. These stores do not make the staff a manager; they only help when assigning missions outside the primary store.</div></div>`;
+    return `<div class="field"><label>3. Staff Primary Store</label><select id="v134PrimaryStore" class="input">${storeOptions134(stores,primary)}</select><div class="v134-note">This is the staff member's home store for attendance, records, dashboard, and normal monitoring.</div></div>
+      <div class="field"><label>Mission-Only Secondary Stores</label>${checkboxGrid134(stores.filter(b=>b!==primary), 'v134MissionStore', missionChecked)}<div class="v134-note">Optional. This does not make the staff a manager; it only lets managers assign special missions outside the home store.</div></div>`;
   }
   function leaderBranchHtml134(stores,checked=[]){
     const chosen=checked.length?checked:[stores[0],stores[1]].filter(Boolean);
-    return `<div class="field"><label>3. Assigned Stores</label>${checkboxGrid134(stores,'v134AssignedStore',chosen)}<div class="v134-note">Team Leader, Regional, FSQA, Admin, and Auditor accounts can monitor only the stores checked here. Regional Team Leader should have 2 or more stores.</div></div>`;
+    return `<div class="field"><label>3. Assigned Stores To Monitor</label>${checkboxGrid134(stores,'v134AssignedStore',chosen)}<div class="v134-note">These checked stores are the only stores this Team Leader / Regional / FSQA / Admin / Auditor account can monitor and create staff for. Regional Team Leader should have 2 or more stores.</div></div>`;
   }
   function retailBranchHtml134(stores){
     return `<div class="notice success"><b>Retail Level:</b><br>This account handles all store connections and national operations. No National/Mother Branch selection is needed.</div><div class="v134-note">Store scope: ${stores.length?stores.map(E).join(', '):'All active stores after branch setup.'}</div>`;
@@ -19935,12 +20015,13 @@ init();
     }
     if(level==='retail'&&hidden)hidden.value='ALL STORES';
     const prev=Q('#staffEmployeeNumberPreview');if(prev)prev.value=nextEmpNo134();
-    if(Q('#staffPass')&&!Q('#staffPass').value)Q('#staffPass').value=String(Math.floor(1000+Math.random()*9000));
+    if(Q('#staffPass')&&!Q('#staffPass').value)Q('#staffPass').value=saferPin134();
+    const prevBox=Q('#v134ScopePreview');if(prevBox)prevBox.innerHTML=scopePreview134();
   }
   function employeesPage134(){
     const title=isRetail134()?'Create Account':'Create Staff Account';
     const right=`<div class="card"><h3>${isRetail134()?'Employee Universe':'Assigned Store Staff'}</h3>${typeof empTable==='function'?empTable(S.employees||[]):'<div class="empty">No employee table.</div>'}</div>`;
-    return `<div class="grid two"><div class="card v134-role-card"><h3>${title}</h3><div class="notice success"><b>Clear role structure:</b><br>Staff = Front Staff, Kitchen Staff, Utility. Team Leader Level = Regional, Team Leader, FSQA, Admin, Auditor, Branch Manager with chosen stores. Retail = all stores / national operations.</div>${accountForm134()}<div class="v134-note">No Mother Branch or National Branch is used for account creation. Branch assignment controls access.</div></div>${right}</div>`;
+    return `<div class="grid two"><div class="card v134-role-card"><h3>${title}</h3><div class="v138-mini-guide"><b>Clear account rule:</b><br>Staff = normal employee with one home store. Team Leader Level = Regional, Team Leader, FSQA, Admin, Auditor, or Branch Manager with checked stores only. Retail = all stores / national operations.</div>${accountForm134()}<div class="v134-note">No Mother Branch or National Branch is used for account creation. Branch assignment controls access.</div></div>${right}</div>`;
   }
   window.employeesPage=employeesPage=employeesPage134;
   window.createStaff=createStaff=async function(e){
@@ -19952,16 +20033,21 @@ init();
       if(!isLeader134())throw new Error('Only Retail or assigned Team Leader level can create accounts.');
       const level=Q('#v134AccountLevel')?.value||'staff';
       if(!isRetail134()&&level!=='staff')throw new Error('Team Leader level can create Staff Level accounts only. Retail creates Team Leader and Retail accounts.');
-      const position=Q('#staffPosition')?.value||(level==='leader'?'TEAM LEADER':level==='retail'?RETAIL_POSITION:'FRONT STAFF');
+      let position=Q('#staffPosition')?.value||(level==='leader'?'TEAM LEADER':level==='retail'?RETAIL_POSITION:'FRONT STAFF');
+      const allowedPositions=positionList134(level);
+      if(!allowedPositions.includes(position))throw new Error('Position does not match the selected account type. Please choose the account type first, then position.');
       const stores=creatorStores134();
+      const allowedStores=new Set(stores.map(String));
+      if(level!=='retail'&&!stores.length)throw new Error('No assigned stores available for this creator account.');
       let branch='',access=[],missionAccess=[];
       if(level==='staff'){
         branch=Q('#v134PrimaryStore')?.value||stores[0]||'';
         if(!branch)throw new Error('Choose the staff primary store.');
-        access=[branch];
-        missionAccess=A('.v134MissionStore:checked').map(x=>x.value).filter(Boolean);
+        if(!allowedStores.has(String(branch)))throw new Error('Staff primary store must be one of your allowed stores.');
+        access=uniqStores134([branch],allowedStores);
+        missionAccess=uniqStores134(A('.v134MissionStore:checked').map(x=>x.value),allowedStores).filter(x=>x!==branch);
       }else if(level==='leader'){
-        access=A('.v134AssignedStore:checked').map(x=>x.value).filter(Boolean);
+        access=uniqStores134(A('.v134AssignedStore:checked').map(x=>x.value),allowedStores);
         if(!access.length)throw new Error('Choose at least one assigned store.');
         if(/REGIONAL/i.test(position)&&access.length<2)throw new Error('Regional Team Leader should have 2 or more assigned stores.');
         branch=access[0];
@@ -19971,16 +20057,19 @@ init();
         branch='ALL STORES';
       }
       if(!isRetail134()){
-        const allowed=new Set(stores.map(String));
-        if(!allowed.has(String(branch)))throw new Error('You can only create staff under your assigned stores.');
-        access=access.filter(x=>allowed.has(String(x)));
-        missionAccess=missionAccess.filter(x=>allowed.has(String(x)));
+        if(!allowedStores.has(String(branch)))throw new Error('You can only create staff under your assigned stores.');
+        access=access.filter(x=>allowedStores.has(String(x)));
+        missionAccess=missionAccess.filter(x=>allowedStores.has(String(x)));
       }
       const email=String(Q('#staffEmail')?.value||'').trim().toLowerCase();
       const fullName=String(Q('#staffName')?.value||'').trim();
-      const pin=String(Q('#staffPass')?.value||'').trim()||String(Math.floor(1000+Math.random()*9000));
+      let pin=String(Q('#staffPass')?.value||'').trim()||saferPin134();
       if(!fullName||!email)throw new Error('Please complete full name and email.');
+      if(fullName.length<3)throw new Error('Full name is too short.');
+      if(!validEmail134(email))throw new Error('Please enter a valid email address.');
+      if(await emailExists134(email))throw new Error('This email already has an account. Use Reset PIN or Permanent Remove from Account Backup instead of creating duplicate accounts.');
       if(!/^\d{4}$/.test(pin))throw new Error('PIN must be exactly 4 numbers.');
+      if(weakPin134(pin)){pin=saferPin134();const pass=Q('#staffPass');if(pass)pass.value=pin;}
       const empNo=nextEmpNo134();
       const role=level==='retail'?'retail_head':(level==='leader'?'team_leader':'employee');
       const rec={
@@ -20029,6 +20118,7 @@ init();
     const level=Q('#v134AccountLevel',form);
     if(level&&!level.__v134){level.__v134=true;level.onchange=syncForm134}
     A('#v134PrimaryStore,.v134AssignedStore,.v134MissionStore',form).forEach(el=>{if(!el.__v134){el.__v134=true;el.onchange=syncForm134}});
+    A('#staffName,#staffEmail,#staffPass',form).forEach(el=>{if(!el.__v138){el.__v138=true;el.addEventListener('input',()=>setTimeout(syncForm134,20))}});
     syncForm134();
   }
   const oldRenderPage134=window.renderPage;
@@ -20182,4 +20272,97 @@ init();
   console.log('V135 multi-branch leader visibility loaded');
 })();
 /* ================= END V135 ================= */
+/* ================= V136 REMOVE LEGACY BRANCH DROPDOWN ================= */
+(function(){
+  if(window.__VPOINTS_V136_REMOVE_LEGACY_BRANCH_DROPDOWN__)return;
+  window.__VPOINTS_V136_REMOVE_LEGACY_BRANCH_DROPDOWN__=true;
+  window.VSCORE_FINAL_BUILD='V136_REMOVE_LEGACY_BRANCH_DROPDOWN';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  function addStyle(){
+    if(Q('#v136NoLegacyBranchStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v136NoLegacyBranchStyle">
+      #staffForm[data-v134="1"] #staffBranch{display:none!important}
+      #staffForm[data-v134="1"] .field:has(#staffBranch){display:none!important}
+      #staffForm[data-v134="1"] .v136-hide-legacy-branch{display:none!important}
+      #staffForm[data-v134="1"] #v129AccessBox,
+      #staffForm[data-v134="1"] #v82AccessBox,
+      #staffForm[data-v134="1"] #v80AccessBox,
+      #staffForm[data-v134="1"] #v78AccessBlock,
+      #staffForm[data-v134="1"] #v95StoreAccess,
+      #staffForm[data-v134="1"] #v129BranchScopeNote{display:none!important}
+    </style>`);
+  }
+  function chosenBranch(){
+    const level=Q('#v134AccountLevel')?.value||'staff';
+    if(level==='retail')return 'ALL STORES';
+    if(level==='leader')return A('.v134AssignedStore:checked').map(x=>x.value)[0]||'';
+    return Q('#v134PrimaryStore')?.value||'';
+  }
+  function cleanLegacy(){
+    addStyle();
+    const form=Q('#staffForm[data-v134="1"]');
+    if(!form)return;
+    const wanted=chosenBranch();
+    A('#v129AccessBox,#v82AccessBox,#v80AccessBox,#v78AccessBlock,#v95StoreAccess,#v129BranchScopeNote',form).forEach(x=>x.remove());
+    let el=Q('#staffBranch',form);
+    if(!el){
+      form.insertAdjacentHTML('beforeend',`<input id="staffBranch" type="hidden" value="">`);
+      el=Q('#staffBranch',form);
+    }
+    if(el&&String(el.tagName||'').toUpperCase()!=='INPUT'){
+      const field=el.closest('.field')||el.parentElement;
+      const hidden=document.createElement('input');
+      hidden.id='staffBranch';
+      hidden.type='hidden';
+      hidden.value=wanted||el.value||'';
+      if(el.parentNode)el.parentNode.replaceChild(hidden,el);
+      if(field)field.classList.add('v136-hide-legacy-branch');
+      el=hidden;
+    }
+    if(el){
+      el.type='hidden';
+      el.value=wanted||el.value||'';
+      const field=el.closest('.field');
+      if(field)field.classList.add('v136-hide-legacy-branch');
+    }
+    A('.field',form).forEach(field=>{
+      const label=(Q('label',field)?.textContent||'').trim().toLowerCase();
+      if(label==='branch'||label==='main / home branch'||label.includes('home branch')||label.includes('branch for')||label==='main branch'){
+        if(!Q('#v134PrimaryStore',field)&&!Q('.v134AssignedStore',field)&&!Q('.v134MissionStore',field))field.classList.add('v136-hide-legacy-branch');
+      }
+    });
+    A('#v100EmpNoBox',form).forEach(x=>x.remove());
+    A('.field',form).forEach(field=>{
+      const label=(Q('label',field)?.textContent||'').trim().toLowerCase();
+      if(label.includes('record id')&&label.includes('auto'))field.remove();
+    });
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v136BindPatch){
+    window.__v136BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);[50,160,320,700,1200].forEach(t=>setTimeout(cleanLegacy,t));return out};
+  }
+  const oldRenderPage=window.renderPage;
+  if(typeof oldRenderPage==='function'&&!window.__v136RenderPatch){
+    window.__v136RenderPatch=true;
+    window.renderPage=renderPage=function(){const out=oldRenderPage.apply(this,arguments);[40,120,280,520,900,1500].forEach(t=>setTimeout(cleanLegacy,t));return out};
+  }
+  document.addEventListener('change',ev=>{
+    if(ev.target?.closest?.('#staffForm[data-v134="1"]'))setTimeout(cleanLegacy,25);
+  },true);
+  try{
+    const mo=new MutationObserver(()=>cleanLegacy());
+    setTimeout(()=>{if(document.body)mo.observe(document.body,{childList:true,subtree:true})},500);
+  }catch(_){}
+  setTimeout(cleanLegacy,600);
+  console.log('V136 legacy branch dropdown removal loaded');
+})();
+/* ================= END V136 ================= */
+/* ================= V138 CLEAR STAFF ASSIGNMENT GUARDS ================= */
+(function(){
+  window.VSCORE_FINAL_BUILD='V138_CLEAR_STAFF_ASSIGNMENT_GUARDS';
+})();
+/* ================= END V138 ================= */
 </script></body></html>
