@@ -20048,4 +20048,138 @@ init();
   console.log('V134 clear role levels and branch assignment loaded');
 })();
 /* ================= END V134 ================= */
+/* ================= V135 MULTI-BRANCH LEADER VISIBILITY ================= */
+(function(){
+  if(window.__VPOINTS_V135_MULTI_BRANCH_VISIBILITY__)return;
+  window.__VPOINTS_V135_MULTI_BRANCH_VISIBILITY__=true;
+  window.VSCORE_FINAL_BUILD='V135_MULTI_BRANCH_LEADER_VISIBILITY';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const E=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  function parse135(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.flatMap(parse135);
+    if(typeof v==='object')return Object.values(v).flatMap(parse135);
+    const s=String(v||'').trim();
+    try{return parse135(JSON.parse(s))}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function uniq135(arr){
+    return [...new Set((arr||[]).map(String).map(s=>s.trim()).filter(Boolean))];
+  }
+  function national135(s){
+    return /^(national branch|mother branch|all stores|retail operations)$/i.test(String(s||'').trim());
+  }
+  function allStores135(){
+    try{if(typeof allStores134==='function')return allStores134()}catch(_){}
+    const rows=[...(typeof defaultBranches!=='undefined'?defaultBranches:[]),...(S?.branches||[]).map(b=>b.branch_name||b.name||b.branch),...(S?.employees||[]).map(e=>e.branch),...(S?.allEmployees||[]).map(e=>e.branch)].filter(Boolean);
+    return uniq135(rows).filter(b=>!national135(b)).sort((a,b)=>a.localeCompare(b));
+  }
+  function settingsAccess135(id,keyPrefix='branch'){
+    if(!id)return [];
+    const settings=S?.settings||{};
+    const keys=[
+      `${keyPrefix}_access_${id}`,
+      `branch_access_${id}`,
+      `manager_branch_access_${id}`,
+      `assigned_branches_${id}`,
+      `v77_branch_access_${id}`,
+      `v77_manager_branch_access_${id}`,
+      `mission_branch_access_${id}`
+    ];
+    let out=[];
+    keys.forEach(k=>out.push(...parse135(settings[k])));
+    keys.forEach(k=>{try{out.push(...parse135(localStorage.getItem(k)))}catch(_){}});
+    return out;
+  }
+  function level135(e){
+    const raw=String(e?.account_level||'').toLowerCase();
+    if(raw)return raw;
+    const t=String(e?.role||'')+' '+String(e?.position||'');
+    if(/retail|head office|executive|national|management/i.test(t))return 'retail';
+    if(/regional|team leader|branch manager|branch leader|fsqa|admin|auditor|manager/i.test(t))return 'leader';
+    return 'staff';
+  }
+  function assignedStores135(e){
+    const lvl=level135(e);
+    if(lvl==='retail')return allStores135();
+    let out=[
+      ...parse135(e?.assigned_branches),
+      ...parse135(e?.managed_branches),
+      ...parse135(e?.access_branches),
+      ...parse135(e?.branch_access),
+      ...parse135(e?.branch_scope),
+      ...settingsAccess135(e?.id,'branch')
+    ];
+    if(!out.length&&e?.branch&&!national135(e.branch))out=[e.branch];
+    return uniq135(out).filter(b=>!national135(b)).sort((a,b)=>a.localeCompare(b));
+  }
+  function missionStores135(e){
+    let out=[
+      ...parse135(e?.secondary_branches),
+      ...parse135(e?.mission_branches),
+      ...parse135(e?.mission_branch_access),
+      ...parse135(S?.settings?.['mission_branch_access_'+e?.id])
+    ];
+    try{out.push(...parse135(localStorage.getItem('mission_branch_access_'+e?.id)))}catch(_){}
+    return uniq135(out).filter(b=>!national135(b)).sort((a,b)=>a.localeCompare(b));
+  }
+  function storeText135(e){
+    const lvl=level135(e), assigned=assignedStores135(e), mission=missionStores135(e);
+    if(lvl==='retail')return `Retail Level: All Stores (${assigned.length||'All'})`;
+    if(lvl==='leader')return `Assigned Stores (${assigned.length}): ${assigned.join(', ')||'-'}`;
+    return `Primary Store: ${assigned[0]||e?.branch||'-'}${mission.length?` | Mission-only: ${mission.join(', ')}`:''}`;
+  }
+  function storeHtml135(e){
+    const lvl=level135(e), assigned=assignedStores135(e), mission=missionStores135(e);
+    if(lvl==='retail')return `<div class="notice success"><b>Retail Level</b><br>All store connections / national operation.</div>`;
+    if(lvl==='leader')return `<div class="notice success"><b>Assigned Stores (${assigned.length})</b><br>${assigned.map(E).join('<br>')||'-'}</div>`;
+    return `<div class="notice success"><b>Primary Store</b><br>${E(assigned[0]||e?.branch||'-')}${mission.length?`<br><br><b>Secondary Stores For Mission Only</b><br>${mission.map(E).join('<br>')}`:''}</div>`;
+  }
+  function empNo135(e){
+    try{if(typeof employeeNumber100==='function')return employeeNumber100(e)}catch(_){}
+    return e?.employee_number||e?.employee_no||e?.staff_number||'';
+  }
+  function pin135(e){return e?.pin_code||e?.login_password_backup||e?.temp_password||''}
+  window.credential=credential=function(e){
+    const id=E(e.id||'');
+    modal(`<div class="notice success"><h2>Account Credential Slip</h2><h3>${E(e.full_name)}</h3>
+      <p><b>Employee No:</b> ${E(empNo135(e))}<br><b>Email:</b> ${E(e.email)}<br><b>PIN:</b> ${E(pin135(e))}<br><b>Position:</b> ${E(e.position)}<br><b>Account Level:</b> ${E(level135(e).toUpperCase())}</p>
+      ${storeHtml135(e)}
+      <button class="btn blue" onclick="saveCred('${id}')">Save as Image</button> <button class="btn dark" onclick="closeModal()">Close</button></div>`);
+  };
+  window.saveCred=saveCred=function(id){
+    const e=[...(S?.allEmployees||[]),...(S?.employees||[])].find(x=>String(x.id)===String(id))||(typeof emp==='function'?emp(id):{})||{};
+    const stores=storeText135(e);
+    const c=document.createElement('canvas');c.width=1100;c.height=780;const x=c.getContext('2d');
+    x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.strokeStyle='#16a34a';x.lineWidth=10;x.strokeRect(20,20,1060,740);
+    x.fillStyle='#7f1d1d';x.font='bold 46px Arial';x.fillText('V-Points Account Credential Slip',60,90);
+    x.fillStyle='#111827';x.font='bold 34px Arial';x.fillText(e.full_name||'',60,155);
+    x.fillStyle='#64748b';x.font='bold 22px Arial';x.fillText('EMAIL LOGIN',60,220);x.fillStyle='#111827';x.font='bold 31px Arial';x.fillText(e.email||'',60,262);
+    x.fillStyle='#64748b';x.font='bold 22px Arial';x.fillText('4-DIGIT PIN',60,325);x.fillStyle='#16a34a';x.font='bold 58px Arial';x.fillText(pin135(e)||'',60,390);
+    x.fillStyle='#111827';x.font='23px Arial';x.fillText('Employee No: '+(empNo135(e)||''),60,450);x.fillText('Position: '+(e.position||''),60,490);x.fillText('Account Level: '+level135(e).toUpperCase(),60,530);
+    x.fillStyle='#111827';x.font='bold 23px Arial';x.fillText('Store Access:',60,590);
+    x.fillStyle='#334155';x.font='20px Arial';
+    const lines=String(stores).match(/.{1,82}(\s|$)/g)||[stores];
+    lines.slice(0,5).forEach((line,i)=>x.fillText(line.trim(),60,625+(i*28)));
+    x.fillStyle='#64748b';x.font='19px Arial';x.fillText('Instruction: Open V-Points, enter Email and PIN code.',60,740);
+    const a=document.createElement('a');a.download=(String(e.email||empNo135(e)||'vpoints').replace(/[^a-z0-9]+/gi,'_'))+'-credential.png';a.href=c.toDataURL();a.click();
+  };
+  window.empTable=empTable=function(arr){
+    arr=arr||[];
+    return `<table><thead><tr><th>Name</th><th>Account Level</th><th>Store Access</th><th>Position</th><th>Points</th><th>Status</th></tr></thead><tbody>${arr.map(e=>`<tr><td><button class="link empOpen" data-id="${E(e.id)}">${E(e.full_name)}</button><br><span class="small muted">${E(e.email||'')}</span></td><td><b>${E(level135(e).toUpperCase())}</b></td><td>${E(storeText135(e))}</td><td>${E(e.position||'-')}</td><td><b>${typeof money==='function'?money(e.current_points):E(e.current_points||0)}</b></td><td>${e.is_active===false?'<span class="pill red">Inactive</span>':(typeof standing==='function'?`<span class="pill ${standing(e.current_points).color}">${E(standing(e.current_points).label)}</span>`:'<span class="pill green">Active</span>')}</td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">No employees.</div></td></tr>'}</tbody></table>`;
+  };
+  window.acctTable=acctTable=function(arr){
+    arr=arr||[];
+    return `<table><thead><tr><th>Employee No.</th><th>Name</th><th>Email Login</th><th>PIN Backup</th><th>Store Access</th><th>Status</th><th>Action</th></tr></thead><tbody>${arr.map(e=>`<tr><td><b>${E(empNo135(e))}</b></td><td>${E(e.full_name||'-')}<br><span class="small muted">${E(level135(e).toUpperCase())}</span></td><td>${E(e.email||'-')}</td><td>${E(pin135(e)||'-')}</td><td>${E(storeText135(e))}</td><td>${typeof activePill==='function'?activePill(e):(e.is_active===false?'<span class="pill red">Inactive</span>':'<span class="pill green">Active</span>')}</td><td><button class="btn sm blue" onclick="v122ResetPin&&v122ResetPin('${E(e.id)}',this)">Reset PIN</button> <button class="btn sm dark delAcct" data-id="${E(e.id)}">Permanent Remove</button></td></tr>`).join('')||'<tr><td colspan="7"><div class="empty">No accounts.</div></td></tr>'}</tbody></table>`;
+  };
+  const oldProfileMini135=window.profileMini;
+  if(typeof oldProfileMini135==='function'){
+    window.profileMini=profileMini=function(e){
+      return String(oldProfileMini135.apply(this,arguments)||'')+storeHtml135(e);
+    };
+  }
+  console.log('V135 multi-branch leader visibility loaded');
+})();
+/* ================= END V135 ================= */
 </script></body></html>
