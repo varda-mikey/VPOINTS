@@ -19750,4 +19750,302 @@ init();
   console.log('V133 Drive delete permission test loaded');
 })();
 /* ================= END V133 ================= */
+/* ================= V134 CLEAR ROLE LEVELS + BRANCH ASSIGNMENT ================= */
+(function(){
+  if(window.__VPOINTS_V134_CLEAR_ROLE_LEVELS__)return;
+  window.__VPOINTS_V134_CLEAR_ROLE_LEVELS__=true;
+  window.VSCORE_FINAL_BUILD='V134_CLEAR_ROLE_LEVELS_BRANCH_ASSIGNMENT';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const STAFF_POSITIONS=['FRONT STAFF','KITCHEN STAFF','UTILITY'];
+  const LEADER_POSITIONS=['REGIONAL TEAM LEADER','TEAM LEADER','BRANCH MANAGER','FSQA OFFICER','BRANCH ADMIN','BRANCH AUDITOR'];
+  const RETAIL_POSITION='RETAIL OPERATIONS';
+
+  function style134(){
+    if(Q('#v134RoleStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v134RoleStyle">
+      .v134-role-card{border:1px solid #dbeafe;background:linear-gradient(180deg,#fff,#f8fbff)}
+      .v134-level-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
+      .v134-level{border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px;text-align:left;font-weight:1000;color:#111827}
+      .v134-level.active{border-color:#2563eb;background:#eff6ff;color:#1e3a8a;box-shadow:0 8px 22px rgba(37,99,235,.14)}
+      .v134-store-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:240px;overflow:auto}
+      .v134-check{display:flex;gap:8px;align-items:flex-start;border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:9px;font-size:12px;font-weight:900;color:#334155}
+      .v134-check input{width:18px;height:18px;flex:0 0 auto}
+      .v134-note{font-size:12px;line-height:1.38;color:#64748b;font-weight:800;margin-top:6px}
+      .v134-hidden{display:none!important}
+      @media(max-width:640px){.v134-level-grid,.v134-store-grid{grid-template-columns:1fr}}
+    </style>`);
+  }
+  function isNationalLike(b){
+    return /^(national branch|mother branch|all stores|retail operations)$/i.test(String(b||'').trim());
+  }
+  function role134(){
+    return String(S?.profile?.role||'').toLowerCase().replace(/[\s-]+/g,'_');
+  }
+  function pos134(){
+    return String(S?.profile?.position||'').toUpperCase();
+  }
+  function isRetail134(){
+    try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){}
+    return /retail|head_office|executive|management|master|hr/.test(role134())||/RETAIL|HEAD OFFICE|EXECUTIVE|MANAGEMENT|NATIONAL/.test(pos134());
+  }
+  function isLeader134(){
+    if(isRetail134())return true;
+    return /team_leader|branch_manager|manager|branch_leader|fsqa/i.test(role134())||/TEAM LEADER|BRANCH MANAGER|BRANCH LEADER|FSQA|REGIONAL|AUDITOR|ADMIN/.test(pos134());
+  }
+  function parseArr134(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.flatMap(parseArr134);
+    if(typeof v==='object')return Object.values(v).flatMap(parseArr134);
+    const s=String(v||'').trim();
+    try{return parseArr134(JSON.parse(s))}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function allStores134(){
+    const rows=[
+      ...(typeof defaultBranches!=='undefined'?defaultBranches:[]),
+      ...(S?.branches||[]).map(b=>b.branch_name||b.name||b.branch),
+      ...(S?.employees||[]).map(e=>e.branch),
+      ...(S?.allEmployees||[]).map(e=>e.branch),
+      S?.profile?.branch
+    ].filter(Boolean);
+    return [...new Set(rows.map(String).filter(b=>!isNationalLike(b)))].sort((a,b)=>a.localeCompare(b));
+  }
+  function settingAccess134(id){
+    const set=S?.settings||{}, keys=['branch_access_'+id,'manager_branch_access_'+id,'assigned_branches_'+id,'v77_branch_access_'+id,'mission_branch_access_'+id];
+    let out=[];
+    keys.forEach(k=>out.push(...parseArr134(set[k])));
+    keys.forEach(k=>{try{out.push(...parseArr134(localStorage.getItem(k)))}catch(_){}})
+    return out;
+  }
+  function creatorStores134(){
+    if(isRetail134())return allStores134();
+    const p=S?.profile||{};
+    const stores=[p.branch,...parseArr134(p.assigned_branches),...parseArr134(p.managed_branches),...parseArr134(p.access_branches),...parseArr134(p.branch_access),...settingAccess134(p.id)].filter(Boolean);
+    return [...new Set(stores.map(String).filter(b=>!isNationalLike(b)))].sort((a,b)=>a.localeCompare(b));
+  }
+  function nextEmpNo134(){
+    const y=String(new Date().getFullYear());
+    const rows=[...(S?.allEmployees||[]),...(S?.employees||[])], seen=new Set();let max=0,count=0;
+    rows.forEach(e=>{
+      const k=e?.id||e?.email;if(!k||seen.has(k))return;seen.add(k);count++;
+      const direct=e.employee_number||e.employee_no||e.employee_code||e.staff_number||'';
+      const m=String(direct).match(/^VG-(\d{4})-(\d+)$/i);
+      if(m&&m[1]===y)max=Math.max(max,Number(m[2]||0));
+    });
+    return `VG-${y}-${String((max||count)+1).padStart(3,'0')}`;
+  }
+  async function saveSetting134(key,value){
+    try{
+      localStorage.setItem(key,String(value));
+      if(S?.settings)S.settings[key]=String(value);
+      let r=await sb.from('app_settings').upsert({setting_key:key,setting_value:String(value),updated_at:new Date().toISOString()},{onConflict:'setting_key'});
+      if(r.error)r=await sb.from('app_settings').insert({setting_key:key,setting_value:String(value),updated_at:new Date().toISOString()});
+      return r;
+    }catch(e){return {error:e}}
+  }
+  async function insertEmployee134(rec){
+    const tries=[
+      rec,
+      (()=>{const x={...rec};delete x.secondary_branches;delete x.account_level;return x})(),
+      (()=>{const x={...rec};delete x.secondary_branches;delete x.account_level;delete x.assigned_branches;return x})(),
+      (()=>{const x={...rec};delete x.secondary_branches;delete x.account_level;delete x.assigned_branches;delete x.employee_number;return x})()
+    ];
+    let last=null;
+    for(const p of tries){
+      const r=await sb.from('employees').insert(p).select().single();
+      if(!r.error)return {...(r.data||p),employee_number:rec.employee_number,assigned_branches:rec.assigned_branches,secondary_branches:rec.secondary_branches,account_level:rec.account_level};
+      last=r.error;
+      const msg=String(r.error.message||'').toLowerCase();
+      if(!/column|schema|employee_number|assigned_branches|secondary_branches|account_level|cache/.test(msg))break;
+    }
+    throw last||new Error('Could not create account.');
+  }
+  function levelOptions134(){
+    if(!isRetail134())return '<option value="staff">Staff Level</option>';
+    return '<option value="staff">Staff Level</option><option value="leader">Team Leader Level</option><option value="retail">Retail Level</option>';
+  }
+  function positionOptions134(level){
+    const arr=level==='retail'?[RETAIL_POSITION]:(level==='leader'?LEADER_POSITIONS:STAFF_POSITIONS);
+    return arr.map(p=>`<option value="${E(p)}">${E(p)}</option>`).join('');
+  }
+  function storeOptions134(stores,selected=''){
+    return stores.map(b=>`<option value="${E(b)}" ${b===selected?'selected':''}>${E(b)}</option>`).join('');
+  }
+  function checkboxGrid134(stores,cls,checked=[]){
+    const set=new Set((checked||[]).map(String));
+    return `<div class="v134-store-grid">${stores.map(b=>`<label class="v134-check"><input type="checkbox" class="${cls}" value="${E(b)}" ${set.has(String(b))?'checked':''}> <span>${E(b)}</span></label>`).join('')||'<div class="empty">No assigned stores found.</div>'}</div>`;
+  }
+  function accountForm134(){
+    const stores=creatorStores134();
+    const level='staff';
+    const first=stores[0]||'';
+    return `<form id="staffForm" data-v134="1">
+      <div class="field"><label>1. Account Level</label><select id="v134AccountLevel" class="input">${levelOptions134()}</select><div class="v134-note">Choose Staff Level, Team Leader Level, or Retail Level first.</div></div>
+      <div class="field"><label>2. Position</label><select id="staffPosition" class="input">${positionOptions134(level)}</select></div>
+      <div id="v134BranchArea"></div>
+      <div class="field"><label>Employee Number (Auto)</label><input id="staffEmployeeNumberPreview" class="input" value="${E(nextEmpNo134())}" readonly></div>
+      <div class="field"><label>Full Name</label><input id="staffName" class="input" placeholder="Example: Juan Dela Cruz" required></div>
+      <div class="field"><label>Email Login</label><input id="staffEmail" type="email" class="input" placeholder="employee@company.com" required></div>
+      <div class="field"><label>4-Digit PIN</label><input id="staffPass" class="input" inputmode="numeric" maxlength="4" placeholder="1234" required></div>
+      <input id="staffBranch" type="hidden" value="${E(first)}">
+      <div class="field"><label>Access Role Auto Category</label><input id="staffRoleView" class="input" readonly value="Employee"></div>
+      <button class="btn full green">Create Account + Credential Slip</button>
+    </form>`;
+  }
+  function staffBranchHtml134(stores,primary,missionChecked=[]){
+    primary=primary||stores[0]||'';
+    return `<div class="field"><label>3. Primary Store</label><select id="v134PrimaryStore" class="input">${storeOptions134(stores,primary)}</select><div class="v134-note">Staff use one primary store for attendance and normal monitoring.</div></div>
+      <div class="field"><label>Secondary Stores For Mission Only</label>${checkboxGrid134(stores.filter(b=>b!==primary), 'v134MissionStore', missionChecked)}<div class="v134-note">Optional. These stores do not make the staff a manager; they only help when assigning missions outside the primary store.</div></div>`;
+  }
+  function leaderBranchHtml134(stores,checked=[]){
+    const chosen=checked.length?checked:[stores[0],stores[1]].filter(Boolean);
+    return `<div class="field"><label>3. Assigned Stores</label>${checkboxGrid134(stores,'v134AssignedStore',chosen)}<div class="v134-note">Team Leader, Regional, FSQA, Admin, and Auditor accounts can monitor only the stores checked here. Regional Team Leader should have 2 or more stores.</div></div>`;
+  }
+  function retailBranchHtml134(stores){
+    return `<div class="notice success"><b>Retail Level:</b><br>This account handles all store connections and national operations. No National/Mother Branch selection is needed.</div><div class="v134-note">Store scope: ${stores.length?stores.map(E).join(', '):'All active stores after branch setup.'}</div>`;
+  }
+  function syncForm134(){
+    style134();
+    const form=Q('#staffForm[data-v134="1"]');if(!form)return;
+    A('#v129AccessBox,#v82AccessBox,#v80AccessBox,#v78AccessBlock,#v95StoreAccess,#v129BranchScopeNote').forEach(x=>x.remove());
+    const level=Q('#v134AccountLevel')?.value||'staff';
+    const stores=creatorStores134();
+    const posSel=Q('#staffPosition');
+    if(posSel){
+      const current=posSel.value;
+      posSel.innerHTML=positionOptions134(level);
+      if(A('option',posSel).some(o=>o.value===current))posSel.value=current;
+    }
+    const currentPrimary=Q('#v134PrimaryStore')?.value||Q('#staffBranch')?.value||stores[0]||'';
+    const currentMission=A('.v134MissionStore:checked').map(x=>x.value).filter(Boolean);
+    const currentAssigned=A('.v134AssignedStore:checked').map(x=>x.value).filter(Boolean);
+    const area=Q('#v134BranchArea');
+    if(area)area.innerHTML=level==='retail'?retailBranchHtml134(stores):(level==='leader'?leaderBranchHtml134(stores,currentAssigned):staffBranchHtml134(stores,currentPrimary,currentMission));
+    const roleView=Q('#staffRoleView');
+    if(roleView)roleView.value=level==='retail'?'Retail / National Operations':(level==='leader'?'Team Leader Level':'Staff Employee');
+    const primary=Q('#v134PrimaryStore');
+    const hidden=Q('#staffBranch');
+    if(primary&&hidden)hidden.value=primary.value;
+    if(level==='leader'&&hidden){
+      const first=A('.v134AssignedStore:checked').map(x=>x.value)[0]||stores[0]||'';
+      hidden.value=first;
+    }
+    if(level==='retail'&&hidden)hidden.value='ALL STORES';
+    const prev=Q('#staffEmployeeNumberPreview');if(prev)prev.value=nextEmpNo134();
+    if(Q('#staffPass')&&!Q('#staffPass').value)Q('#staffPass').value=String(Math.floor(1000+Math.random()*9000));
+  }
+  function employeesPage134(){
+    const title=isRetail134()?'Create Account':'Create Staff Account';
+    const right=`<div class="card"><h3>${isRetail134()?'Employee Universe':'Assigned Store Staff'}</h3>${typeof empTable==='function'?empTable(S.employees||[]):'<div class="empty">No employee table.</div>'}</div>`;
+    return `<div class="grid two"><div class="card v134-role-card"><h3>${title}</h3><div class="notice success"><b>Clear role structure:</b><br>Staff = Front Staff, Kitchen Staff, Utility. Team Leader Level = Regional, Team Leader, FSQA, Admin, Auditor, Branch Manager with chosen stores. Retail = all stores / national operations.</div>${accountForm134()}<div class="v134-note">No Mother Branch or National Branch is used for account creation. Branch assignment controls access.</div></div>${right}</div>`;
+  }
+  window.employeesPage=employeesPage=employeesPage134;
+  window.createStaff=createStaff=async function(e){
+    if(e?.__v134Handled)return;
+    if(e){e.__v134Handled=true;if(e.preventDefault)e.preventDefault();if(e.stopImmediatePropagation)e.stopImmediatePropagation();}
+    syncForm134();
+    const b=e?.submitter||Q('#staffForm button[type="submit"],#staffForm button');
+    await act(b,{busy:'Creating...',success:'Created',reset:'Create Another Account',toast:'Account created with clear role and branch assignment.'},async()=>{
+      if(!isLeader134())throw new Error('Only Retail or assigned Team Leader level can create accounts.');
+      const level=Q('#v134AccountLevel')?.value||'staff';
+      if(!isRetail134()&&level!=='staff')throw new Error('Team Leader level can create Staff Level accounts only. Retail creates Team Leader and Retail accounts.');
+      const position=Q('#staffPosition')?.value||(level==='leader'?'TEAM LEADER':level==='retail'?RETAIL_POSITION:'FRONT STAFF');
+      const stores=creatorStores134();
+      let branch='',access=[],missionAccess=[];
+      if(level==='staff'){
+        branch=Q('#v134PrimaryStore')?.value||stores[0]||'';
+        if(!branch)throw new Error('Choose the staff primary store.');
+        access=[branch];
+        missionAccess=A('.v134MissionStore:checked').map(x=>x.value).filter(Boolean);
+      }else if(level==='leader'){
+        access=A('.v134AssignedStore:checked').map(x=>x.value).filter(Boolean);
+        if(!access.length)throw new Error('Choose at least one assigned store.');
+        if(/REGIONAL/i.test(position)&&access.length<2)throw new Error('Regional Team Leader should have 2 or more assigned stores.');
+        branch=access[0];
+      }else{
+        if(!isRetail134())throw new Error('Only Retail can create Retail Level accounts.');
+        access=stores;
+        branch='ALL STORES';
+      }
+      if(!isRetail134()){
+        const allowed=new Set(stores.map(String));
+        if(!allowed.has(String(branch)))throw new Error('You can only create staff under your assigned stores.');
+        access=access.filter(x=>allowed.has(String(x)));
+        missionAccess=missionAccess.filter(x=>allowed.has(String(x)));
+      }
+      const email=String(Q('#staffEmail')?.value||'').trim().toLowerCase();
+      const fullName=String(Q('#staffName')?.value||'').trim();
+      const pin=String(Q('#staffPass')?.value||'').trim()||String(Math.floor(1000+Math.random()*9000));
+      if(!fullName||!email)throw new Error('Please complete full name and email.');
+      if(!/^\d{4}$/.test(pin))throw new Error('PIN must be exactly 4 numbers.');
+      const empNo=nextEmpNo134();
+      const role=level==='retail'?'retail_head':(level==='leader'?'team_leader':'employee');
+      const rec={
+        employee_number:empNo,
+        account_level:level,
+        full_name:fullName,
+        email,
+        branch,
+        position,
+        role,
+        temp_password:pin,
+        login_password_backup:pin,
+        pin_code:pin,
+        activation_status:'not_activated',
+        is_active:true,
+        profile_completed:false,
+        starting_points:100,
+        current_points:100,
+        assigned_branches:access,
+        secondary_branches:missionAccess,
+        account_created_by:S.profile?.id,
+        account_created_at:new Date().toISOString()
+      };
+      const empNew=await insertEmployee134(rec);
+      const id=empNew.id;
+      if(id){
+        await saveSetting134('employee_number_'+id,empNo);
+        await saveSetting134('vpoints_employee_number_'+id,empNo);
+        await saveSetting134('branch_access_'+id,JSON.stringify(access));
+        await saveSetting134('manager_branch_access_'+id,JSON.stringify(access));
+        await saveSetting134('v77_branch_access_'+id,JSON.stringify(access));
+        await saveSetting134('mission_branch_access_'+id,JSON.stringify(missionAccess));
+        try{await sb.from('employees').update({employee_number:empNo,assigned_branches:access,secondary_branches:missionAccess,account_level:level}).eq('id',id)}catch(_){}
+      }
+      return {...empNew,employee_number:empNo,assigned_branches:access,secondary_branches:missionAccess,account_level:level};
+    },async empNew=>{await loadData();renderPage();try{credential(empNew)}catch(_){try{toast('Account created: '+(empNew.employee_number||empNew.email),'ok')}catch(__){}}});
+  };
+  function bind134(root=document){
+    style134();
+    const form=Q('#staffForm[data-v134="1"]',root)||Q('#staffForm[data-v134="1"]');
+    if(!form)return;
+    if(!form.__v134){
+      form.__v134=true;
+      form.addEventListener('submit',window.createStaff,true);
+    }
+    const level=Q('#v134AccountLevel',form);
+    if(level&&!level.__v134){level.__v134=true;level.onchange=syncForm134}
+    A('#v134PrimaryStore,.v134AssignedStore,.v134MissionStore',form).forEach(el=>{if(!el.__v134){el.__v134=true;el.onchange=syncForm134}});
+    syncForm134();
+  }
+  const oldRenderPage134=window.renderPage;
+  if(typeof oldRenderPage134==='function')window.renderPage=renderPage=function(){const out=oldRenderPage134.apply(this,arguments);setTimeout(()=>bind134(Q('#page')||document),90);setTimeout(()=>bind134(document),360);setTimeout(()=>bind134(document),900);return out};
+  const oldBind134=window.bind;
+  if(typeof oldBind134==='function')window.bind=bind=function(){const out=oldBind134.apply(this,arguments);setTimeout(()=>bind134(document),80);setTimeout(()=>bind134(document),420);return out};
+  document.addEventListener('change',ev=>{
+    const t=ev.target;
+    const inNewForm=!!t?.closest?.('#staffForm[data-v134="1"]');
+    const watched=inNewForm&&(['v134AccountLevel','v134PrimaryStore','staffPosition','staffBranch'].includes(t.id)||t.classList?.contains('v134AssignedStore')||t.classList?.contains('v134MissionStore'));
+    if(watched){
+      if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();
+      setTimeout(syncForm134,20);
+    }
+  },true);
+  setTimeout(()=>bind134(document),700);
+  console.log('V134 clear role levels and branch assignment loaded');
+})();
+/* ================= END V134 ================= */
 </script></body></html>
