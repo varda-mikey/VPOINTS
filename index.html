@@ -19332,4 +19332,422 @@ init();
   console.log('V131 centered login welcome loaded');
 })();
 /* ================= END V131 ================= */
+/* ================= V132 FRESH START DELETE BY TAB ================= */
+(function(){
+  if(window.__VPOINTS_V132_FRESH_START_DELETE_BY_TAB__)return;
+  window.__VPOINTS_V132_FRESH_START_DELETE_BY_TAB__=true;
+  window.VSCORE_FINAL_BUILD='V132_FRESH_START_DELETE_BY_TAB';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const RED='#7f1d1d';
+  const FRESH_GROUPS={
+    attendance:{label:'Attendance / Time Clock',code:'DELETE ATTENDANCE',kind:'tables',tables:['vscore_attendance_logs','attendance_logs'],note:'Time In / Time Out rows and attached selfie photos.'},
+    outputs:{label:'Shift Outputs / Tasklists',code:'DELETE OUTPUTS',kind:'tasks',mode:'outputs',note:'Daily outputs, shared tasklists, proof photos, comments, and reactions.'},
+    missions:{label:'Missions / Actions',code:'DELETE MISSIONS',kind:'tasks',mode:'missions',note:'Assigned missions, mission proof photos, mission comments, and action status.'},
+    memos:{label:'Memos / Acknowledgments',code:'DELETE MEMOS',kind:'tables',tables:['memo_acknowledgments','memos'],note:'Memo posts, attachments, and acknowledgment records.'},
+    news:{label:'News Feed',code:'DELETE NEWS',kind:'tables',tables:['vscore_social_comments','vscore_social_reactions','vscore_social_posts'],note:'News posts, photos, comments, and reactions.'},
+    messages:{label:'Messages / Messenger',code:'DELETE MESSAGES',kind:'tables',tables:['vscore_chat_messages','vscore_chat_members','vscore_chat_rooms'],note:'Team chat rooms, messages, and uploaded chat photos.'},
+    cases:{label:'Cases / Reports / Points Actions',code:'DELETE CASES',kind:'tables',tables:['vscore_case_actions','achievements','violations','investigation_reports','fsqa_audits','ledger'],note:'Concerns, violations, case actions, merit/demerit requests, and points ledger.'},
+    ratings:{label:'Customer Ratings',code:'DELETE RATINGS',kind:'tables',tables:['vscore_customer_ratings'],note:'Customer service ratings and remarks.'},
+    training:{label:'Training / Academy',code:'DELETE TRAINING',kind:'tables',tables:['vscore_training_quiz_attempts','vscore_training_completions','vscore_training_questions','vscore_training_slides','vscore_training_modules','vscore_academy_attempts','vscore_academy_completions','vscore_academy_questions','vscore_academy_slides','vscore_academy_modules'],note:'Training modules, slides, attempts, and completion records.'},
+    rewards:{label:'Rewards / Claims',code:'DELETE REWARDS',kind:'tables',tables:['vscore_reward_claims','reward_claims','vscore_rewards','rewards'],note:'Reward catalog items, reward images, and redemption claims.'},
+    policies:{label:'Policy Library',code:'DELETE POLICIES',kind:'tables',tables:['vscore_policy_rules'],note:'Company policy library content.'},
+    forms:{label:'Forms Library',code:'DELETE FORMS',kind:'tables',tables:['vscore_forms'],note:'Uploaded company forms and form attachments.'},
+    audit:{label:'Audit / Cleanup Logs',code:'DELETE LOGS',kind:'tables',tables:['vscore_cleanup_log','audit_trail'],note:'System audit logs and cleanup logs.'}
+  };
+  const FRESH_LAUNCH_GROUPS=['attendance','outputs','missions','memos','news','messages','cases','ratings','audit'];
+
+  function addStyle(){
+    if(Q('#v132FreshStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v132FreshStyle">
+      .v132-fresh-card{border:1px solid rgba(185,28,28,.2);box-shadow:0 18px 48px rgba(15,23,42,.07)}
+      .v132-fresh-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+      .v132-fresh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+      .v132-fresh-item{border:1px solid #e5e7eb;border-radius:16px;background:#fff;padding:12px;display:grid;gap:8px}
+      .v132-fresh-item h4{margin:0;color:${RED};font-size:15px}
+      .v132-fresh-item p{margin:0;color:#64748b;font-size:12px;line-height:1.35}
+      .v132-fresh-launch{border:1px solid #fecaca;background:#fff7f7;border-radius:16px;padding:12px;margin-top:12px}
+      .v132-fresh-launch h4{margin:0 0 5px;color:${RED}}
+      .v132-fresh-flow{display:grid;gap:6px;margin:10px 0}
+      .v132-fresh-flow div{font-size:12px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:11px;padding:8px}
+      .v132-delete-modal{max-width:560px}
+      .v132-delete-modal h2{margin-bottom:4px}
+      .v132-delete-list{max-height:190px;overflow:auto;background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px;font-size:12px;line-height:1.4}
+      .v132-log{max-height:220px;overflow:auto;background:#111827;color:#e5e7eb;border-radius:14px;padding:12px;font-size:12px;line-height:1.45;white-space:pre-wrap}
+      @media(max-width:700px){.v132-fresh-grid{grid-template-columns:1fr}.v132-fresh-head{display:grid}.v132-fresh-item .split,.v132-fresh-launch .split{display:grid;grid-template-columns:1fr;gap:8px}}
+    </style>`);
+  }
+  function ownerAllowed(){
+    try{if(typeof v110OwnerAllowed==='function')return v110OwnerAllowed()}catch(_){}
+    try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){}
+    const p=S?.profile||{}, t=`${p.role||''} ${p.position||''}`.toLowerCase();
+    return /retail|head|executive|admin|management|owner|master|hr/.test(t);
+  }
+  function mother(){
+    try{if(typeof v110Mother==='function')return v110Mother()}catch(_){}
+    const p=S?.profile||{};
+    const rows=[p,...(S?.allEmployees||[]),...(S?.employees||[])].filter(x=>x&&x.id);
+    return rows.find(e=>/retail|head|admin|management|owner|master/i.test(`${e.role||''} ${e.position||''} ${e.branch||''}`))||p;
+  }
+  function uniq(arr){return [...new Set((arr||[]).map(x=>String(x||'').trim()).filter(Boolean))]}
+  function nonMotherAccounts(){
+    const keep=String(mother()?.id||'');
+    const seen=new Set();
+    return [...(S?.allEmployees||[]),...(S?.employees||[])].filter(e=>{
+      if(!e?.id||String(e.id)===keep||seen.has(String(e.id)))return false;
+      seen.add(String(e.id));
+      return true;
+    });
+  }
+  async function fetchAll(table){
+    const rows=[];let from=0,size=1000;
+    for(let guard=0;guard<30;guard++){
+      const r=await sb.from(table).select('*').range(from,from+size-1);
+      if(r.error)return {rows,error:r.error.message||String(r.error)};
+      rows.push(...(r.data||[]));
+      if(!r.data||r.data.length<size)break;
+      from+=size;
+    }
+    return {rows,error:''};
+  }
+  function driveIdsFrom(v){
+    try{if(typeof v45ExtractDriveIds==='function')return uniq(v45ExtractDriveIds(v)||[])}catch(_){}
+    try{if(typeof v48DriveIdsFromAny==='function')return uniq(v48DriveIdsFromAny(v)||[])}catch(_){}
+    const ids=[];
+    const walk=x=>{
+      if(!x)return;
+      if(typeof x==='string'){
+        let m=x.match(/[?&]id=([a-zA-Z0-9_-]{15,})/)||x.match(/\/d\/([a-zA-Z0-9_-]{15,})/)||x.match(/thumbnail\?id=([a-zA-Z0-9_-]{15,})/);
+        if(m)ids.push(m[1]);
+        const t=x.trim();
+        if((t[0]==='{'||t[0]==='[')&&t.length<250000){try{walk(JSON.parse(t))}catch(_){}}
+      }else if(Array.isArray(x))x.forEach(walk);
+      else if(typeof x==='object')Object.entries(x).forEach(([k,val])=>{/drive|file|url|photo|image|media|proof|evidence|attachment|selfie|json/i.test(k)&&walk(val)});
+    };
+    walk(v);return uniq(ids);
+  }
+  function storagePairsFrom(v,out=[]){
+    try{
+      if(!v)return out;
+      if(typeof v==='string'){
+        const re=/\/storage\/v1\/object\/public\/([^\/?#]+)\/([^?#"']+)/g;let m;
+        while((m=re.exec(v)))out.push({bucket:decodeURIComponent(m[1]),path:decodeURIComponent(m[2])});
+        const t=v.trim();
+        if((t[0]==='{'||t[0]==='[')&&t.length<250000){try{storagePairsFrom(JSON.parse(t),out)}catch(_){}}
+      }else if(Array.isArray(v))v.forEach(x=>storagePairsFrom(x,out));
+      else if(typeof v==='object')Object.entries(v).forEach(([k,val])=>{/file|url|photo|image|media|proof|evidence|attachment|selfie|json/i.test(k)&&storagePairsFrom(val,out)});
+    }catch(_){}
+    return out;
+  }
+  async function trashDrive(ids,logs,reason){
+    ids=uniq(ids);
+    if(!ids.length)return;
+    try{
+      if(typeof v45TrashDriveFiles==='function'){
+        const r=await v45TrashDriveFiles(ids,reason);
+        logs.push(`Drive Trash: ${ids.length} file(s), failed ${(r.failed||[]).length}.`);
+      }else if(typeof v44DriveDeleteFiles==='function'){
+        const r=await v44DriveDeleteFiles(ids,reason);
+        logs.push(`Drive Trash: ${ids.length} file(s), failed ${(r.failed||[]).length}.`);
+      }else logs.push(`Drive cleanup skipped: ${ids.length} file(s), bridge delete helper not available.`);
+    }catch(e){logs.push(`Drive cleanup warning: ${e.message||e}`)}
+  }
+  async function trashStorage(pairs,logs){
+    const by={};
+    (pairs||[]).forEach(p=>{if(p.bucket&&p.path)(by[p.bucket]||(by[p.bucket]=new Set())).add(p.path)});
+    for(const [bucket,set] of Object.entries(by)){
+      const paths=Array.from(set);let removed=0,failed=0;
+      for(let i=0;i<paths.length;i+=80){
+        const r=await sb.storage.from(bucket).remove(paths.slice(i,i+80));
+        if(r.error)failed+=Math.min(80,paths.length-i);else removed+=Math.min(80,paths.length-i);
+      }
+      logs.push(`Supabase storage ${bucket}: removed ${removed}, failed ${failed}.`);
+    }
+  }
+  async function deleteAllRows(table){
+    const attempts=[
+      q=>q.not('id','is',null),
+      q=>q.not('created_at','is',null),
+      q=>q.neq('status','__vpoints_keep__'),
+      q=>q.neq('employee_id','__vpoints_keep__')
+    ];
+    let last='No accepted delete filter.';
+    for(const f of attempts){
+      try{const r=await f(sb.from(table).delete());if(!r.error)return {ok:true};last=r.error.message||String(r.error)}catch(e){last=e.message||String(e)}
+    }
+    return {ok:false,error:last};
+  }
+  async function deleteIds(table,ids,field='id'){
+    ids=uniq(ids);
+    if(!ids.length)return {ok:true};
+    let errors=[];
+    for(let i=0;i<ids.length;i+=80){
+      const r=await sb.from(table).delete().in(field,ids.slice(i,i+80));
+      if(r.error)errors.push(r.error.message||String(r.error));
+    }
+    return errors.length?{ok:false,error:errors.join('; ')}:{ok:true};
+  }
+  function isOutputTask(t){
+    const s=`${t?.source_type||''} ${t?.task_type||''} ${t?.title||''}`.toLowerCase();
+    return /self_tasklist|daily_output|shift_output|tasklist|end-of-shift|shift output|output/.test(s)&&!/mission|fsqa|problem|special/.test(s);
+  }
+  function isMissionTask(t){
+    const s=`${t?.source_type||''} ${t?.task_type||''} ${t?.title||''}`.toLowerCase();
+    return /mission|assigned_mission|fsqa|problem|special|action/.test(s)||!isOutputTask(t);
+  }
+  async function deleteTasks(mode,logs){
+    const r=await fetchAll('vscore_tasks');
+    if(r.error){logs.push(`vscore_tasks: ${r.error}`);return}
+    const rows=(r.rows||[]).filter(t=>mode==='outputs'?isOutputTask(t):isMissionTask(t));
+    const ids=uniq(rows.map(x=>x.id));
+    const drive=uniq(rows.flatMap(driveIdsFrom));
+    const storage=rows.flatMap(storagePairsFrom);
+    await trashDrive(drive,logs,`${mode}-delete`);
+    await trashStorage(storage,logs);
+    for(const table of ['vscore_task_comments','vscore_task_reactions','vscore_task_acknowledgments']){
+      const del=await deleteIds(table,ids,'task_id');
+      logs.push(`${table}: ${del.ok?'deleted connected rows':del.error}`);
+    }
+    const del=await deleteIds('vscore_tasks',ids,'id');
+    logs.push(`vscore_tasks (${mode}): ${del.ok?`${ids.length} row(s) deleted`:del.error}`);
+  }
+  async function deleteTables(group,logs){
+    const tables=group.tables||[];
+    const allDrive=[],allStorage=[];
+    for(const table of tables){
+      const r=await fetchAll(table);
+      if(r.error){logs.push(`${table}: preview warning - ${r.error}`);continue}
+      (r.rows||[]).forEach(row=>{allDrive.push(...driveIdsFrom(row));allStorage.push(...storagePairsFrom(row))});
+    }
+    await trashDrive(allDrive,logs,`${group.label}-delete`);
+    await trashStorage(allStorage,logs);
+    for(const table of tables){
+      const del=await deleteAllRows(table);
+      logs.push(`${table}: ${del.ok?'deleted/cleared':del.error}`);
+    }
+  }
+  async function deleteGroup(key,logs){
+    const g=FRESH_GROUPS[key];
+    if(!g)throw new Error('Unknown delete tab.');
+    if(g.kind==='tasks')await deleteTasks(g.mode,logs);
+    else await deleteTables(g,logs);
+  }
+  async function deleteNonMother(logs){
+    const m=mother();
+    if(!m?.id)throw new Error('Mother Retail account was not found.');
+    let r=await sb.from('employees').delete().neq('id',m.id);
+    if(r.error){
+      r=await sb.from('employees').update({is_active:false,hidden_from_monitoring:true,activation_status:'permanent_deleted'}).neq('id',m.id);
+      logs.push(`Accounts: ${r.error?r.error.message||String(r.error):'delete blocked, non-mother accounts hidden/deactivated instead.'}`);
+    }else logs.push('Accounts: all non-mother accounts deleted.');
+    try{await sb.from('employees').update({is_active:true,hidden_from_monitoring:false,activation_status:'activated'}).eq('id',m.id)}catch(_){}
+    try{S.employees=[m];S.allEmployees=[m];S.profile={...(S.profile||{}),...m}}catch(_){}
+  }
+  async function runFreshLaunch(logs){
+    for(const key of FRESH_LAUNCH_GROUPS)await deleteGroup(key,logs);
+    await deleteNonMother(logs);
+    logs.push('Fresh launch ready: mother Retail account kept. Create managers next, then managers create staff.');
+  }
+  function groupButton(key,g){
+    return `<div class="v132-fresh-item"><h4>${E(g.label)}</h4><p>${E(g.note)}</p><button type="button" class="btn sm dark" onclick="v132OpenFreshDelete('${E(key)}')">Clear This Tab</button></div>`;
+  }
+  function employeeOptions(){
+    const rows=nonMotherAccounts();
+    return rows.length?rows.map(e=>`<option value="${E(e.id)}">${E(e.full_name||e.email||e.id)} - ${E(e.branch||'')}</option>`).join(''):'<option value="">No manager/staff accounts yet</option>';
+  }
+  function freshCard(){
+    addStyle();
+    return `<div class="card v132-fresh-card" id="v132FreshStartCard">
+      <div class="v132-fresh-head">
+        <div><h3>Fresh Start / Delete By Tab</h3><p class="muted">Retail-only cleanup controls. Delete one tab, delete one account with connected records, or prepare a clean launch while keeping the mother Retail account.</p></div>
+        <span class="pill red">Protected</span>
+      </div>
+      <div class="v132-fresh-flow">
+        <div><b>Recommended start:</b> run Fresh Launch Reset, then create Branch Managers / Team Leaders, then they create their own staff under assigned branches.</div>
+        <div><b>Connected delete:</b> uploaded V-Points files are moved to Drive Trash when the Drive bridge permits delete action; app records are removed from Supabase.</div>
+      </div>
+      <div class="v132-fresh-launch">
+        <h4>Fresh Launch Reset</h4>
+        <p class="muted small">Clears operational content and all non-mother accounts. Keeps mother Retail login, app logo/settings, branches, and master libraries unless you clear those tabs separately below.</p>
+        <div class="split"><button type="button" class="btn dark" onclick="v132OpenFreshDelete('fresh_launch')">Fresh Launch Reset</button><button type="button" class="btn blue" onclick="v132PreviewFreshStart(this)">Preview Counts</button></div>
+      </div>
+      <div class="v132-fresh-launch">
+        <h4>Delete One Account + Connected Records</h4>
+        <p class="muted small">Use this when one staff/manager must be removed completely. Their attendance, tasks, missions, cases, points, posts, messages, proof files, and related records are included.</p>
+        <div class="field"><label>Select account</label><select id="v132DeleteEmployee" class="input">${employeeOptions()}</select></div>
+        <button type="button" class="btn dark full" onclick="v132DeleteSelectedEmployee(this)">Permanent Delete Selected Account</button>
+      </div>
+      <h3 style="margin-top:16px">Delete Content Per Tab</h3>
+      <div class="v132-fresh-grid">${Object.entries(FRESH_GROUPS).map(([k,g])=>groupButton(k,g)).join('')}</div>
+    </div>`;
+  }
+  function deleteModal(key){
+    const launch=key==='fresh_launch';
+    const g=launch?{label:'Fresh Launch Reset',code:'FRESH START',note:'Operational records and non-mother accounts will be deleted. Mother Retail account stays active.'}:FRESH_GROUPS[key];
+    if(!g)return toast('Delete area not found.','error');
+    const tables=launch?FRESH_LAUNCH_GROUPS.flatMap(k=>FRESH_GROUPS[k].tables||['vscore_tasks']).concat(['employees except mother account']):(g.tables||['vscore_tasks and task related tables']);
+    modal(`<div class="v132-delete-modal">
+      <h2>${E(g.label)}</h2>
+      <p class="muted">${E(g.note)}</p>
+      <div class="notice danger"><b>This cannot be undone from V-Points.</b><br>Drive files will be moved to Trash when possible. To continue, type the exact code below.</div>
+      <div class="v132-delete-list">${tables.map(t=>`<div>${E(t)}</div>`).join('')}</div>
+      <div class="field"><label>Type confirmation code</label><input id="v132DeleteCode" class="input" autocomplete="off" placeholder="${E(g.code)}"></div>
+      <div class="split"><button class="btn gray" onclick="closeModal()">Close</button><button class="btn dark" onclick="v132RunFreshDelete('${E(key)}',this)">Delete Now</button></div>
+    </div>`);
+  }
+  window.v132OpenFreshDelete=function(key){
+    if(!ownerAllowed())return toast('Only Retail / Head Office can use Fresh Start controls.','error');
+    deleteModal(key);
+  };
+  window.v132RunFreshDelete=async function(key,btn){
+    if(!ownerAllowed())return toast('Only Retail / Head Office can delete app data.','error');
+    const launch=key==='fresh_launch';
+    const g=launch?{label:'Fresh Launch Reset',code:'FRESH START'}:FRESH_GROUPS[key];
+    if(!g)return toast('Delete area not found.','error');
+    const typed=String(Q('#v132DeleteCode')?.value||'').trim();
+    if(typed!==g.code)return toast(`Type ${g.code} exactly.`, 'error');
+    const logs=[];
+    await act(btn,{busy:'Deleting...',success:'Deleted',reset:'Delete Now',toast:`${g.label} cleared.`},async()=>{
+      if(launch)await runFreshLaunch(logs);
+      else await deleteGroup(key,logs);
+      try{await auditEvent('Fresh Start Delete','system',`${g.label} | ${logs.length} log lines`)}catch(_){}
+      return logs;
+    },async out=>{
+      try{await loadData()}catch(e){logs.push(`Reload warning: ${e.message||e}`)}
+      closeModal();
+      modal(`<div class="v132-delete-modal"><h2>${E(g.label)} Complete</h2><p class="muted">Review any warnings below. If Drive cleanup is skipped, check Google Drive Trash/manual files.</p><div class="v132-log">${E((out||logs).join('\n')||'Completed without warnings.')}</div><br><button class="btn dark full" onclick="closeModal();try{S.tab='settings';renderPage()}catch(e){}">Close</button></div>`);
+    });
+  };
+  window.v132PreviewFreshStart=async function(btn){
+    if(!ownerAllowed())return toast('Only Retail / Head Office can preview cleanup.','error');
+    await act(btn,{busy:'Counting...',success:'Preview Ready',reset:'Preview Counts'},async()=>{
+      const rows=[];
+      for(const [key,g] of Object.entries(FRESH_GROUPS)){
+        let count=0,errors=[];
+        if(g.kind==='tasks'){
+          const r=await fetchAll('vscore_tasks');errors.push(r.error||'');count=(r.rows||[]).filter(t=>g.mode==='outputs'?isOutputTask(t):isMissionTask(t)).length;
+        }else{
+          for(const t of g.tables||[]){const r=await fetchAll(t);if(r.error)errors.push(`${t}: ${r.error}`);count+=(r.rows||[]).length}
+        }
+        rows.push({label:g.label,count,errors:errors.filter(Boolean)});
+      }
+      return rows;
+    },rows=>{
+      modal(`<div class="v132-delete-modal"><h2>Fresh Start Preview</h2><p class="muted">Nothing was deleted. This only counts visible records from Supabase.</p><div class="v132-delete-list">${rows.map(r=>`<div><b>${E(r.label)}:</b> ${r.count} row(s)${r.errors.length?`<br><span class="small muted">${E(r.errors.join('; '))}</span>`:''}</div>`).join('')}<div><b>Non-mother accounts:</b> ${nonMotherAccounts().length}</div></div><br><button class="btn dark full" onclick="closeModal()">Close</button></div>`);
+    });
+  };
+  window.v132DeleteSelectedEmployee=function(btn){
+    if(!ownerAllowed())return toast('Only Retail / Head Office can delete accounts.','error');
+    const id=Q('#v132DeleteEmployee')?.value;
+    if(!id)return toast('No account selected.','error');
+    if(typeof v111PermanentDeleteAccount==='function')return v111PermanentDeleteAccount(id,btn);
+    return toast('Connected account delete helper is not loaded. Refresh then try again.','error');
+  };
+  if(typeof settingsPage==='function'&&!window.__v132SettingsPatch){
+    window.__v132SettingsPatch=true;
+    const old=settingsPage;
+    settingsPage=function(){
+      let html=String(old.apply(this,arguments)||'');
+      if(!html.includes('v132FreshStartCard'))html+=`<div style="margin-top:14px">${freshCard()}</div>`;
+      return html;
+    };
+    window.settingsPage=settingsPage;
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v132BindPatch){
+    window.__v132BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);addStyle();return out};
+  }
+  console.log('V132 fresh start delete by tab loaded');
+})();
+/* ================= END V132 ================= */
+/* ================= V133 DRIVE DELETE PERMISSION TEST ================= */
+(function(){
+  if(window.__VPOINTS_V133_DRIVE_DELETE_TEST__)return;
+  window.__VPOINTS_V133_DRIVE_DELETE_TEST__=true;
+  window.VSCORE_FINAL_BUILD='V133_DRIVE_DELETE_PERMISSION_TEST';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const E=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  function ownerAllowed(){
+    try{if(typeof v110OwnerAllowed==='function')return v110OwnerAllowed()}catch(_){}
+    try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){}
+    const p=S?.profile||{}, t=`${p.role||''} ${p.position||''}`.toLowerCase();
+    return /retail|head|executive|admin|management|owner|master|hr/.test(t);
+  }
+  function style133(){
+    if(Q('#v133DriveDeleteStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v133DriveDeleteStyle">
+      .v133-drive-test{border:1px solid #bfdbfe;background:linear-gradient(180deg,#fff,#eff6ff);box-shadow:0 14px 38px rgba(15,23,42,.06)}
+      .v133-drive-test h3{color:#1e3a8a!important}
+      .v133-drive-status{font-size:12px;line-height:1.45;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-top:10px;white-space:pre-wrap}
+    </style>`);
+  }
+  function encodeText(s){
+    try{return btoa(unescape(encodeURIComponent(s)))}catch(_){return 'Vi1Qb2ludHMgRHJpdmUgRGVsZXRlIFRlc3Q='}
+  }
+  function driveIdFromUpload(up){
+    if(up?.fileId)return String(up.fileId);
+    const u=String(up?.url||up?.viewUrl||up?.directViewUrl||up?.thumbnailUrl||up?.embedUrl||'');
+    try{
+      if(typeof v45DriveId==='function')return v45DriveId(u)||'';
+      if(typeof v44DriveIdFromUrl==='function')return v44DriveIdFromUrl(u)||'';
+    }catch(_){}
+    let m=u.match(/[?&]id=([a-zA-Z0-9_-]{15,})/)||u.match(/\/d\/([a-zA-Z0-9_-]{15,})/)||u.match(/thumbnail\?id=([a-zA-Z0-9_-]{15,})/);
+    return m?m[1]:'';
+  }
+  async function trashOne(id){
+    if(typeof v45TrashDriveFiles==='function')return await v45TrashDriveFiles([id],'drive-delete-permission-test');
+    if(typeof v44DriveDeleteFiles==='function')return await v44DriveDeleteFiles([id],'drive-delete-permission-test');
+    throw new Error('Drive delete helper is not available in this build.');
+  }
+  function card133(){
+    style133();
+    return `<div class="card v133-drive-test" id="v133DriveDeleteCard">
+      <h3>Google Drive Delete Permission Test</h3>
+      <p class="muted">Before Fresh Start, run this once. It uploads a tiny test file, then moves that same file to Google Drive Trash. If this passes, V-Points cleanup can delete connected Drive uploads.</p>
+      <div class="split"><button type="button" class="btn blue" onclick="v133TestDriveDelete(this)">Test Drive Delete</button></div>
+      <div class="v133-drive-status" id="v133DriveDeleteStatus">Status: not tested yet.</div>
+    </div>`;
+  }
+  window.v133TestDriveDelete=async function(btn){
+    if(!ownerAllowed())return toast('Only Retail / Head Office can test Drive delete.','error');
+    const box=Q('#v133DriveDeleteStatus');
+    await act(btn,{busy:'Testing...',success:'Passed',reset:'Test Drive Delete',toast:'Drive delete permission test completed.'},async()=>{
+      if(typeof v34DriveUploadDataUrl!=='function')throw new Error('Drive upload bridge is missing.');
+      const stamp=new Date().toISOString();
+      const text=`V-Points Drive delete permission test\n${stamp}\nThis file should be moved to Trash automatically.`;
+      const file={name:`vpoints_delete_permission_test_${Date.now()}.txt`,type:'text/plain',size:text.length,lastModified:Date.now()};
+      if(box)box.textContent='Uploading tiny test file to Google Drive...';
+      const up=await v34DriveUploadDataUrl(`data:text/plain;base64,${encodeText(text)}`,file,'99 Bridge Tests','drive_delete_test');
+      const id=driveIdFromUpload(up);
+      if(!id)throw new Error('Test upload succeeded, but no Drive file ID was returned.');
+      if(box)box.textContent=`Upload OK. Moving file to Drive Trash...\nFile ID: ${id}`;
+      const del=await trashOne(id);
+      const failed=(del?.failed||[]).length;
+      if(failed)throw new Error('Drive delete action returned failed. Redeploy/allow the Apps Script deleteFiles action.');
+      if(box)box.textContent=`PASSED.\nUploaded test file was moved to Google Drive Trash.\nFile ID: ${id}\nFresh Start can clean connected Drive uploads.`;
+      return {id,up,del};
+    },()=>{});
+  };
+  if(typeof settingsPage==='function'&&!window.__v133SettingsPatch){
+    window.__v133SettingsPatch=true;
+    const old=settingsPage;
+    settingsPage=function(){
+      let html=String(old.apply(this,arguments)||'');
+      if(!html.includes('v133DriveDeleteCard'))html+=`<div style="margin-top:14px">${card133()}</div>`;
+      return html;
+    };
+    window.settingsPage=settingsPage;
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v133BindPatch){
+    window.__v133BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);style133();return out};
+  }
+  console.log('V133 Drive delete permission test loaded');
+})();
+/* ================= END V133 ================= */
 </script></body></html>
