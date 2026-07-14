@@ -20365,4 +20365,472 @@ init();
   window.VSCORE_FINAL_BUILD='V138_CLEAR_STAFF_ASSIGNMENT_GUARDS';
 })();
 /* ================= END V138 ================= */
+/* ================= V139 STAR WALLET REWARD CLAIMING ================= */
+(function(){
+  if(window.__VPOINTS_V139_STAR_REWARDS__)return;
+  window.__VPOINTS_V139_STAR_REWARDS__=true;
+  window.VSCORE_FINAL_BUILD='V139_STAR_WALLET_REWARD_CLAIMING';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const now=()=>new Date().toISOString();
+  const activeClaimStatuses=new Set(['pending','approved','released','claimed','completed','ready for release']);
+  const rejectedClaimStatuses=new Set(['rejected','cancelled','canceled','denied','void']);
+  const defaultStarRewards=[
+    {stars:50,title:'P500 Cash Gift',details:'Claimable when the employee earns 50 customer stars.'},
+    {stars:60,title:'VARDA Special Gift',details:'Special gift selected by Retail for consistent service recognition.'},
+    {stars:70,title:'Electric Kettle',details:'Useful home reward for employees with strong customer feedback.'},
+    {stars:100,title:'Certificate and Cash Gift',details:'Recognition certificate plus cash gift for excellent service.'},
+    {stars:150,title:'2 Days Paid Vacation Leave',details:'Special paid leave reward subject to Retail approval and scheduling.'},
+    {stars:200,title:'Mystery VARDA Box',details:'Premium mystery reward box for top customer-star earners.'}
+  ];
+
+  function style139(){
+    if(Q('#v139StarRewardStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v139StarRewardStyle">
+      .v139-wallet{background:linear-gradient(135deg,#fff7ed,#fff,#eff6ff);border:1px solid #fde68a;border-left:6px solid #facc15;border-radius:18px;padding:14px;margin-bottom:14px;box-shadow:0 12px 28px rgba(15,23,42,.07)}
+      .v139-wallet h2{margin:0;color:#7f1d1d}.v139-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+      .v139-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:11px}.v139-kpi b{display:block;font-size:26px;color:#7f1d1d}.v139-kpi span{font-size:12px;color:#64748b;font-weight:900;text-transform:uppercase}
+      .v139-reward-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:13px;box-shadow:0 10px 24px rgba(15,23,42,.06);display:grid;gap:8px}
+      .v139-cost{display:inline-flex;align-items:center;gap:6px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:1000;width:max-content}
+      .v139-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v139-template{border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:9px;text-align:left;font-size:12px;font-weight:900;color:#334155}
+      .v139-template:hover{border-color:#facc15;background:#fffbeb}.v139-claim-row{display:grid;grid-template-columns:1fr .7fr .7fr .7fr .8fr;gap:8px;align-items:center;border:1px solid #e5e7eb;border-radius:14px;padding:10px;margin:8px 0;background:#fff}
+      @media(max-width:760px){.v139-kpis,.v139-template-grid{grid-template-columns:1fr}.v139-claim-row{grid-template-columns:1fr}.v139-wallet,.v139-reward-card{border-radius:14px;padding:12px}}
+    </style>`);
+  }
+  function money139(n){try{return typeof money==='function'?money(n):Number(n||0).toFixed(0)}catch(_){return String(n??0)}}
+  function emp139(id){try{return (typeof emp==='function'?emp(id):null)||(S.allEmployees||S.employees||[]).find(e=>String(e.id)===String(id))||{full_name:'-',branch:'-'}}catch(_){return {full_name:'-',branch:'-'}}}
+  function rewardCost139(r){
+    const vals=[r?.required_stars,r?.star_cost,r?.stars_required,r?.stars_cost,r?.cost_stars,r?.required_points,r?.points_required,r?.points_cost];
+    for(const v of vals){const n=Number(v);if(Number.isFinite(n)&&n>0)return Math.ceil(n)}
+    return 0;
+  }
+  function claimCost139(c){
+    const vals=[c?.stars_cost,c?.required_stars,c?.star_cost,c?.stars_spent,c?.points_cost,c?.required_points];
+    for(const v of vals){const n=Number(v);if(Number.isFinite(n)&&n>0)return Math.ceil(n)}
+    const r=(S.rewards||[]).find(x=>String(x.id)===String(c?.reward_id));
+    return rewardCost139(r);
+  }
+  function claimActive139(c){
+    const st=String(c?.status||'pending').toLowerCase().trim();
+    if(rejectedClaimStatuses.has(st))return false;
+    return activeClaimStatuses.has(st)||!st;
+  }
+  function ratingStars139(empId){
+    const rows=(S.customerRatings||[]).filter(r=>String(r.employee_id)===String(empId));
+    return rows.reduce((s,r)=>s+Number(r.stars||r.customer_service_points||r.points||0),0);
+  }
+  function earnedStars139(e){
+    e=e||S.profile||{};
+    const fromRatings=ratingStars139(e.id);
+    const stored=Math.max(Number(e.customer_service_points||0),Number(e.reward_stars_earned||0),Number(e.total_customer_stars||0),Number(e.available_stars_total||0));
+    return Math.max(fromRatings,stored,0);
+  }
+  function spentStars139(empId,claims){
+    return (claims||S.rewardClaims||[]).filter(c=>String(c.employee_id)===String(empId)&&claimActive139(c)).reduce((s,c)=>s+claimCost139(c),0);
+  }
+  function starWallet139(e=S.profile,claims=S.rewardClaims||[]){
+    const earned=earnedStars139(e);
+    const spent=spentStars139(e?.id,claims);
+    return {earned,spent,available:Math.max(0,earned-spent)};
+  }
+  async function freshClaims139(empId){
+    let rows=(S.rewardClaims||[]).filter(c=>String(c.employee_id)===String(empId));
+    try{
+      const r=await sb.from('vscore_reward_claims').select('*').eq('employee_id',empId).order('created_at',{ascending:false});
+      if(!r.error&&Array.isArray(r.data))rows=r.data;
+    }catch(_){}
+    return rows;
+  }
+  function missingColumn139(msg){
+    msg=String(msg||'');
+    return (msg.match(/Could not find the ['"]([^'"]+)['"] column/i)||msg.match(/column ['"]?([a-z0-9_]+)['"]? does not exist/i)||msg.match(/column "([^"]+)"/i)||[])[1]||'';
+  }
+  async function insertFlexible139(table,row,optional=[]){
+    const payload={...row};
+    let last=null;
+    for(let i=0;i<optional.length+8;i++){
+      const r=await sb.from(table).insert(payload).select?.().single?.()||await sb.from(table).insert(payload);
+      if(!r.error)return r.data||payload;
+      last=r.error;
+      const msg=String(r.error.message||r.error.details||r.error.hint||'');
+      const col=missingColumn139(msg);
+      if(col&&Object.prototype.hasOwnProperty.call(payload,col)){delete payload[col];continue;}
+      if(/column|schema|cache/i.test(msg)){
+        const next=optional.find(k=>Object.prototype.hasOwnProperty.call(payload,k));
+        if(next){delete payload[next];continue;}
+      }
+      break;
+    }
+    throw last||new Error('Could not save record.');
+  }
+  async function updateFlexible139(table,id,row,optional=[]){
+    const payload={...row};
+    let last=null;
+    for(let i=0;i<optional.length+8;i++){
+      const r=await sb.from(table).update(payload).eq('id',id);
+      if(!r.error)return r;
+      last=r.error;
+      const msg=String(r.error.message||r.error.details||r.error.hint||'');
+      const col=missingColumn139(msg);
+      if(col&&Object.prototype.hasOwnProperty.call(payload,col)){delete payload[col];continue;}
+      if(/column|schema|cache/i.test(msg)){
+        const next=optional.find(k=>Object.prototype.hasOwnProperty.call(payload,k));
+        if(next){delete payload[next];continue;}
+      }
+      break;
+    }
+    throw last||new Error('Could not update record.');
+  }
+  function rewardAvailable139(r,e=S.profile,claims=S.rewardClaims||[]){
+    const cost=rewardCost139(r);
+    return cost>0&&starWallet139(e,claims).available>=cost;
+  }
+  window.rewardAvailable=rewardAvailable139;
+
+  function rewardWalletHtml139(e=S.profile){
+    const w=starWallet139(e);
+    return `<div class="v139-wallet"><h2>My Reward Stars Wallet</h2><p class="muted" style="margin:6px 0 0">Customer ratings earn stars. Reward claims use stars. Pending and approved claims are already deducted from available stars.</p><div class="v139-kpis"><div class="v139-kpi"><b>${money139(w.earned)}</b><span>Total Stars Earned</span></div><div class="v139-kpi"><b>${money139(w.spent)}</b><span>Stars Claimed / Reserved</span></div><div class="v139-kpi"><b>${money139(w.available)}</b><span>Available Stars</span></div></div></div>`;
+  }
+  function rewardTemplatesHtml139(){
+    return `<div class="field"><label>Quick Reward Templates</label><div class="v139-template-grid">${defaultStarRewards.map(r=>`<button type="button" class="v139-template" data-stars="${r.stars}" data-title="${E(r.title)}" data-details="${E(r.details)}"><b>${r.stars} stars</b><br>${E(r.title)}</button>`).join('')}</div><div class="v134-note">Retail can use these samples or edit the title/details before uploading.</div></div>`;
+  }
+  function rewardCard139(r,canEdit){
+    const cost=rewardCost139(r), w=starWallet139(S.profile), ok=cost>0&&w.available>=cost;
+    const pending=(S.rewardClaims||[]).some(c=>String(c.employee_id)===String(S.profile?.id)&&String(c.reward_id)===String(r.id)&&String(c.status||'pending').toLowerCase()==='pending');
+    return `<div class="v139-reward-card">${typeof img==='function'?img(r.image_url,'thumb'):''}<h3>${E(r.title||'Reward')}</h3><span class="v139-cost">${cost||0} stars required</span><p>${E(r.details||'')}</p><p class="small muted"><b>How to claim:</b><br>${E(r.requirement||'Earn enough customer stars, then submit claim for Retail approval.')}</p>${!canEdit?`<button class="btn sm ${ok&&!pending?'green':'ghost'} claimReward" data-id="${E(r.id)}" ${ok&&!pending?'':'disabled'}>${pending?'Claim Pending':ok?'Claim using stars':`Need ${Math.max(0,cost-w.available)} more stars`}</button>`:`<button class="btn sm dark delReward" data-id="${E(r.id)}">Delete Reward</button>`}</div>`;
+  }
+  window.rewardsPage=rewardsPage=function(){
+    style139();
+    const canEdit=typeof isOwner==='function'?isOwner():false;
+    const rewards=(S.rewards||[]).filter(r=>r.is_active!==false);
+    const add=canEdit?`<div class="card"><h3>Add Star Reward</h3><p class="muted">Rewards are claimed using customer stars, not V-Points. Example: 50 stars = P500 cash gift.</p><form id="rewardForm">${rewardTemplatesHtml139()}<div class="field"><label>Reward Name</label><input id="rewardTitle" class="input" placeholder="Example: P500 Cash Gift" required></div><div class="field"><label>Details</label><textarea id="rewardDetails" placeholder="Example: Employee may claim P500 after earning 50 customer stars." required></textarea></div><div class="field"><label>Required Stars To Claim</label><input id="rewardRequired" type="number" step="1" min="1" value="50" class="input"></div><div class="field"><label>Claim Requirement / Release Note</label><textarea id="rewardReq" placeholder="Example: Subject to Retail approval. Claim once available stars are enough." required></textarea></div><div class="field"><label>Reward Image</label><input id="rewardFile" type="file" accept="image/*" class="input"></div><button class="btn green full">Upload Star Reward</button></form></div>`:'';
+    return `${rewardWalletHtml139(S.profile)}<div class="grid ${canEdit?'two':''}">${add}<div class="card"><h3>${canEdit?'Star Rewards Catalog':'Rewards Waiting for You'}</h3><p class="muted">Available stars = total customer stars minus pending/approved reward claims.</p><div class="grid three">${rewards.map(r=>rewardCard139(r,canEdit)).join('')||'<div class="empty">No rewards yet. Retail can add the star reward catalog.</div>'}</div></div></div>${canEdit?`<br>${rewardClaimsPage()}`:''}`;
+  };
+  window.createReward=createReward=async function(e){
+    e.preventDefault();
+    const b=e.submitter;
+    await act(b,{busy:'Uploading...',success:'Reward Added',reset:'Upload Another Reward',toast:'Star reward added.'},async()=>{
+      const cost=Math.ceil(Number(Q('#rewardRequired')?.value||0));
+      if(!cost||cost<1)throw new Error('Required stars must be at least 1.');
+      const imgd=Q('#rewardFile')?.files?.[0]?await imageData(Q('#rewardFile').files[0]):null;
+      const row={title:Q('#rewardTitle').value.trim(),details:Q('#rewardDetails').value.trim(),requirement:Q('#rewardReq').value.trim(),image_url:imgd,required_stars:cost,star_cost:cost,required_points:cost,reward_currency:'stars',deduct_on_claim:true,is_active:true,created_by:S.profile.id,created_at:now()};
+      if(!row.title||!row.details)throw new Error('Please complete reward name and details.');
+      await insertFlexible139('vscore_rewards',row,['required_stars','star_cost','reward_currency','deduct_on_claim','created_by','created_at']);
+    },async()=>{await loadData();renderPage()});
+  };
+  window.claimReward=claimReward=async function(id,btn){
+    const r=(S.rewards||[]).find(x=>String(x.id)===String(id));
+    if(!r)throw new Error('Reward not found.');
+    const cost=rewardCost139(r);
+    if(!cost)throw new Error('This reward has no star cost. Retail must edit/re-upload it with required stars.');
+    await act(btn,{busy:'Claiming...',success:'Claim Sent',reset:'Claim Reward',toast:'Reward claim sent. Stars are now reserved.'},async()=>{
+      const fresh=await freshClaims139(S.profile.id);
+      if(fresh.some(c=>String(c.reward_id)===String(id)&&String(c.status||'pending').toLowerCase()==='pending'))throw new Error('You already have a pending claim for this reward.');
+      const w=starWallet139(S.profile,fresh);
+      if(w.available<cost)throw new Error(`Not enough available stars. You have ${w.available}, this reward needs ${cost}.`);
+      const row={employee_id:S.profile.id,reward_id:id,reward_title:r.title,status:'pending',stars_cost:cost,required_stars:cost,claim_currency:'stars',stars_at_claim:w.earned,stars_available_before:w.available,points_at_claim:w.available,created_by:S.profile.id,created_at:now()};
+      await insertFlexible139('vscore_reward_claims',row,['stars_cost','required_stars','claim_currency','stars_at_claim','stars_available_before','points_at_claim','created_by','created_at']);
+    },async()=>{await loadData();renderPage()});
+  };
+  window.approveClaim=approveClaim=async function(id,btn,ok){
+    const c=(S.rewardClaims||[]).find(x=>String(x.id)===String(id));
+    if(!c)return;
+    await act(btn,{busy:ok?'Approving...':'Rejecting...',success:ok?'Approved':'Rejected',reset:ok?'Approve':'Reject',toast:ok?'Reward claim approved. Stars stay deducted.':'Reward claim rejected. Reserved stars returned.'},async()=>{
+      const update={status:ok?'approved':'rejected',reviewed_by:S.profile.id,reviewed_at:now(),claim_currency:'stars'};
+      await updateFlexible139('vscore_reward_claims',id,update,['reviewed_by','reviewed_at','claim_currency']);
+      try{await sb.from('vscore_notifications').insert({employee_id:c.employee_id,title:ok?'Reward claim approved':'Reward claim rejected',message:`${c.reward_title||'Reward'} - ${ok?'approved by Retail':'rejected by Retail'}.`,type:'reward_claim',source_type:'reward_claim',source_id:id,is_active:true,created_at:now()})}catch(_){}
+    },async()=>{await loadData();renderPage()});
+  };
+  window.rewardClaimsPage=rewardClaimsPage=function(){
+    style139();
+    const claims=S.rewardClaims||[];
+    return `<div class="card"><h3>Reward Claim Approval</h3><p class="muted">Employees claim rewards using available customer stars. Pending claims already reserve/deduct stars; rejected claims return the stars.</p>${claims.map(c=>{const r=(S.rewards||[]).find(x=>String(x.id)===String(c.reward_id))||{}, e=emp139(c.employee_id), cost=claimCost139(c)||rewardCost139(r), w=starWallet139(e,claims);const st=String(c.status||'pending').toLowerCase();return `<div class="v139-claim-row"><div><b>${E(e.full_name)}</b><br><span class="small muted">${E(e.branch||'')}</span></div><div><b>${E(r.title||c.reward_title||'Reward')}</b><br><span class="small muted">${cost} stars</span></div><div><b>${E(c.status||'pending')}</b><br><span class="small muted">${E(c.created_at?new Date(c.created_at).toLocaleString():'')}</span></div><div><b>${money139(w.available)}</b><br><span class="small muted">available after reservations</span></div><div>${st==='pending'?`<button class="btn sm green approveClaim" data-id="${E(c.id)}">Approve</button> <button class="btn sm dark rejectClaim" data-id="${E(c.id)}">Reject</button>`:'-'}</div></div>`}).join('')||'<div class="empty">No reward claims.</div>'}</div>`;
+  };
+  function bind139(root=document){
+    style139();
+    A('.claimReward',root).forEach(b=>{if(!b.__v139){b.__v139=true;b.onclick=()=>claimReward(b.dataset.id,b)}});
+    A('.approveClaim',root).forEach(b=>{if(!b.__v139){b.__v139=true;b.onclick=()=>approveClaim(b.dataset.id,b,true)}});
+    A('.rejectClaim',root).forEach(b=>{if(!b.__v139){b.__v139=true;b.onclick=()=>approveClaim(b.dataset.id,b,false)}});
+    A('.v139-template',root).forEach(b=>{if(!b.__v139){b.__v139=true;b.onclick=()=>{const stars=b.dataset.stars,title=b.dataset.title,details=b.dataset.details;if(Q('#rewardRequired'))Q('#rewardRequired').value=stars;if(Q('#rewardTitle'))Q('#rewardTitle').value=title;if(Q('#rewardDetails'))Q('#rewardDetails').value=details;if(Q('#rewardReq'))Q('#rewardReq').value='Retail approval required. Stars are deducted/reserved when the employee submits a claim.'}}});
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v139BindPatch){
+    window.__v139BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);setTimeout(()=>bind139(document),40);return out};
+  }
+  const oldRenderPage=window.renderPage;
+  if(typeof oldRenderPage==='function'&&!window.__v139RenderPatch){
+    window.__v139RenderPatch=true;
+    window.renderPage=renderPage=function(){const out=oldRenderPage.apply(this,arguments);setTimeout(()=>bind139(Q('#page')||document),70);return out};
+  }
+  const oldInit=window.init;
+  if(typeof oldInit==='function'&&!window.__v139InitPatch){
+    window.__v139InitPatch=true;
+    window.init=init=async function(){const p=new URLSearchParams(location.search);const rate=p.get('rate')||p.get('employee')||p.get('emp');const out=await oldInit.apply(this,arguments);if(rate)setTimeout(()=>{try{document.body.innerHTML=document.body.innerHTML.replace(/1 star = 1 V-Point/g,'1 star = 1 reward star').replace(/\\+([0-9]+) V-Points/g,'+$1 reward stars')}catch(_){}},360);return out};
+  }
+  setTimeout(()=>bind139(document),700);
+  console.log('V139 star wallet reward claiming loaded');
+})();
+/* ================= END V139 ================= */
+/* ================= V140 INTERNAL MESSENGER PM + GC ================= */
+(function(){
+  if(window.__VPOINTS_V140_INTERNAL_MESSENGER__)return;
+  window.__VPOINTS_V140_INTERNAL_MESSENGER__=true;
+  window.VSCORE_FINAL_BUILD='V142_PM_GC_ONLY_MESSENGER';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const now=()=>new Date().toISOString();
+  let currentRoom140='';
+
+  function style140(){
+    if(Q('#v140MessengerStyle'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v140MessengerStyle">
+      .v140-shell{display:grid;gap:12px}.v140-hero{background:linear-gradient(135deg,#fff7ed,#fff,#eff6ff);border:1px solid #fde68a;border-left:6px solid #facc15;border-radius:18px;padding:14px;box-shadow:0 12px 28px rgba(15,23,42,.07)}
+      .v140-hero h2{margin:0;color:#7f1d1d}.v140-layout{display:grid;grid-template-columns:minmax(190px,.75fr) minmax(0,1.6fr);gap:12px}.v140-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:12px;box-shadow:0 10px 24px rgba(15,23,42,.06)}
+      .v140-room-list{display:grid;gap:7px;margin-top:10px;max-height:58vh;overflow:auto}.v140-room{border:1px solid #e5e7eb;background:#fff;border-radius:13px;padding:10px;text-align:left;font-weight:1000;color:#111827}.v140-room.active{border-color:#2563eb;background:#eff6ff;color:#1e3a8a}
+      .v140-room small{display:block;color:#64748b;font-weight:800;margin-top:2px}.v140-thread-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:10px;margin-bottom:10px}
+      .v140-messages{height:min(56vh,520px);overflow:auto;display:grid;gap:9px;align-content:start;padding:4px}.v140-msg{max-width:78%;background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:9px 11px;justify-self:start}
+      .v140-msg.me{background:#eff6ff;border-color:#bfdbfe;justify-self:end}.v140-msg b{font-size:12px;color:#7f1d1d}.v140-msg p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}.v140-time{font-size:10px;color:#64748b;font-weight:800}
+      .v140-media{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}.v140-media img{width:92px;height:72px;object-fit:cover;border-radius:11px;border:1px solid #e5e7eb;cursor:pointer}.v140-compose{display:grid;gap:8px;border-top:1px solid #e5e7eb;padding-top:10px;margin-top:10px}
+      .v140-compose-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.v140-member-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:320px;overflow:auto}.v140-member{display:flex;gap:8px;align-items:flex-start;border:1px solid #e5e7eb;border-radius:12px;padding:9px;font-size:12px;font-weight:900;color:#334155}
+      .v140-member input{width:18px;height:18px;flex:0 0 auto}.v140-small-note{font-size:12px;color:#64748b;font-weight:850;line-height:1.35}.v101-tool[data-v101-tab="chat"] span{background:#dbeafe!important;color:#1e40af!important}
+      @media(max-width:760px){.v140-layout{grid-template-columns:1fr}.v140-messages{height:46vh}.v140-compose-row{grid-template-columns:1fr}.v140-msg{max-width:92%}.v140-member-grid{grid-template-columns:1fr}.v140-hero,.v140-card{border-radius:14px;padding:12px}}
+    </style>`);
+  }
+  function role140(){return String(S?.profile?.role||'').toLowerCase()}
+  function pos140(){return String(S?.profile?.position||'').toUpperCase()}
+  function retail140(){try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){} return /retail|head|office|executive|management|master|hr/.test(role140())||/RETAIL|HEAD OFFICE|EXECUTIVE|NATIONAL|HR|MANAGEMENT/.test(pos140())}
+  function manager140(){return retail140()||/manager|leader|fsqa|branch|admin|auditor/.test(role140()+' '+pos140().toLowerCase())}
+  function me140(){return String(S?.profile?.id||'')}
+  function safeName140(id){try{return typeof safeName==='function'?safeName(id):(employee140(id)?.full_name||'-')}catch(_){return employee140(id)?.full_name||'-'}}
+  function employee140(id){return [...(S?.allEmployees||[]),...(S?.employees||[])].find(e=>String(e.id)===String(id))||{}}
+  function visibleEmployees140(){
+    const seen=new Set(), rows=[...(S?.employees||[]),...(S?.allEmployees||[])].filter(e=>e&&e.id&&String(e.id)!==me140()&&e.is_active!==false&&String(e.activation_status||'').toLowerCase()!=='permanent_deleted'&&e.hidden_from_monitoring!==true);
+    return rows.filter(e=>{const k=String(e.id);if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||'')));
+  }
+  function parseArr140(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.flatMap(parseArr140);
+    if(typeof v==='object')return Object.values(v).flatMap(parseArr140);
+    const s=String(v||'').trim();
+    try{return parseArr140(JSON.parse(s))}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function roomMembers140(roomId){
+    return (S.chatMembers||[]).filter(m=>String(m.room_id)===String(roomId)).map(m=>String(m.employee_id));
+  }
+  function visibleRooms140(){
+    const rooms=(S.chatRooms||[]).filter(r=>r&&r.is_active!==false&&String(r.status||'').toLowerCase()!=='deleted'&&!/broadcast|message all/i.test(String(r.room_type||'')+' '+String(r.title||r.room_name||'')));
+    if(retail140())return rooms.sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+    const mine=me140();
+    const memberRoomIds=new Set((S.chatMembers||[]).filter(m=>String(m.employee_id)===mine).map(m=>String(m.room_id)));
+    return rooms.filter(r=>memberRoomIds.has(String(r.id))||String(r.created_by||r.owner_id||'')===mine||parseArr140(r.member_ids||r.members_json).includes(mine)).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+  }
+  function roomTitle140(r){
+    return r?.title||r?.room_name||r?.name||'Chat';
+  }
+  function roomSub140(r){
+    const ids=roomMembers140(r.id);
+    if(ids.length)return `${ids.length} member${ids.length===1?'':'s'}`;
+    return r?.room_type==='direct'?'Private message':'Group chat';
+  }
+  function mediaLooksLikeUrl140(u){
+    const s=String(u||'').trim();
+    return !!s&&(/^(https?:\/\/|data:image\/|blob:|\/|\.\/)/i.test(s)||/drive\.google|thumbnail\?id=|storage\/v1|supabase|base64,/i.test(s));
+  }
+  function collectMedia140(v,out){
+    if(!v)return;
+    if(typeof v==='string'){
+      const s=v.trim();
+      try{if(/^[\[{]/.test(s))return collectMedia140(JSON.parse(s),out)}catch(_){}
+      if(mediaLooksLikeUrl140(s))out.push(s);
+      return;
+    }
+    if(Array.isArray(v)){v.forEach(x=>collectMedia140(x,out));return}
+    if(typeof v==='object'){
+      ['url','publicUrl','href','src','photo_url','image_url','attachment_url'].forEach(k=>collectMedia140(v[k],out));
+    }
+  }
+  function mediaUrls140(m){
+    const out=[];
+    const add=u=>{u=String(u||'').trim();if(mediaLooksLikeUrl140(u)&&!out.includes(u))out.push(u)};
+    try{const found=[];collectMedia140(m.media_json,found);found.forEach(add)}catch(_){}
+    try{[m.photo_url,m.attachment_url,m.image_url].forEach(v=>collectMedia140(v,out))}catch(_){}
+    String(m.message_text||'').replace(/\[CHAT_MEDIA:([^\]]+)\]/g,(_,enc)=>{try{add(decodeURIComponent(enc))}catch(_){}}); 
+    return [...new Set(out.filter(mediaLooksLikeUrl140))];
+  }
+  function display140(u){try{return typeof displayUrl==='function'?displayUrl(u):u}catch(_){return u}}
+  function cleanMsg140(text){return String(text||'').replace(/\[CHAT_MEDIA:[^\]]+\]/g,'').trim()}
+  function msgHtml140(m){
+    const mine=String(m.sender_id)===me140();
+    const urls=mediaUrls140(m);
+    return `<div class="v140-msg ${mine?'me':''}"><b>${E(safeName140(m.sender_id))}</b><p>${E(cleanMsg140(m.message_text||''))}</p>${urls.length?`<div class="v140-media">${urls.map(u=>`<img src="${E(display140(u))}" onclick="zoom('${E(display140(u))}')">`).join('')}</div>`:''}<div class="v140-time">${E(m.created_at?new Date(m.created_at).toLocaleString():'')}</div></div>`;
+  }
+  function currentRoomObj140(){
+    const rooms=visibleRooms140();
+    if(!currentRoom140&&rooms[0])currentRoom140=String(rooms[0].id);
+    if(currentRoom140&&!rooms.some(r=>String(r.id)===String(currentRoom140))&&rooms[0])currentRoom140=String(rooms[0].id);
+    return rooms.find(r=>String(r.id)===String(currentRoom140))||null;
+  }
+  function chatPage140(){
+    style140();
+    const rooms=visibleRooms140(), room=currentRoomObj140();
+    const msgs=room?(S.chatMessages||[]).filter(m=>String(m.room_id)===String(room.id)&&m.is_active!==false):[];
+    const names=room?roomMembers140(room.id).slice(0,6).map(safeName140).join(', '):'';
+    return `<div class="v140-shell"><div class="v140-hero"><h2>Messages / Messenger</h2><p class="muted" style="margin:6px 0 0">Internal V-Points chat for private coworker messages and group chat/GC work coordination.</p></div><div class="v140-layout"><div class="v140-card"><div class="split"><button class="btn sm green" onclick="v140OpenComposer('pm')">PM Coworker</button><button class="btn sm blue" onclick="v140OpenComposer('gc')">Create GC</button></div><div class="v140-room-list">${rooms.map(r=>`<button class="v140-room ${String(r.id)===String(room?.id)?'active':''}" data-v140-room="${E(r.id)}">${E(roomTitle140(r))}<small>${E(roomSub140(r))}</small></button>`).join('')||'<div class="empty">No messages yet. Start a PM or create a GC.</div>'}</div></div><div class="v140-card"><div class="v140-thread-head"><div><h3 style="margin:0;color:#7f1d1d">${E(room?roomTitle140(room):'No chat selected')}</h3><div class="v140-small-note">${E(names||'Choose a room or create a new chat.')}</div></div><button class="btn sm ghost" id="v140RefreshChat">Refresh</button></div>${room?`<div class="v140-messages" id="v140MsgList">${msgs.map(msgHtml140).join('')||'<div class="empty">No messages yet. Say hello.</div>'}</div><div class="v140-compose"><div class="v140-compose-row"><textarea id="v140ChatText" class="input" placeholder="Type a message..." rows="2"></textarea><button class="btn green" id="v140SendBtn">Send</button></div><input id="v140ChatPhoto" type="file" accept="image/*" multiple class="input"><div class="v140-small-note">Photos optional. Use chat for work coordination inside V-Points.</div></div>`:'<div class="empty">Create or choose a chat first.</div>'}</div></div></div>`;
+  }
+  function bindChat140(root=document){
+    style140();
+    A('[data-v140-room]',root).forEach(b=>{if(!b.__v140){b.__v140=true;b.onclick=()=>{currentRoom140=b.dataset.v140Room;renderPage()}}});
+    const send=Q('#v140SendBtn',root);if(send&&!send.__v140){send.__v140=true;send.onclick=()=>v140SendMessage(send)}
+    const refresh=Q('#v140RefreshChat',root);if(refresh&&!refresh.__v140){refresh.__v140=true;refresh.onclick=async()=>{await loadData();renderPage()}}
+    const list=Q('#v140MsgList',root);if(list)list.scrollTop=list.scrollHeight;
+  }
+  window.chatPage=chatPage140;
+  window.v140OpenComposer=function(kind='pm'){
+    style140();
+    const users=visibleEmployees140();
+    if(kind==='pm'){
+      modal(`<h2>PM Coworker</h2><p class="muted">Create a private message room with one coworker.</p><div class="field"><label>Select Coworker</label><select id="v140PmUser" class="input">${users.map(e=>`<option value="${E(e.id)}">${E(e.full_name||e.email)} - ${E(e.branch||'')}</option>`).join('')}</select></div><div class="split"><button class="btn green" id="v140CreatePm">Create PM</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+      Q('#v140CreatePm').onclick=()=>v140CreateRoom('pm');
+      return;
+    }
+    modal(`<h2>Create Group Chat / GC</h2><p class="muted">Choose coworkers to include. You will be added automatically.</p><div class="field"><label>GC Name</label><input id="v140GcTitle" class="input" placeholder="Example: LPU Main Opening Team"></div><div class="field"><label>Members</label><div class="v140-member-grid">${users.map(e=>`<label class="v140-member"><input type="checkbox" class="v140GcMember" value="${E(e.id)}"> <span>${E(e.full_name||e.email)}<br><small>${E(e.branch||'')}</small></span></label>`).join('')||'<div class="empty">No coworkers loaded.</div>'}</div></div><div class="split"><button class="btn green" id="v140CreateGc">Create GC</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+    Q('#v140CreateGc').onclick=()=>v140CreateRoom('gc');
+  };
+  function missingColumn140(msg){
+    msg=String(msg||'');
+    return (msg.match(/Could not find the ['"]([^'"]+)['"] column/i)||msg.match(/column ['"]?([a-z0-9_]+)['"]? does not exist/i)||msg.match(/column "([^"]+)"/i)||[])[1]||'';
+  }
+  async function insertFlexible140(table,row,optional=[]){
+    const payload={...row};let last=null;
+    for(let i=0;i<optional.length+8;i++){
+      const r=await sb.from(table).insert(payload).select().single();
+      if(!r.error)return r.data||payload;
+      last=r.error;const msg=String(r.error.message||r.error.details||r.error.hint||''), col=missingColumn140(msg);
+      if(col&&Object.prototype.hasOwnProperty.call(payload,col)){delete payload[col];continue}
+      if(/column|schema|cache/i.test(msg)){const next=optional.find(k=>Object.prototype.hasOwnProperty.call(payload,k));if(next){delete payload[next];continue}}
+      break;
+    }
+    throw last||new Error('Could not save chat record.');
+  }
+  async function addMembers140(roomId,memberIds){
+    const rows=[...new Set((memberIds||[]).map(String).filter(Boolean))].map(id=>({room_id:roomId,employee_id:id,created_at:now()}));
+    for(const row of rows){
+      try{await insertFlexible140('vscore_chat_members',row,['created_at'])}
+      catch(e){console.warn('Chat member skipped:',e.message||e)}
+    }
+  }
+  window.v140CreateRoom=async function(kind='gc'){
+    try{
+      const users=visibleEmployees140();
+      let memberIds=[], title='';
+      if(kind==='pm'){
+        const id=Q('#v140PmUser')?.value;
+        if(!id)throw new Error('Choose a coworker.');
+        const other=users.find(e=>String(e.id)===String(id))||employee140(id);
+        memberIds=[me140(),String(id)];
+        title='PM: '+(S.profile?.full_name||'Me')+' / '+(other.full_name||other.email||'Coworker');
+      }else{
+        memberIds=[me140(),...A('.v140GcMember:checked').map(x=>String(x.value))];
+        memberIds=[...new Set(memberIds.filter(Boolean))];
+        if(memberIds.length<2)throw new Error('Choose at least one coworker for the GC.');
+        title=String(Q('#v140GcTitle')?.value||'').trim()||'V-Points GC';
+      }
+      const room=await insertFlexible140('vscore_chat_rooms',{title,room_name:title,room_type:kind==='pm'?'direct':'group',created_by:me140(),owner_id:me140(),member_ids:JSON.stringify(memberIds),is_active:true,updated_at:now(),created_at:now()},['room_name','room_type','owner_id','member_ids','updated_at','created_at']);
+      await addMembers140(room.id,memberIds);
+      currentRoom140=String(room.id);
+      try{closeModal()}catch(_){}
+      await loadData();S.tab='chat';renderPage();
+    }catch(e){try{toast(e.message||'Could not create chat.','error')}catch(_){alert(e.message||e)}}
+  };
+  window.v140MessageAll=async function(){
+    try{toast('Message All was removed. Use PM Coworker or Create GC.','info')}catch(_){}
+  };
+  async function images140(input,max=5){
+    const files=Array.from(input?.files||[]).slice(0,max), out=[];
+    for(const f of files){
+      try{if(typeof uploadOne==='function'){const u=await uploadOne(f,'09 Chat Attachments','chat_image');if(u){out.push({url:u,name:f.name});continue}}}catch(_){}
+      try{if(typeof imageData==='function'){const u=await imageData(f);if(u)out.push({url:u,name:f.name})}}catch(_){}
+    }
+    return out;
+  }
+  window.v140SendMessage=async function(btn){
+    try{
+      const room=currentRoomObj140();
+      if(!room)throw new Error('Choose or create a chat first.');
+      const text=String(Q('#v140ChatText')?.value||'').trim();
+      const media=await images140(Q('#v140ChatPhoto'),5);
+      if(!text&&!media.length)throw new Error('Type a message or attach a photo.');
+      await act(btn||document.createElement('button'),{busy:'Sending...',success:'Sent',reset:'Send',toast:'Message sent.'},async()=>{
+        const mediaText=media.length?'\n'+media.map(x=>`[CHAT_MEDIA:${encodeURIComponent(x.url)}]`).join('\n'):'';
+        await insertFlexible140('vscore_chat_messages',{room_id:room.id,sender_id:me140(),message_text:text+mediaText,media_json:JSON.stringify(media),photo_url:media[0]?.url||'',is_active:true,created_at:now()},['media_json','photo_url','is_active','created_at']);
+        try{await sb.from('vscore_chat_rooms').update({updated_at:now()}).eq('id',room.id)}catch(_){}
+      },async()=>{if(Q('#v140ChatText'))Q('#v140ChatText').value='';if(Q('#v140ChatPhoto'))Q('#v140ChatPhoto').value='';await loadData();renderPage()});
+    }catch(e){try{toast(e.message||'Message failed.','error')}catch(_){alert(e.message||e)}}
+  };
+  const oldLoad=window.loadData;
+  if(typeof oldLoad==='function'&&!window.__v140LoadPatch){
+    window.__v140LoadPatch=true;
+    window.loadData=loadData=async function(){
+      const out=await oldLoad.apply(this,arguments);
+      try{
+        const [rooms,members,msgs]=await Promise.all([
+          q(sb.from('vscore_chat_rooms').select('*').eq('is_active',true).order('updated_at',{ascending:false}),[]),
+          q(sb.from('vscore_chat_members').select('*'),[]),
+          q(sb.from('vscore_chat_messages').select('*').order('created_at',{ascending:true}),[])
+        ]);
+        S.chatRooms=rooms||[];S.chatMembers=members||[];S.chatMessages=(msgs||[]).filter(m=>m.is_active!==false);
+      }catch(e){console.warn('Chat load skipped:',e.message||e)}
+      return out;
+    };
+  }
+  const oldNav=window.nav;
+  if(typeof oldNav==='function'&&!window.__v140NavPatch){
+    window.__v140NavPatch=true;
+    window.nav=nav=function(){
+      const out=oldNav.apply(this,arguments)||[];
+      if(!out.some(x=>x&&x[0]==='chat')){
+        const idx=Math.max(out.findIndex(x=>x&&x[0]==='news'),out.findIndex(x=>x&&x[0]==='memos'));
+        out.splice(idx>=0?idx+1:out.length,0,['chat','Messages / Messenger']);
+      }
+      return out;
+    };
+  }
+  function injectMenu140(root=document){
+    style140();
+    const tools=Q('.v101-tools',root);
+    if(tools&&!Q('[data-v101-tab="chat"]',tools)){
+      tools.insertAdjacentHTML('beforeend',`<button type="button" class="v101-tool" data-v101-tab="chat"><span>MS</span><b>Messages</b><small>PM and GC</small></button>`);
+      const mini=Q('.v101-mini span:nth-child(3) b',root);if(mini)mini.textContent=String(A('[data-v101-tab]',tools).length);
+    }
+  }
+  const oldRenderPage=window.renderPage;
+  if(typeof oldRenderPage==='function'&&!window.__v140RenderPatch){
+    window.__v140RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      style140();
+      if(String(S?.tab||'')==='chat'){
+        const page=Q('#page');
+        if(page){page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Messages / Messenger</span><button class="btn sm ghost" id="pageRef">Refresh This Page</button></div>${chatPage140()}`;bindChat140(page);const ref=Q('#pageRef',page);if(ref)ref.onclick=async e=>act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'Refresh This Page'},loadData,renderPage);return}
+      }
+      const out=oldRenderPage.apply(this,arguments);
+      setTimeout(()=>{injectMenu140(document);bindChat140(document)},80);
+      setTimeout(()=>injectMenu140(document),400);
+      return out;
+    };
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v140BindPatch){
+    window.__v140BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);setTimeout(()=>{injectMenu140(document);bindChat140(document)},50);return out};
+  }
+  setTimeout(()=>{injectMenu140(document);bindChat140(document)},900);
+  console.log('V140 internal messenger PM and GC loaded');
+})();
+/* ================= END V140 ================= */
 </script></body></html>
