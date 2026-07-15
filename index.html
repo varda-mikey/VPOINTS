@@ -1,4 +1,4 @@
-]<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -22196,4 +22196,152 @@ init();
   console.log('V151 top profile access loaded');
 })();
 /* ================= END V151 ================= */
+/* ================= V152 CUSTOMER RATING QR HUB ================= */
+(function(){
+  if(window.__VPOINTS_V152_CUSTOMER_QR_HUB__)return;
+  window.__VPOINTS_V152_CUSTOMER_QR_HUB__=true;
+  window.VSCORE_FINAL_BUILD='V152_CUSTOMER_QR_SHOW_DOWNLOAD';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const J=v=>String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  function style152(){
+    if(Q('#v152Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v152Style">
+      .v152-qr-card{background:linear-gradient(135deg,#fff,#f8fafc);border:1px solid #dbeafe;border-left:6px solid #2563eb;border-radius:18px;padding:14px;box-shadow:0 12px 28px rgba(15,23,42,.06);display:grid;gap:12px}
+      .v152-qr-head{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+      .v152-qr-head h3{margin:0;color:#7f1d1d;line-height:1.1}.v152-qr-head p{margin:4px 0 0;font-size:13px;color:#64748b;font-weight:800;line-height:1.35}
+      .v152-qr-body{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}.v152-qr-img{width:154px;height:154px;max-width:100%;border:1px solid #e5e7eb;border-radius:14px;background:#fff;padding:8px}
+      .v152-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v152-stat{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:9px}.v152-stat span{display:block;font-size:11px;color:#64748b;text-transform:uppercase;font-weight:1000}.v152-stat b{font-size:20px;color:#111827}
+      .v152-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.v152-actions .btn{width:100%;min-height:42px}.v152-live-note{border-left:4px solid #facc15;background:#fffbeb;color:#78350f;border-radius:12px;padding:8px 10px;font-size:12px;font-weight:800;line-height:1.35}
+      .v152-home-qr{margin:10px 0 12px;background:#fff;border:1px solid #dbeafe;border-radius:16px;padding:10px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+      .v152-home-qr b{color:#7f1d1d}.v152-home-qr span{display:block;color:#64748b;font-size:12px;font-weight:800}.v152-modal{text-align:center}.v152-modal .v152-qr-img{width:min(72vw,340px);height:min(72vw,340px)}
+      @media(max-width:620px){.v152-qr-head,.v152-qr-body{grid-template-columns:1fr}.v152-qr-img{margin:auto;width:210px;height:210px}.v152-actions{grid-template-columns:1fr}.v152-home-qr{display:grid}.v152-stat-grid{grid-template-columns:1fr 1fr}}
+    </style>`);
+  }
+  function roleText152(){return String(S?.profile?.role||S?.profile?.position||'').toLowerCase();}
+  function retail152(){return /retail|national|head office|executive|master|owner|management/.test(roleText152());}
+  function employeeNo152(e){
+    try{if(typeof employeeNumber100==='function')return employeeNumber100(e)}catch(_){}
+    return e?.employee_number||e?.employee_no||e?.staff_number||e?.id||'';
+  }
+  function employee152(id){
+    const list=[S?.profile,...(S?.allEmployees||[]),...(S?.employees||[])].filter(Boolean);
+    return list.find(e=>String(e.id)===String(id)||String(employeeNo152(e))===String(id)||String(e.email||'').toLowerCase()===String(id).toLowerCase())||S?.profile||{};
+  }
+  function publicBase152(){
+    try{
+      const saved=String(S?.v53Settings?.public_app_url||S?.settings?.public_app_url||localStorage.getItem('vscore_public_app_url')||'').trim();
+      if(saved)return saved.replace(/[#?].*$/,'').replace(/\/$/,'');
+    }catch(_){}
+    return location.href.split('#')[0].split('?')[0];
+  }
+  function ratingLink152(eOrId){
+    const id=typeof eOrId==='object'?eOrId?.id:eOrId;
+    try{if(typeof window.v54RatingUrl==='function')return window.v54RatingUrl(id)}catch(_){}
+    const base=publicBase152();
+    return base+(base.includes('?')?'&':'?')+'rate='+encodeURIComponent(id||'');
+  }
+  function qrUrl152(link,size=620){return 'https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&format=png&data='+encodeURIComponent(link)}
+  function fileName152(e){
+    const clean=String((employeeNo152(e)||e?.full_name||'employee')+'-'+(e?.full_name||'qr')).replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,80);
+    return 'V-Points-Customer-Rating-QR-'+(clean||'employee')+'.png';
+  }
+  function stats152(e){
+    const id=String(e?.id||''), rows=(S?.customerRatings||[]).filter(r=>String(r.employee_id)===id);
+    const fromRows=rows.reduce((s,r)=>s+Number(r.stars||r.customer_service_points||r.points||0),0);
+    const stored=Math.max(Number(e?.customer_service_points||0),Number(e?.reward_stars_earned||0),Number(e?.total_customer_stars||0),Number(e?.available_stars_total||0));
+    const earned=Math.max(fromRows,stored);
+    const avg=rows.length?rows.reduce((s,r)=>s+Number(r.stars||0),0)/rows.length:0;
+    return {count:rows.length,avg,earned};
+  }
+  function qrCard152(e=S?.profile,id='v152ProfileQR'){
+    if(!e?.id)return '';
+    const link=ratingLink152(e), qr=qrUrl152(link,520), st=stats152(e), ready=/^https?:\/\//i.test(link), fname=fileName152(e);
+    return `<div id="${E(id)}" class="v152-qr-card">
+      <div class="v152-qr-head"><div><h3>My Customer Rating QR</h3><p>Show this to customers or students. Their rating becomes reward stars for claiming rewards.</p></div><span class="pill blue">${E(employeeNo152(e)||'QR')}</span></div>
+      <div class="v152-qr-body"><img class="v152-qr-img" src="${E(qr)}" alt="Customer rating QR"><div><div class="v152-stat-grid"><div class="v152-stat"><span>Total Stars</span><b>${E(String(st.earned||0))}</b></div><div class="v152-stat"><span>Ratings</span><b>${E(String(st.count||0))}</b></div></div><div class="small muted" style="margin-top:8px">V-Points = work performance. Customer stars = rewards wallet.</div></div></div>
+      ${ready?'':`<div class="v152-live-note">For real phone scanning, save your public HTTPS app link in Launch Control / Settings after upload.</div>`}
+      <div class="v152-actions"><button type="button" class="btn blue v152ShowQR" data-id="${E(e.id)}">Show QR</button><a class="btn green" href="${E(qrUrl152(link,900))}" download="${E(fname)}">Download QR</a><button type="button" class="btn ghost v152CopyQR" data-id="${E(e.id)}">Copy Link</button></div>
+    </div>`;
+  }
+  function showQR152(id){
+    style152();
+    const e=employee152(id), link=ratingLink152(e), qr=qrUrl152(link,900), fname=fileName152(e), ready=/^https?:\/\//i.test(link);
+    modal(`<div class="v152-modal"><h2>Customer Rating QR</h2><p class="muted">${E(e.full_name||'Employee')}<br>${E(e.branch||'')}</p><img class="v152-qr-img" src="${E(qr)}" alt="Customer rating QR"><div class="v152-actions" style="margin-top:12px"><a class="btn green" href="${E(qr)}" download="${E(fname)}">Download QR PNG</a><button type="button" class="btn blue" onclick="window.open('${E(link)}','_blank')">Open Rating Form</button><button type="button" class="btn ghost" onclick="v152CopyQR('${J(e.id)}')">Copy Link</button></div>${ready?'':'<div class="v152-live-note" style="margin-top:12px;text-align:left">This QR currently uses a local file link. Paste the public deployed app URL in Launch Control / Settings before printing final QR codes.</div>'}<button type="button" class="btn dark full" style="margin-top:12px" onclick="closeModal()">Close</button></div>`);
+  }
+  async function copyQR152(id){
+    const link=ratingLink152(employee152(id));
+    try{await navigator.clipboard.writeText(link);toast('Customer rating link copied.','ok')}catch(_){prompt('Copy this customer rating link:',link)}
+  }
+  window.v152ShowQR=showQR152;
+  window.v152CopyQR=copyQR152;
+  window.v99ShowRatingQR=showQR152;
+  window.showRatingQR53=showQR152;
+  function bind152(root=document){
+    style152();
+    A('.v152ShowQR',root).forEach(b=>{if(!b.__v152){b.__v152=true;b.onclick=()=>showQR152(b.dataset.id)}});
+    A('.v152CopyQR',root).forEach(b=>{if(!b.__v152){b.__v152=true;b.onclick=()=>copyQR152(b.dataset.id)}});
+  }
+  function inject152(root=document){
+    if(!S?.profile?.id)return;
+    style152();
+    const page=Q('#page')||root;
+    if(String(S.tab)==='profile'&&page&&!Q('#v152ProfileQR',page)){
+      const first=Q('.v121-profile-card',page)||Q('.card',page);
+      if(first)first.insertAdjacentHTML('afterend',qrCard152(S.profile,'v152ProfileQR'));
+      else page.insertAdjacentHTML('afterbegin',qrCard152(S.profile,'v152ProfileQR'));
+    }
+    if(String(S.tab)==='ratings'&&!retail152()&&page&&!Q('#v152RatingsQR',page)){
+      const ref=Q('#pageRef',page)?.closest('.split')||page.firstElementChild;
+      if(ref)ref.insertAdjacentHTML('afterend',qrCard152(S.profile,'v152RatingsQR'));
+    }
+    if((String(S.tab)==='app_menu'||String(S.tab)==='dashboard')&&!retail152()&&page&&!Q('#v152HomeQR',page)){
+      const mount=Q('.v146-score-row',page)||Q('.v143-hero-top',page)||Q('.v99-board',page);
+      const html=`<div id="v152HomeQR" class="v152-home-qr"><div><b>Customer Rating QR</b><span>Source of your reward stars</span></div><button type="button" class="btn sm blue v152ShowQR" data-id="${E(S.profile.id)}">Show My QR</button></div>`;
+      if(mount)mount.insertAdjacentHTML('afterend',html);
+    }
+    bind152(page);
+  }
+  const oldProfilePage=window.profilePage;
+  if(typeof oldProfilePage==='function'&&!window.__v152ProfilePatch){
+    window.__v152ProfilePatch=true;
+    window.profilePage=profilePage=function(){
+      let html=oldProfilePage.apply(this,arguments)||'';
+      if(!/v152ProfileQR/.test(html)){
+        const card=qrCard152(S?.profile,'v152ProfileQR');
+        html=html.replace(/(<div class="v121-edit-card")/,card+'$1');
+        if(!/v152ProfileQR/.test(html))html=card+html;
+      }
+      return html;
+    };
+  }
+  function cleanRateWords152(root=document.body){
+    try{
+      if(!/[?&](rate|employee|emp)=/.test(location.search)||!root||typeof document.createTreeWalker!=='function')return;
+      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+      const nodes=[]; while(walker.nextNode())nodes.push(walker.currentNode);
+      nodes.forEach(n=>{n.nodeValue=String(n.nodeValue||'').replace(/1 star = 1 V-Point/g,'1 star = 1 reward star').replace(/\+([0-9]+) V-Points/g,'+$1 reward stars').replace(/added \+([0-9]+) V-Points/g,'added +$1 reward stars')});
+    }catch(_){}
+  }
+  const oldRenderPage=window.renderPage;
+  if(typeof oldRenderPage==='function'&&!window.__v152RenderPatch){
+    window.__v152RenderPatch=true;
+    window.renderPage=renderPage=function(){const out=oldRenderPage.apply(this,arguments);setTimeout(()=>inject152(Q('#page')||document),40);setTimeout(()=>inject152(document),220);return out};
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v152BindPatch){
+    window.__v152BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);setTimeout(()=>{inject152(document);bind152(document)},60);return out};
+  }
+  const oldInit=window.init;
+  if(typeof oldInit==='function'&&!window.__v152InitPatch){
+    window.__v152InitPatch=true;
+    window.init=init=async function(){const out=await oldInit.apply(this,arguments);[120,420,900].forEach(t=>setTimeout(()=>cleanRateWords152(document.body),t));return out};
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{inject152(document);cleanRateWords152(document.body)},400));
+  setTimeout(()=>inject152(document),900);
+  console.log('V152 customer rating QR show/download hub loaded');
+})();
+/* ================= END V152 ================= */
 </script></body></html>
