@@ -1,4 +1,4 @@
-<!doctype html>
+]<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -7431,6 +7431,23 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
     try{const p=JSON.parse(raw); if(Array.isArray(p))return p[0]?.url||''; if(p&&typeof p==='object')return p.url||'';}catch(_){ }
     return String(raw||'');
   }
+  function staffAttendanceTarget62(e){
+    if(!e)return false;
+    if(String(e.id||'')===String(S.profile?.id||''))return true;
+    const raw=String((e.role||'')+' '+(e.position||'')).toLowerCase().replace(/[\s-]+/g,'_');
+    if(/retail|head_office|executive|management|master|owner|hr|regional|team_leader|branch_leader|branch_manager|manager|fsqa|admin|auditor/.test(raw))return false;
+    return true;
+  }
+  function attendanceStores62(){return ['vscore_attendance_hidden_v86','vscore_ignored_today_clean','v76_ignored_cases','v75_ignored_cases','v74_ignored_cases','v149_attendance_hidden']}
+  function attendanceHidden62(key){
+    let found=false;
+    attendanceStores62().forEach(k=>{try{const m=JSON.parse(localStorage.getItem(k)||'{}')||{}; if(m[key])found=true}catch(_){}});
+    return found;
+  }
+  function saveAttendanceHidden62(key){
+    const row={by:String(S.profile?.id||''),at:new Date().toISOString(),kind:'attendance_notice'};
+    attendanceStores62().forEach(k=>{try{const m=JSON.parse(localStorage.getItem(k)||'{}')||{};m[key]=row;localStorage.setItem(k,JSON.stringify(m))}catch(_){}});
+  }
   function allCases62(){
     const cases=[];
     const today=todayPH62();
@@ -7455,11 +7472,12 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
     });
     try{
       const logs=(S.attendanceLogs||[]).filter(x=>String(x.work_date||'').slice(0,10)===today);
-      const ids=(manager62()?S.employees:[S.profile]).filter(Boolean).map(e=>e.id);
+      const ids=[...new Set((manager62()?[S.profile,...(S.employees||[])]:[S.profile]).filter(Boolean).filter(staffAttendanceTarget62).map(e=>e.id))];
       ids.forEach(id=>{
         const e=emp62(id); const mine=logs.filter(x=>String(x.employee_id)===String(id));
         const tin=mine.find(x=>String(x.event_type)==='time_in'), tout=mine.find(x=>String(x.event_type)==='time_out');
-        if(!tin || (tin&&!tout))cases.push({key:caseKey62('attendance',`${id}_${today}`),type:'attendance',kind:'Attendance Action',title:!tin?'No Time In today':'Missing Time Out today',description:'Attendance needs staff action before closing.',employee_id:id,employee_name:e.full_name,branch:e.branch,status:!tin?'open':'action',raw_status:!tin?'no_time_in':'missing_time_out',evidence:parsePhoto62(tin?.photo_json||tin?.photo_url),created_at:new Date().toISOString(),owner_id:id,record:{employee_id:id,work_date:today,tin,tout},closing_required:true});
+        const key=caseKey62('attendance',`${id}_${today}`);
+        if((!tin || (tin&&!tout))&&!attendanceHidden62(key))cases.push({key,type:'attendance',kind:'Attendance Action',title:!tin?'No Time In today':'Missing Time Out today',description:'Attendance needs staff action before closing.',employee_id:id,employee_name:e.full_name,branch:e.branch,status:!tin?'open':'action',raw_status:!tin?'no_time_in':'missing_time_out',evidence:parsePhoto62(tin?.photo_json||tin?.photo_url),created_at:new Date().toISOString(),owner_id:id,record:{employee_id:id,work_date:today,tin,tout},closing_required:true});
       });
     }catch(_){ }
     try{
@@ -7478,7 +7496,10 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
     const b=[];
     if(c.status==='closed')return `<button class="btn sm ghost" onclick="v62ViewCase('${safe62(c.key)}')">Details</button>`;
     if(c.type==='memo')b.push(`<button class="btn sm yellow" onclick="v62AckMemo('${safe62(c.source_id)}',this)">Acknowledge</button>`);
-    else if(c.type==='attendance')b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
+    else if(c.type==='attendance'){
+      if(String(c.employee_id||'')===String(S.profile?.id||''))b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
+      else if(manager62())b.push(`<button class="btn sm ghost v149-attendance-ignore" onclick="v62IgnoreAttendance('${safe62(c.key)}',this)">Ignore Today</button>`);
+    }
     else if(c.type==='task'){
       if(String(c.raw_status).toLowerCase()==='assigned')b.push(`<button class="btn sm green" onclick="acceptTask('${safe62(c.source_id)}',this)">Accept</button>`);
       if(!['submitted','approved','cancelled','closed'].includes(String(c.raw_status).toLowerCase()))b.push(`<button class="btn sm blue" onclick="proofTask('${safe62(c.source_id)}')">Submit Proof</button>`);
@@ -7492,9 +7513,16 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
         b.push(`<button class="btn sm green" onclick="v62CloseCase('${safe62(c.key)}',this)">Close Case</button>`);
       }
     }
-    b.push(`<button class="btn sm ghost" onclick="v62ViewCase('${safe62(c.key)}')">Details</button>`);
+    if(c.type!=='attendance')b.push(`<button class="btn sm ghost" onclick="v62ViewCase('${safe62(c.key)}')">Details</button>`);
     return b.join(' ');
   }
+  window.v62IgnoreAttendance=function(key,btn){
+    if(!key)return toast62('Attendance notice not found. Refresh once.','error');
+    saveAttendanceHidden62(key);
+    const card=btn?.closest?.('.v62-case,.card,[data-case]');
+    if(card)card.remove();
+    try{toast62('Attendance notice hidden for today.','ok')}catch(_){}
+  };
   function caseByKey62(key){return allCases62().find(c=>String(c.key)===String(key));}
   function caseCenterPage62(){
     const cases=allCases62(); const c=counts62(cases); const filter=localStorage.getItem('v62_case_filter')||'active';
@@ -9268,8 +9296,7 @@ var v39DriveDisplayUrl = window.v39DriveDisplayUrl = window.v39DriveDisplayUrl |
       const key=card.getAttribute('data-case')||''; if(ignored[key]){card.remove(); return;}
       const actions=$74('.v62-case-actions',card); if(!actions)return;
       if(key.startsWith('attendance:')&&manager74()){
-        actions.querySelectorAll('button').forEach(btn=>{if(/Open Time Clock/i.test(btn.textContent||''))btn.remove()});
-        if(!actions.querySelector('.v74-ignore'))actions.insertAdjacentHTML('afterbegin',`<button class="btn sm v74-ignore" onclick="v74IgnoreCase('${esc74(key)}')">Ignore Today</button>`);
+        return;
       }
       actions.querySelectorAll('button').forEach(btn=>{
         const txt=(btn.textContent||'').toLowerCase();
@@ -9362,7 +9389,8 @@ init();
       if(!manager75() || isMine) b.push(`<button class="btn sm yellow" onclick="v62AckMemo('${esc75(mid)}',this)">Acknowledge</button>`);
       else b.push(`<span class="v75-spectator">Memo monitoring only</span>`);
     }else if(c.type==='attendance'){
-      if(isMine && !manager75()) b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
+      if(isMine) b.push(`<button class="btn sm green" onclick="v62Go('attendance')">Open Time Clock</button>`);
+      else if(manager75()) b.push(`<button class="btn sm ghost v149-attendance-ignore" onclick="v62IgnoreAttendance('${esc75(c.key)}',this)">Ignore Today</button>`);
       else b.push(`<span class="v75-spectator">Attendance monitoring only</span>`);
     }else if(c.type==='task'){
       const t=(S.tasks||[]).find(x=>String(x.id)===String(c.source_id));
@@ -9387,8 +9415,7 @@ init();
       }
     }
     const key=String(c.key||'');
-    if((key.startsWith('attendance:')||c.type==='attendance')&&manager75()) b.unshift(`<button class="btn sm ghost v75-ignore" onclick="v75IgnoreCase('${esc75(key)}')">Ignore Today</button>`);
-    b.push(`<button class="btn sm ghost" onclick="v62ViewCase('${esc75(c.key)}')">Details</button>`);
+    if(!(key.startsWith('attendance:')||c.type==='attendance')) b.push(`<button class="btn sm ghost" onclick="v62ViewCase('${esc75(c.key)}')">Details</button>`);
     return b.join(' ');
   };
 
@@ -9436,7 +9463,7 @@ init();
       const key=card.getAttribute('data-case')||''; if(ig[key]){card.remove(); return;}
       const actions=$75('.v62-case-actions',card); if(!actions)return;
       const isAttendance=key.startsWith('attendance:')||/attendance action/i.test(card.textContent||'');
-      if(isAttendance&&manager75()&&!actions.querySelector('.v75-ignore'))actions.insertAdjacentHTML('afterbegin',`<button class="btn sm ghost v75-ignore" onclick="v75IgnoreCase('${esc75(key)}')">Ignore Today</button>`);
+      if(isAttendance)return;
       // remove actor buttons from non-assigned mission cards
       const title=(card.querySelector('.v62-case-title')?.textContent||'');
       if(/mission|task/i.test(card.textContent||'')){
@@ -9541,7 +9568,7 @@ init();
   function mineCardText76(card){return (card.querySelector('.v62-case-meta')?.textContent||card.textContent||'').toLowerCase().includes(myName76())}
   function key76(card){return card.getAttribute('data-case')||''}
   function memoIdFromCard76(card){const k=key76(card);if(k.startsWith('memo:'))return k.split(':').slice(1).join(':');const btn=card.querySelector('button[onclick*="v62AckMemo"],button[onclick*="showMemoAcks"]');const m=(btn?.getAttribute('onclick')||'').match(/['"]([^'"]+)['"]/);return m?m[1]:''}
-  function addIgnore76(card){if(!managerAny76())return;const k=key76(card);if(!k.startsWith('attendance:')&&!/attendance action|no time in|missing time out/i.test(card.textContent||''))return;const actions=card.querySelector('.v62-case-actions');if(actions&&!actions.querySelector('.v76-ignore'))actions.insertAdjacentHTML('afterbegin',`<button class="btn sm ghost v76-ignore" onclick="v76IgnoreCase('${safe76(k||'attendance_manual')}')">Ignore Today</button>`)}
+  function addIgnore76(card){return;}
   window.v76IgnoreCase=function(k){try{const m=JSON.parse(localStorage.getItem('v76_ignored_cases')||'{}');m[k]={by:me76(),at:new Date().toISOString()};localStorage.setItem('v76_ignored_cases',JSON.stringify(m));localStorage.setItem('v75_ignored_cases',JSON.stringify(m));localStorage.setItem('v74_ignored_cases',JSON.stringify(m));}catch(_){ }toast76('Hidden from your dashboard only.','ok');try{renderPage()}catch(_){ }};
   function ignored76(k){try{return !!JSON.parse(localStorage.getItem('v76_ignored_cases')||localStorage.getItem('v75_ignored_cases')||'{}')[k]}catch(_){return false}}
   function decorate76(root=document){addStyle76();
@@ -9580,7 +9607,7 @@ init();
   const oldRender76=window.renderPage;
   window.renderPage=renderPage=function(){const out=oldRender76?oldRender76.apply(this,arguments):undefined; try{if(S.tab==='dashboard'){const page=$76('#page'); if(page){if(exec76())page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Executive Dashboard</span></div>${retailDashboard76()}`; else if(branchMgr76())page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Branch Manager Dashboard</span></div>${managerDashboard76()}`; }} if(S.tab==='my_actions'&&exec76()){const page=$76('#page'); if(page)page.innerHTML=`<div class="split" style="justify-content:space-between;margin-bottom:12px"><span class="pill blue">Executive Monitoring</span></div>${retailDashboard76()}`;}}catch(e){console.warn('v76 dashboard patch',e)} setTimeout(()=>decorate76($76('#page')||document),80);setTimeout(()=>decorate76(document),400);return out};
   document.addEventListener('DOMContentLoaded',()=>{addStyle76();setTimeout(()=>decorate76(document),600);});
-  const mo=new MutationObserver(()=>{if(window.__v76q)return;window.__v76q=true;setTimeout(()=>{window.__v76q=false;decorate76(document)},120)});try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(_){ }
+  // Render-only decoration. Continuous card observers caused live lag on My Actions.
   console.log('V76 role logic + logout + dashboard stability loaded');
 })();
 /* ================= END V76 ================= */
@@ -10690,8 +10717,7 @@ init();
       const t=TXT(b);
       if(/^Refresh Data$|^Refresh This Page$|^Pull to refresh$/i.test(t)) b.remove();
     });
-    // remove duplicate attendance navs/cards and normalize ignore buttons.
-    $$('.v62-case,.v76-row,.v74-card,.card').forEach(card=>normalizeIgnoreButtons(card));
+    // Remove duplicate attendance navs/cards only. Attendance action buttons are rendered by the base action list.
     dedupeButtonsWithin(document.body);
   }
   window.vscoreCleanInterface=cleanInterface;
@@ -10723,13 +10749,7 @@ init();
     }
   },true);
 
-  let timer=null;
-  const mo=new MutationObserver(()=>{
-    clearTimeout(timer);
-    timer=setTimeout(cleanInterface,80);
-  });
-  try{mo.observe(document.body,{childList:true,subtree:true});}catch(_){ }
-
+  // No body-wide observer here. Repeated cleanup was causing live lag on My Actions.
   window.addEventListener('load',()=>setTimeout(cleanInterface,300));
   setTimeout(cleanInterface,500);
 })();
@@ -11549,35 +11569,8 @@ init();
   function normalize(card){
     if(!isAttendanceCard(card))return;
     if(isHidden(card)){card.remove();return;}
-
     const buttons=QSA('button',card).filter(isHideButton);
-    const shouldHaveButton=canHideAttendance()&&!isOwnAttendance(card);
-
-    if(!shouldHaveButton){
-      buttons.forEach(b=>b.remove());
-      return;
-    }
-
-    const box=actionBox(card);
-    let btn=buttons.find(b=>b.classList.contains('vscore-hide-notice'))||buttons[0]||null;
-    buttons.filter(b=>b!==btn).forEach(b=>b.remove());
-    if(!btn){
-      btn=document.createElement('button');
-      box.insertBefore(btn,box.firstChild);
-    }
-    btn.type='button';
-    btn.textContent='Notice';
-    btn.className='btn sm ghost vscore-hide-notice vscore-ignore-one v74-ignore v75-ignore v76-ignore';
-    btn.removeAttribute('onclick');
-    btn.onclick=function(ev){
-      ev.preventDefault();
-      ev.stopImmediatePropagation?.();
-      ev.stopPropagation();
-      window.vscoreHideAttendanceNotice(dataKey(card),card);
-      return false;
-    };
-    if(btn.parentElement!==box)box.insertBefore(btn,box.firstChild);
-    if(box.firstElementChild!==btn)box.insertBefore(btn,box.firstChild);
+    buttons.slice(1).forEach(b=>b.remove());
   }
   function cleanAll(){
     addStyle();
@@ -11615,8 +11608,7 @@ init();
   wrap('renderPage');
   wrap('renderApp');
   wrap('bind');
-  const mo=new MutationObserver(()=>{if(window.__v86q)return;window.__v86q=true;setTimeout(()=>{window.__v86q=false;cleanAll()},70)});
-  try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(_){}
+  // No continuous observer. Attendance buttons are now created once by caseActions62.
   window.addEventListener('load',()=>setTimeout(cleanAll,500));
   setTimeout(cleanAll,700);
   console.log('V86 stable attendance hide notice loaded');
@@ -15121,7 +15113,7 @@ init();
       <input id="attProof59" type="file" accept="image/*" style="display:none"><input type="checkbox" id="attConfirm59" checked style="display:none"><textarea id="attRemarks59" style="display:none"></textarea>
       <div class="v60-circle-row"><button type="button" class="v60-time-circle in ${tin?'done disabled':''}" ${tin?'disabled':''} onclick="v107OneTapAttendance('time_in',this)">${inPic?`<img src="${E(inPic)}" class="v60-selfie">`:'IN'}</button><button type="button" class="v60-time-circle out ${(!tin||tout)?'disabled':''} ${tout?'done':''}" ${(!tin||tout)?'disabled':''} onclick="v107OneTapAttendance('time_out',this)">${outPic?`<img src="${E(outPic)}" class="v60-selfie outpic">`:'OUT'}</button></div>
       <div class="v60-proof-labels"><div><div class="v60-proof-label"><span class="v60-dot ${tin?'ok':''}"></span>Selfie-In</div><div class="v60-proof-time">${tin?'Today<br>'+E(fmt107(tin.created_at)):'-'}</div></div><div><div class="v60-proof-label"><span class="v60-dot ${tout?'warn':''}"></span>Selfie-Out</div><div class="v60-proof-time">${tout?'Today<br>'+E(fmt107(tout.created_at)):'-'}</div></div></div>
-      <div class="v60-mini-actions"><button type="button" class="btn sm ghost" onclick="v107ManualGallery()">Choose from Gallery</button><button type="button" class="btn sm blue" onclick="loadData().then(renderPage)">Refresh</button></div><div id="attPreview59" class="v59-proof-preview"><span class="v59-pill ${tout?'ok':tin?'warn':'blue'}">${tout?'Time Out complete':tin?'Ready for Time Out':'Tap IN to start'}</span></div>
+      <div class="v60-mini-actions"><button type="button" class="btn sm blue" onclick="loadData().then(renderPage)">Refresh</button></div><div id="attPreview59" class="v59-proof-preview"><span class="v59-pill ${tout?'ok':tin?'warn':'blue'}">${tout?'Time Out complete':tin?'Ready for Time Out':'Tap IN to start'}</span></div>
       <div class="v60-note">Tap IN or OUT. The app saves your photo, timestamp, and phone location.</div></div>`;
   }
   function monitor107(title='Attendance Monitoring'){
@@ -17284,7 +17276,7 @@ init();
   function decorateUploads(root=document){
     A('input[type="file"]',root).forEach(inp=>{
       const id=String(inp.id||inp.name||'').toLowerCase();
-      if(/attproof|attendance|profile_picture|avatar|logo/.test(id))return;
+      if(/attproof|attendance|profile_picture|profilepic|profpic|avatar|logo/.test(id))return;
       inp.multiple=true; inp.setAttribute('data-max-files','5');
       if(!inp.closest('.field')?.querySelector('.v118-upload-note'))inp.insertAdjacentHTML('afterend','<div class="v118-upload-note">You can attach up to 5 photos.</div><div class="v118-preview"></div>');
       if(!inp.__v118Preview){
@@ -20833,4 +20825,1375 @@ init();
   console.log('V140 internal messenger PM and GC loaded');
 })();
 /* ================= END V140 ================= */
+/* ================= V143 BRANCH CONTROL CLEAN DASHBOARD NOTIFICATIONS ================= */
+(function(){
+  if(window.__VPOINTS_V143_BRANCH_DASH_NOTIFY__)return;
+  window.__VPOINTS_V143_BRANCH_DASH_NOTIFY__=true;
+  window.VSCORE_FINAL_BUILD='V143_BRANCH_CONTROL_CLEAN_DASH_NOTIFY';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const now=()=>new Date().toISOString();
+  const nat143=s=>/^(national branch|mother branch|all stores|retail operations)$/i.test(String(s||'').trim());
+  const role143=()=>String(S?.profile?.role||'').toLowerCase().replace(/[\s-]+/g,'_');
+  const pos143=()=>String(S?.profile?.position||'').toUpperCase();
+  const isRetail143=()=>{try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){} return /retail|head_office|executive|management|master|hr/.test(role143())||/RETAIL|HEAD OFFICE|EXECUTIVE|MANAGEMENT|NATIONAL/.test(pos143())};
+  const isLeader143=()=>isRetail143()||/team_leader|branch_manager|manager|branch_leader|fsqa|admin|auditor/i.test(role143()+' '+pos143());
+  function parse143(v){
+    if(!v)return [];
+    if(Array.isArray(v))return v.flatMap(parse143);
+    if(typeof v==='object')return Object.values(v).flatMap(parse143);
+    const s=String(v||'').trim();
+    try{return parse143(JSON.parse(s))}catch(_){}
+    return s.split(/\n|,|\|/).map(x=>x.trim()).filter(Boolean);
+  }
+  function uniq143(arr){
+    return [...new Set((arr||[]).map(x=>String(x||'').trim()).filter(Boolean).filter(x=>!nat143(x)))].sort((a,b)=>a.localeCompare(b));
+  }
+  function settings143(id){
+    const set=S?.settings||{}, keys=['branch_access_'+id,'manager_branch_access_'+id,'assigned_branches_'+id,'v77_branch_access_'+id,'mission_branch_access_'+id];
+    let out=[];
+    keys.forEach(k=>out.push(...parse143(set[k])));
+    keys.forEach(k=>{try{out.push(...parse143(localStorage.getItem(k)))}catch(_){}});
+    return out;
+  }
+  function customBranches143(){
+    const set=S?.settings||{};let out=[];
+    ['custom_branches','vpoints_custom_branches','branches_custom'].forEach(k=>out.push(...parse143(set[k])));
+    ['custom_branches','vpoints_custom_branches','branches_custom'].forEach(k=>{try{out.push(...parse143(localStorage.getItem(k)))}catch(_){}});
+    return uniq143(out);
+  }
+  function allStores143(){
+    const rows=[
+      ...(typeof defaultBranches!=='undefined'?defaultBranches:[]),
+      ...(S?.branches||[]).map(b=>b.branch_name||b.name||b.branch),
+      ...customBranches143(),
+      ...(S?.allEmployees||[]).map(e=>e.branch),
+      ...(S?.employees||[]).map(e=>e.branch),
+      S?.profile?.branch
+    ];
+    return uniq143(rows);
+  }
+  function level143(e){
+    const raw=String(e?.account_level||'').toLowerCase();
+    if(raw)return raw;
+    const t=String(e?.role||'')+' '+String(e?.position||'');
+    if(/retail|head office|executive|national|management/i.test(t))return 'retail';
+    if(/regional|team leader|branch manager|branch leader|fsqa|admin|auditor|manager/i.test(t))return 'leader';
+    return 'staff';
+  }
+  function storesFor143(e){
+    if(!e)return [];
+    if(level143(e)==='retail')return allStores143();
+    const out=[
+      e.branch,
+      ...parse143(e.assigned_branches),
+      ...parse143(e.managed_branches),
+      ...parse143(e.access_branches),
+      ...parse143(e.branch_access),
+      ...settings143(e.id)
+    ];
+    return uniq143(out);
+  }
+  function missionStores143(e){
+    const out=[
+      ...parse143(e?.secondary_branches),
+      ...parse143(e?.mission_branches),
+      ...parse143(e?.mission_branch_access),
+      ...parse143(S?.settings?.['mission_branch_access_'+e?.id])
+    ];
+    try{out.push(...parse143(localStorage.getItem('mission_branch_access_'+e?.id)))}catch(_){}
+    return uniq143(out);
+  }
+  function creatorStores143(){
+    if(isRetail143())return allStores143();
+    const p=S?.profile||{};
+    return uniq143([p.branch,...parse143(p.assigned_branches),...parse143(p.managed_branches),...parse143(p.access_branches),...parse143(p.branch_access),...settings143(p.id)]);
+  }
+  function sameScope143(e){
+    if(!e||String(e.activation_status||'').toLowerCase()==='permanent_deleted'||e.hidden_from_monitoring===true)return false;
+    if(String(e.id)===String(S?.profile?.id))return true;
+    if(isRetail143())return true;
+    if(isLeader143()){
+      const mine=new Set(creatorStores143().map(String));
+      const theirs=storesFor143(e);
+      return theirs.some(b=>mine.has(String(b)))||mine.has(String(e.branch||''));
+    }
+    return String(e.branch||'')===String(S?.profile?.branch||'');
+  }
+  async function saveSetting143(key,value){
+    try{localStorage.setItem(key,String(value));if(S?.settings)S.settings[key]=String(value)}catch(_){}
+    try{
+      let r=await sb.from('app_settings').upsert({setting_key:key,setting_value:String(value),updated_at:now()},{onConflict:'setting_key'});
+      if(r.error)r=await sb.from('app_settings').insert({setting_key:key,setting_value:String(value),updated_at:now()});
+      return r;
+    }catch(e){return {error:e}}
+  }
+  function missingCol143(msg){
+    msg=String(msg||'');
+    return (msg.match(/Could not find the ['"]([^'"]+)['"] column/i)||msg.match(/column ['"]?([a-z0-9_]+)['"]? does not exist/i)||msg.match(/column "([^"]+)"/i)||[])[1]||'';
+  }
+  async function updateFlex143(table,id,row,optional=[]){
+    const payload={...row};let last=null;
+    for(let i=0;i<optional.length+8;i++){
+      const r=await sb.from(table).update(payload).eq('id',id);
+      if(!r.error)return r;
+      last=r.error;const msg=String(r.error.message||r.error.details||r.error.hint||''), col=missingCol143(msg);
+      if(col&&Object.prototype.hasOwnProperty.call(payload,col)){delete payload[col];continue}
+      if(/column|schema|cache/i.test(msg)){const next=optional.find(k=>Object.prototype.hasOwnProperty.call(payload,k));if(next){delete payload[next];continue}}
+      break;
+    }
+    throw last||new Error('Could not save changes.');
+  }
+  async function insertFlex143(table,row,optional=[]){
+    const payload={...row};let last=null;
+    for(let i=0;i<optional.length+8;i++){
+      const r=await sb.from(table).insert(payload).select?.().single?.()||await sb.from(table).insert(payload);
+      if(!r.error)return r.data||payload;
+      last=r.error;const msg=String(r.error.message||r.error.details||r.error.hint||''), col=missingCol143(msg);
+      if(col&&Object.prototype.hasOwnProperty.call(payload,col)){delete payload[col];continue}
+      if(/column|schema|cache/i.test(msg)){const next=optional.find(k=>Object.prototype.hasOwnProperty.call(payload,k));if(next){delete payload[next];continue}}
+      break;
+    }
+    throw last||new Error('Could not add branch.');
+  }
+  function storeText143(e){
+    const lvl=level143(e), stores=storesFor143(e), mission=missionStores143(e);
+    if(lvl==='retail')return 'All stores';
+    if(lvl==='leader')return stores.length?stores.join(', '):'-';
+    return (stores[0]||e?.branch||'-')+(mission.length?' | Mission: '+mission.join(', '):'');
+  }
+  function style143(){
+    if(Q('#v143Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v143Style">
+      .v143-home{max-width:460px;margin:0 auto;display:grid;gap:10px;color:#111827}
+      .v143-hero{background:#fff;border:1px solid #e5e7eb;border-top:5px solid #facc15;border-radius:18px;padding:13px;box-shadow:0 12px 28px rgba(15,23,42,.08)}
+      .v143-hero-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.v143-hero h1{margin:0;color:#7f1d1d;font-size:22px;line-height:1.05}.v143-branch{color:#64748b;font-weight:850;font-size:12px;margin-top:3px}
+      .v143-points{margin-top:10px;background:linear-gradient(135deg,#7f1d1d,#b91c1c);color:#fff;border-radius:16px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+      .v143-points b{font-size:46px;line-height:.95}.v143-points span{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#fee2e2}
+      .v143-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.v143-action{min-height:48px;border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:7px 4px;text-align:center;font-size:10px;font-weight:1000;color:#111827;box-shadow:0 4px 12px rgba(15,23,42,.05)}
+      .v143-action b{display:block;font-size:13px;color:#7f1d1d}.v143-action small{display:block;color:#64748b;font-size:9px;font-weight:850;line-height:1.1}.v143-tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+      .v143-tool{min-height:54px;border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:6px 4px;text-align:center;font-weight:1000;color:#111827}.v143-tool span{display:block;font-size:10px;color:#64748b}.v143-tool b{font-size:10.5px;line-height:1.05;display:block}
+      .v143-section{font-size:11px;font-weight:1000;color:#64748b;text-transform:uppercase;padding:0 4px}.v143-branch-tools{border:1px solid #dbeafe;background:#eff6ff;border-radius:14px;padding:10px;margin:10px 0}.v143-branch-tools h4{margin:0 0 4px;color:#1e3a8a}.v143-short{font-size:12px;line-height:1.35}
+      .v143-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:42vh;overflow:auto}.v143-check{border:1px solid #e5e7eb;border-radius:12px;padding:9px;display:flex;gap:8px;align-items:flex-start;font-size:12px;font-weight:900;color:#334155}.v143-check input{width:18px;height:18px;flex:0 0 auto}
+      .v143-note{font-size:12px;color:#64748b;font-weight:850;line-height:1.35}.v143-push{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px}
+      @media(max-width:420px){.v143-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.v143-tools{grid-template-columns:repeat(3,minmax(0,1fr))}.v143-points b{font-size:40px}.v143-edit-grid{grid-template-columns:1fr}}
+    </style>`);
+  }
+  function shortLabel143(tab,label){
+    const map={dashboard:'Home',case_center:'Cases',approvals:'Approvals',attendance:'Clock',tasklist:'Output',missions:'Missions',memos:'Memos',employees:'Accounts',accounts:'Access',ratings:'Ratings',news:'News',violations:'Violations',fsqa:'FSQA',policies:'Policies',forms:'Forms',reports:'Reports',audit:'Audit',settings:'Settings',rewards:'Rewards',training:'Training',chat:'Messages',profile:'Profile',concern:'Concern',records:'Records',my_actions:'Actions'};
+    return map[tab]||String(label||tab).replace(/\/.*/,'').slice(0,16);
+  }
+  function homeActions143(){
+    if(isRetail143())return [['case_center','Cases','Review'],['attendance','Clock','Monitor'],['missions','Missions','Assign'],['memos','Memos','Track'],['employees','Staff','Access']];
+    if(isLeader143())return [['attendance','Clock','Team'],['tasklist','Output','Today'],['missions','Missions','Proof'],['memos','Memos','Read'],['employees','Staff','Branch']];
+    return [['attendance','Clock','Today'],['tasklist','Output','Submit'],['missions','Missions','Proof'],['memos','Memos','Read'],['training','Training','Learn']];
+  }
+  function cleanHome143(){
+    style143();
+    const p=S.profile||{}, points=Number(p.current_points??100);
+    let navRows=[];try{navRows=(typeof nav==='function'?nav():[])}catch(_){}
+    const focus=new Set(homeActions143().map(x=>x[0]));
+    const tools=navRows.filter(x=>x&&x[0]&&x[0]!=='app_menu'&&!focus.has(x[0])).slice(0,28);
+    const visibleStores=creatorStores143();
+    const store=isRetail143()?'All stores':(visibleStores.length>2?`${visibleStores[0]} +${visibleStores.length-1} more stores`:(visibleStores.join(', ')||p.branch||'V-Points'));
+    const pushOk=typeof Notification!=='undefined'&&Notification.permission==='granted';
+    return `<div class="v143-home">
+      <div class="v143-hero">
+        <div class="v143-hero-top"><div><h1>${E(p.full_name||'Ka-Varda')}</h1><div class="v143-branch">${E(store)}</div></div><div class="v101-actions"><button class="btn sm ghost" id="v143Refresh">Refresh</button><button class="btn sm dark" id="v143Logout">Logout</button></div></div>
+        <button class="v143-points" data-v143-tab="dashboard"><div><span>Current V-Points</span><b>${E(String(points))}</b></div><small>Tap for summary</small></button>
+      </div>
+      <div class="v143-section">Main Actions</div>
+      <div class="v143-actions">${homeActions143().map(x=>`<button class="v143-action" data-v143-tab="${E(x[0])}"><b>${E(x[1])}</b><small>${E(x[2])}</small></button>`).join('')}</div>
+      <div class="v143-push"><div class="split" style="justify-content:space-between"><div><b>Activity Alerts</b><div class="v143-note">${pushOk?'Browser alerts are on.':'Turn on alerts for missions, memos, messages, ratings, and approvals.'}</div></div><button class="btn sm ${pushOk?'green':'blue'}" id="v143PushBtn">${pushOk?'On':'Enable'}</button></div></div>
+      <div class="v143-section">All Tools</div>
+      <div class="v143-tools">${tools.map(x=>`<button class="v143-tool" data-v143-tab="${E(x[0])}"><b>${E(shortLabel143(x[0],x[1]))}</b><span>${E(x[0].replace(/_/g,' '))}</span></button>`).join('')}</div>
+    </div>`;
+  }
+  function go143(tab){
+    if(!tab)return;
+    try{localStorage.setItem('v92_last_tab',tab)}catch(_){}
+    if(S)S.tab=tab;
+    try{renderPage()}catch(e){try{toast('Page did not open. Try again.','error')}catch(_){console.warn(e)}}
+  }
+  function bindHome143(root=document){
+    A('[data-v143-tab]',root).forEach(b=>{if(!b.__v143){b.__v143=true;b.onclick=e=>{e.preventDefault();go143(b.dataset.v143Tab)}}});
+    const r=Q('#v143Refresh',root);if(r&&!r.__v143){r.__v143=true;r.onclick=async e=>act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'Refresh'},loadData,renderPage)}
+    const lo=Q('#v143Logout',root);if(lo&&!lo.__v143){lo.__v143=true;lo.onclick=()=>{try{logout()}catch(_){location.reload()}}}
+    const p=Q('#v143PushBtn',root);if(p&&!p.__v143){p.__v143=true;p.onclick=()=>enablePush143(p)}
+  }
+  function branchToolHtml143(){
+    if(!isLeader143())return '';
+    return `<div id="v143BranchTools" class="v143-branch-tools"><h4>Add Branch / Store</h4><div class="v143-note">Add a new store name, then it appears in store assignment checkboxes.</div><div class="split" style="margin-top:8px"><button type="button" class="btn sm blue" id="v143AddBranchBtn">Add Branch</button><button type="button" class="btn sm ghost" id="v143RefreshBranches">Refresh Branch List</button></div></div>`;
+  }
+  function decorateAccounts143(root=document){
+    style143();
+    const form=Q('#staffForm[data-v134="1"]',root);
+    if(form&&!Q('#v143BranchTools',form.parentElement||root)){
+      form.insertAdjacentHTML('beforebegin',branchToolHtml143());
+    }
+    const add=Q('#v143AddBranchBtn',root);if(add&&!add.__v143){add.__v143=true;add.onclick=()=>openAddBranch143()}
+    const ref=Q('#v143RefreshBranches',root);if(ref&&!ref.__v143){ref.__v143=true;ref.onclick=async e=>act(e.currentTarget,{busy:'Refreshing...',success:'Updated',reset:'Refresh Branch List'},loadData,renderPage)}
+    A('.v143EditStores',root).forEach(b=>{if(!b.__v143){b.__v143=true;b.onclick=()=>openStoreEditor143(b.dataset.id)}});
+    A('.v87-account',root).forEach(card=>{
+      const actions=Q('.v87-actions',card);
+      const id=(Q('[data-id]',actions||card)||{}).dataset?.id;
+      if(!actions||!id||Q('.v143EditStores',actions))return;
+      const e=findEmployee143(id);
+      if(!e)return;
+      if(!Q('.v143StoreLine',card)){
+        const p=Q('p',card);
+        if(p)p.insertAdjacentHTML('beforeend',`<br><b>Store Access:</b> <span class="v143StoreLine">${E(storeText143(e))}</span>`);
+      }
+      if(isRetail143()||level143(e)==='staff')actions.insertAdjacentHTML('afterbegin',`<button type="button" class="btn sm blue v143EditStores" data-id="${E(id)}">Edit Stores</button> `);
+    });
+  }
+  window.v143OpenAddBranch=openAddBranch143;
+  function openAddBranch143(){
+    if(!isLeader143())return toast('Only Retail or Team Leader level can add a branch.','error');
+    modal(`<h2>Add Branch / Store</h2><p class="muted">Enter the branch name exactly how staff should see it.</p><div class="field"><label>Branch / Store Name</label><input id="v143BranchName" class="input" placeholder="Example: LPU MAIN BATANGAS - PIRATES' UNIVERSITY CAFETERIA"></div><div class="split"><button class="btn green" id="v143SaveBranch">Save Branch</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+    const b=Q('#v143SaveBranch');if(b)b.onclick=()=>saveBranch143(b);
+  }
+  async function saveBranch143(btn){
+    await act(btn,{busy:'Saving...',success:'Saved',reset:'Save Branch',toast:'Branch added.'},async()=>{
+      let name=String(Q('#v143BranchName')?.value||'').trim().replace(/\s+/g,' ').toUpperCase();
+      if(name.length<4)throw new Error('Enter a clear branch/store name.');
+      if(nat143(name))throw new Error('Use the actual store name, not National or Mother Branch.');
+      const current=allStores143();
+      if(!current.map(x=>x.toLowerCase()).includes(name.toLowerCase())){
+        try{await insertFlex143('branches',{branch_name:name,name,branch:name,is_active:true,created_by:S.profile?.id,created_at:now()},['name','branch','is_active','created_by','created_at'])}catch(e){console.warn('Branch table save skipped:',e.message||e)}
+        const custom=uniq143([...customBranches143(),name]);
+        await saveSetting143('custom_branches',JSON.stringify(custom));
+        S.branches=[...(S.branches||[]),{branch_name:name,name,branch:name,is_active:true}];
+      }
+      if(!isRetail143()&&S.profile?.id){
+        const mine=uniq143([...creatorStores143(),name]);
+        await saveSetting143('branch_access_'+S.profile.id,JSON.stringify(mine));
+        await saveSetting143('manager_branch_access_'+S.profile.id,JSON.stringify(mine));
+        try{await updateFlex143('employees',S.profile.id,{assigned_branches:mine},['assigned_branches'])}catch(_){}
+        S.profile.assigned_branches=mine;
+      }
+    },async()=>{try{closeModal()}catch(_){};await loadData();renderPage()});
+  }
+  function findEmployee143(id){
+    return [...(S.accountBackupRows||[]),...(S.allEmployees||[]),...(S.employees||[])].find(e=>String(e.id)===String(id))||null;
+  }
+  window.v143EditStores=function(id){openStoreEditor143(id)};
+  function openStoreEditor143(id){
+    const e=findEmployee143(id);
+    if(!e)return toast('Account not found. Refresh and try again.','error');
+    const lvl=level143(e), stores=creatorStores143(), assigned=storesFor143(e), missions=missionStores143(e);
+    if(!isRetail143()&&lvl!=='staff')return toast('Only Retail can edit leader branch access.','error');
+    if(lvl==='retail')return modal(`<h2>${E(e.full_name||'Retail Account')}</h2><div class="notice success">Retail Level already has all stores.</div><button class="btn dark full" onclick="closeModal()">Close</button>`);
+    const body=lvl==='staff'
+      ? `<div class="field"><label>Primary Store</label><select id="v143PrimaryStore" class="input">${stores.map(b=>`<option value="${E(b)}" ${String(b)===String(assigned[0]||e.branch)?'selected':''}>${E(b)}</option>`).join('')}</select></div><div class="field"><label>Mission-Only Stores</label><div class="v143-edit-grid">${stores.map(b=>`<label class="v143-check"><input type="checkbox" class="v143MissionStore" value="${E(b)}" ${missions.includes(b)?'checked':''}> <span>${E(b)}</span></label>`).join('')}</div></div>`
+      : `<div class="field"><label>Assigned Stores To Monitor</label><div class="v143-edit-grid">${stores.map(b=>`<label class="v143-check"><input type="checkbox" class="v143AssignedStore" value="${E(b)}" ${assigned.includes(b)?'checked':''}> <span>${E(b)}</span></label>`).join('')}</div></div>`;
+    modal(`<h2>Edit Store Access</h2><p class="muted">${E(e.full_name||'Account')} - ${E(lvl.toUpperCase())}</p>${body}<div class="notice success v143-short">Save to add or remove store access. Existing records stay connected to the account.</div><div class="split"><button class="btn green" id="v143SaveStores">Save Store Access</button><button class="btn dark" onclick="closeModal()">Close</button></div>`);
+    const b=Q('#v143SaveStores');if(b)b.onclick=()=>saveStores143(e,b);
+  }
+  async function saveStores143(e,btn){
+    await act(btn,{busy:'Saving...',success:'Saved',reset:'Save Store Access',toast:'Store access updated.'},async()=>{
+      const lvl=level143(e), allowed=new Set(creatorStores143());
+      let branch=e.branch||'', access=[], mission=[];
+      if(lvl==='staff'){
+        branch=Q('#v143PrimaryStore')?.value||branch;
+        if(!branch)throw new Error('Choose a primary store.');
+        access=[branch];
+        mission=uniq143(A('.v143MissionStore:checked').map(x=>x.value)).filter(x=>x!==branch);
+      }else{
+        access=uniq143(A('.v143AssignedStore:checked').map(x=>x.value));
+        if(!access.length)throw new Error('Choose at least one assigned store.');
+        branch=access[0];
+      }
+      if(!isRetail143()){
+        access=access.filter(x=>allowed.has(x));
+        mission=mission.filter(x=>allowed.has(x));
+        if(!access.length)throw new Error('You can only assign stores under your own access.');
+      }
+      await updateFlex143('employees',e.id,{branch,assigned_branches:access,secondary_branches:mission,account_level:lvl,updated_at:now()},['assigned_branches','secondary_branches','account_level','updated_at']);
+      await saveSetting143('branch_access_'+e.id,JSON.stringify(access));
+      await saveSetting143('manager_branch_access_'+e.id,JSON.stringify(access));
+      await saveSetting143('v77_branch_access_'+e.id,JSON.stringify(access));
+      await saveSetting143('mission_branch_access_'+e.id,JSON.stringify(mission));
+      Object.assign(e,{branch,assigned_branches:access,secondary_branches:mission,account_level:lvl});
+    },async()=>{try{closeModal()}catch(_){};await loadData();renderPage()});
+  }
+  function patchTables143(){
+    window.empTable=empTable=function(arr){
+      arr=arr||[];
+      return `<table><thead><tr><th>Name</th><th>Level</th><th>Store Access</th><th>Position</th><th>V-Points</th><th>Action</th></tr></thead><tbody>${arr.map(e=>`<tr><td><button class="link empOpen" data-id="${E(e.id)}">${E(e.full_name||'-')}</button><br><span class="small muted">${E(e.email||'')}</span></td><td><b>${E(level143(e).toUpperCase())}</b></td><td>${E(storeText143(e))}</td><td>${E(e.position||'-')}</td><td><b>${typeof money==='function'?money(e.current_points):E(e.current_points||0)}</b></td><td>${(isRetail143()||level143(e)==='staff')?`<button class="btn sm blue v143EditStores" data-id="${E(e.id)}">Edit Stores</button>`:'-'}</td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">No employees.</div></td></tr>'}</tbody></table>`;
+    };
+    window.acctTable=acctTable=function(arr){
+      arr=arr||[];
+      const empNo=e=>{try{return typeof employeeNumber100==='function'?employeeNumber100(e):(e.employee_number||e.employee_no||'')}catch(_){return e.employee_number||''}};
+      const pin=e=>e.pin_code||e.login_password_backup||e.temp_password||'';
+      return `<table><thead><tr><th>Employee No.</th><th>Name</th><th>Email Login</th><th>PIN</th><th>Store Access</th><th>Status</th><th>Action</th></tr></thead><tbody>${arr.map(e=>`<tr><td><b>${E(empNo(e))}</b></td><td>${E(e.full_name||'-')}<br><span class="small muted">${E(level143(e).toUpperCase())}</span></td><td>${E(e.email||'-')}</td><td>${E(pin(e)||'-')}</td><td>${E(storeText143(e))}</td><td>${typeof activePill==='function'?activePill(e):(e.is_active===false?'<span class="pill red">Inactive</span>':'<span class="pill green">Active</span>')}</td><td><button class="btn sm blue v143EditStores" data-id="${E(e.id)}">Edit Stores</button> <button class="btn sm blue" onclick="v122ResetPin&&v122ResetPin('${E(e.id)}',this)">Reset PIN</button> <button class="btn sm dark delAcct" data-id="${E(e.id)}">Permanent Remove</button></td></tr>`).join('')||'<tr><td colspan="7"><div class="empty">No accounts.</div></td></tr>'}</tbody></table>`;
+    };
+  }
+  patchTables143();
+  function enablePush143(btn){
+    if(typeof Notification==='undefined')return toast('Browser alerts are not available here. They will work on supported HTTPS/mobile browsers.','error');
+    Notification.requestPermission().then(p=>{
+      try{localStorage.setItem('vpoints_push_'+(S.profile?.id||'anon'),p)}catch(_){}
+      if(p==='granted'){
+        try{new Notification('V-Points alerts enabled',{body:'You will get alerts for important account activity while the app is open.'})}catch(_){}
+        toast('Activity alerts enabled.','ok');
+      }else toast('Alerts were not enabled.','error');
+      renderPage();
+    });
+  }
+  function activityItems143(){
+    if(!S?.profile)return [];
+    const me=String(S.profile.id), items=[];
+    (S.tasks||[]).forEach(t=>{
+      const mine=String(t.assigned_to_employee_id)===me;
+      const managerRelated=isLeader143()&&(String(t.assigned_by_employee_id)===me||creatorStores143().includes(String(t.branch||'')));
+      if((mine||managerRelated)&&!/(closed|completed|done|approved|expired|cancelled)/i.test(String(t.status||'')))items.push(['mission',t.id,t.updated_at||t.created_at||'',mine?'New mission':'Mission update','missions']);
+    });
+    (S.memos||[]).slice(0,30).forEach(m=>items.push(['memo',m.id,m.updated_at||m.created_at||'','Memo update','memos']));
+    (S.chatMessages||[]).forEach(m=>{if(String(m.sender_id)!==me)items.push(['chat',m.id,m.created_at||'','New message','chat'])});
+    (S.customerRatings||[]).forEach(r=>{if(String(r.employee_id)===me)items.push(['rating',r.id,r.created_at||'','New customer rating','ratings'])});
+    if(isLeader143()){
+      (S.reports||[]).forEach(r=>items.push(['case',r.id,r.updated_at||r.created_at||'','Case update','case_center']));
+      (S.rewardClaims||[]).forEach(r=>items.push(['reward',r.id,r.updated_at||r.created_at||'','Reward claim update','rewards']));
+    }
+    return items.filter(x=>x[1]).sort((a,b)=>String(b[2]).localeCompare(String(a[2]))).slice(0,40);
+  }
+  function notify143(item){
+    const title='V-Points: '+item[3], body='Tap the app and open '+shortLabel143(item[4],item[4])+'.';
+    try{toast(item[3],'ok')}catch(_){}
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      try{
+        const n=new Notification(title,{body});
+        n.onclick=()=>{try{window.focus();go143(item[4])}catch(_){}};
+      }catch(_){}
+    }
+  }
+  function checkActivity143(){
+    if(!S?.profile)return;
+    const key='vpoints_activity_seen_'+S.profile.id;
+    const items=activityItems143();
+    let seen={};try{seen=JSON.parse(localStorage.getItem(key)||'{}')}catch(_){}
+    const fresh=items.filter(x=>!seen[x[0]+':'+x[1]]).slice(0,3);
+    const first=!localStorage.getItem(key);
+    items.forEach(x=>seen[x[0]+':'+x[1]]=x[2]||now());
+    try{localStorage.setItem(key,JSON.stringify(seen))}catch(_){}
+    if(!first)fresh.forEach(notify143);
+  }
+  function mergeBranches143(){
+    const custom=customBranches143();
+    if(custom.length){
+      const existing=new Set((S.branches||[]).map(b=>String(b.branch_name||b.name||b.branch||'').toLowerCase()));
+      custom.forEach(name=>{if(!existing.has(name.toLowerCase()))(S.branches||(S.branches=[])).push({branch_name:name,name,branch:name,is_active:true})});
+    }
+  }
+  function improveVisibleEmployees143(){
+    mergeBranches143();
+    if(!isLeader143())return;
+    const all=[...(S.allEmployees||[]),...(S.accountBackupRows||[]),...(S.employees||[])], seen=new Set(), rows=[];
+    all.forEach(e=>{if(!e||!e.id||seen.has(String(e.id)))return;seen.add(String(e.id));if(sameScope143(e))rows.push(e)});
+    if(rows.length)S.employees=rows.filter(e=>String(e.activation_status||'').toLowerCase()!=='permanent_deleted');
+  }
+  const oldLoad143=window.loadData;
+  if(typeof oldLoad143==='function'&&!window.__v143LoadPatch){
+    window.__v143LoadPatch=true;
+    window.loadData=loadData=async function(){
+      const out=await oldLoad143.apply(this,arguments);
+      try{
+        if(isLeader143()){
+          const rows=await q(sb.from('employees').select('*'),[]);
+          if(rows&&rows.length)S.allEmployees=rows;
+        }
+      }catch(e){console.warn('V143 employee scope refresh skipped:',e.message||e)}
+      improveVisibleEmployees143();
+      setTimeout(checkActivity143,700);
+      return out;
+    };
+  }
+  const oldEmployeesPage143=window.employeesPage;
+  if(typeof oldEmployeesPage143==='function'){
+    window.employeesPage=employeesPage=function(){
+      let html=oldEmployeesPage143.apply(this,arguments)||'';
+      html=html.replace(/<div class="v138-mini-guide">[\s\S]*?<\/div>/,'<div class="notice success v143-short"><b>Create account:</b><br>Choose level, position, and store access. Save to create the login slip.</div>');
+      html=html.replace(/No Mother Branch or National Branch is used for account creation\. Branch assignment controls access\./g,'Store access controls what the account can view and manage.');
+      return html;
+    };
+  }
+  const oldAccountsPage143=window.accountsPage;
+  if(typeof oldAccountsPage143==='function'){
+    window.accountsPage=accountsPage=function(){
+      let html=String(oldAccountsPage143.apply(this,arguments)||'');
+      html=html.replace(/Kick\/disable login keeps the account in backup\. Permanent remove hides it from active monitoring but keeps an audit trail\./g,'Manage login access, PINs, and store assignments for existing accounts.');
+      html=html.replace(/Convert old password backups into Email \+ 4-digit PIN login\. Individual account buttons are now directly wired\./g,'Use these controls to reset or standardize PIN access for visible accounts.');
+      return html;
+    };
+  }
+  const oldCredential143=window.credential;
+  if(typeof oldCredential143==='function'&&!window.__v143CredentialPatch){
+    window.__v143CredentialPatch=true;
+    window.credential=credential=function(e){
+      const out=oldCredential143.apply(this,arguments);
+      setTimeout(()=>{try{if(String(S?.tab||'')==='employees'){if(typeof loadData==='function')loadData().then(()=>{const form=Q('#staffForm[data-v134="1"]');if(form){form.reset();const p=Q('#staffPass',form);if(p&&typeof saferPin134==='function')p.value=saferPin134();}renderPage()})}}catch(_){}},300);
+      return out;
+    };
+  }
+  const oldRenderPage143=window.renderPage;
+  if(typeof oldRenderPage143==='function'&&!window.__v143RenderPatch){
+    window.__v143RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      style143();
+      if(String(S?.tab||'')==='app_menu'){
+        const page=Q('#page');
+        if(page){page.innerHTML=cleanHome143();bindHome143(page);return}
+      }
+      const out=oldRenderPage143.apply(this,arguments);
+      setTimeout(()=>decorateAccounts143(Q('#page')||document),80);
+      setTimeout(()=>decorateAccounts143(document),350);
+      return out;
+    };
+  }
+  const oldBind143=window.bind;
+  if(typeof oldBind143==='function'&&!window.__v143BindPatch){
+    window.__v143BindPatch=true;
+    window.bind=bind=function(){const out=oldBind143.apply(this,arguments);setTimeout(()=>{bindHome143(document);decorateAccounts143(document)},80);return out};
+  }
+  document.addEventListener('click',ev=>{
+    const btn=ev.target?.closest?.('.v143EditStores');
+    if(btn){ev.preventDefault();ev.stopPropagation();openStoreEditor143(btn.dataset.id)}
+  },true);
+  setTimeout(()=>{try{improveVisibleEmployees143();decorateAccounts143(document)}catch(_){}},900);
+  console.log('V143 branch control, clean dashboard, and activity notifications loaded');
+})();
+/* ================= END V143 ================= */
+/* ================= V144 COMPACT NAV CLOCK CLEANUP ATTENDANCE RETENTION ================= */
+(function(){
+  if(window.__VPOINTS_V144_COMPACT_CLOCK_RETENTION__)return;
+  window.__VPOINTS_V144_COMPACT_CLOCK_RETENTION__=true;
+  window.VSCORE_FINAL_BUILD='V144_COMPACT_NAV_CLOCK_RETENTION';
+
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const hasProfile144=()=>!!(window.S&&S.profile&&S.profile.id);
+  const leader144=()=>{
+    const raw=String(S?.profile?.role||'')+' '+String(S?.profile?.position||'');
+    try{if(typeof isOwner==='function'&&isOwner())return true}catch(_){}
+    return /retail|head|executive|management|manager|team leader|branch leader|fsqa|admin|auditor|owner/i.test(raw);
+  };
+
+  function style144(){
+    if(Q('#v144Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v144Style">
+      :root{--v144-safe-top:env(safe-area-inset-top,0px)}
+      #v144MenuBtn{position:fixed;left:10px;top:calc(8px + var(--v144-safe-top));z-index:2600;min-width:72px;min-height:48px;border:0;border-radius:14px;background:#111827;color:#fff;font-weight:1000;font-size:15px;box-shadow:0 12px 28px rgba(15,23,42,.28);touch-action:manipulation}
+      body.v144-no-menu #v144MenuBtn{display:none!important}
+      body.v144-has-menu .topbar{padding-left:90px!important}
+      .v85-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+      .v85-actions .btn{min-height:42px!important;padding:8px 5px!important;border-radius:12px!important;font-size:11px!important;line-height:1.1!important;white-space:normal!important}
+      .v85-panel h3{font-size:18px!important;margin-bottom:8px!important}
+      .v85-hero p,.v95-hero p,.v107-note,.v60-note{font-size:12px!important;line-height:1.35!important}
+      .v143-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+      .v143-action{min-height:42px!important;padding:7px 4px!important}
+      .v143-action b{font-size:12px!important}.v143-action small{font-size:9px!important}
+      .v143-push{padding:8px 9px!important}.v143-note{font-size:11px!important}
+      #page[data-v144-clock-clean="1"] input[type="file"],#page[data-v144-clock-clean="1"] .v50-gallery,#page[data-v144-clock-clean="1"] #v58GalleryCam,#page[data-v144-clock-clean="1"] [onclick*="Gallery"],#page[data-v144-clock-clean="1"] [onclick*="gallery"]{display:none!important}
+      @media(max-width:760px){
+        body.v50-menu-open .sidebar .nav{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;padding:8px!important}
+        body.v50-menu-open .sidebar .nav button{min-height:38px!important;padding:6px 4px!important;border-radius:11px!important;font-size:10px!important;line-height:1.05!important;text-align:center!important}
+        .v101-focus{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important}
+        .v101-card{min-height:56px!important;padding:8px 5px!important;border-radius:12px!important}
+        .v101-card .v101-ico{width:30px!important;height:30px!important;font-size:10px!important;margin-bottom:3px!important}
+        .v101-card .v101-sub{display:none!important}
+        .v101-title{font-size:11px!important;line-height:1.05!important;text-align:center!important}
+        .v101-badge{font-size:9px!important;margin:4px auto 0!important;padding:3px 7px!important}
+        .v85-dash .v85-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+        .v85-actions .btn{min-height:40px!important;font-size:10.5px!important}
+        .v143-home{gap:8px!important}.v143-hero{padding:11px!important}.v143-points{padding:11px!important}.v143-points b{font-size:38px!important}
+      }
+    </style>`);
+  }
+
+  function goHome144(){
+    if(!window.S)return;
+    S.tab='app_menu';
+    try{localStorage.setItem('v92_last_tab','app_menu')}catch(_){}
+    try{renderPage()}catch(e){try{toast('Opening menu.','ok')}catch(_){}}
+  }
+
+  function ensureMenu144(){
+    style144();
+    if(!hasProfile144()){
+      document.body.classList.add('v144-no-menu');
+      document.body.classList.remove('v144-has-menu');
+      Q('#v144MenuBtn')?.remove();
+      return;
+    }
+    document.body.classList.remove('v144-no-menu');
+    document.body.classList.add('v144-has-menu');
+    let btn=Q('#v144MenuBtn');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.id='v144MenuBtn';
+      btn.type='button';
+      btn.textContent='Menu';
+      btn.setAttribute('aria-label','Open V-Points menu');
+      document.body.appendChild(btn);
+    }
+    if(!btn.__v144){btn.__v144=true;btn.onclick=e=>{e.preventDefault();e.stopPropagation();goHome144()};}
+  }
+
+  function shortenOldDashButtons144(root=document){
+    style144();
+    const map=[
+      [/Attendance Monitor|Time Clock|Attendance/i,'Clock'],
+      [/Output Monitor|Tasklist Monitor|End-of-Shift Output|Output/i,'Output'],
+      [/Memo Summary|Memo Monitoring|Memos \/ Alerts|Memo Hub|Memos/i,'Memos'],
+      [/Case Center/i,'Cases'],
+      [/Employee Universe|Branch Staff|Account Backup|Accounts|Staff/i,'Staff'],
+      [/Missions \/ Actions|My Missions|Missions/i,'Missions']
+    ];
+    A('.v85-actions .btn,.sidebar .nav button,.v143-action,.v101-card',root).forEach(b=>{
+      if(b.closest('.v143-tools'))return;
+      const raw=(b.textContent||'').trim().replace(/\s+/g,' ');
+      const hit=map.find(([re])=>re.test(raw));
+      if(hit&&raw.length>12&&b.classList.contains('btn'))b.textContent=hit[1];
+    });
+  }
+
+  function cleanClockGallery144(root=document){
+    if(String(S?.tab||'')!=='attendance'&&String(S?.tab||'')!=='attendance_monitor')return;
+    const page=Q('#page')||root;
+    page.setAttribute('data-v144-clock-clean','1');
+    A('button,label',page).forEach(el=>{
+      const t=(el.textContent||'').trim();
+      if(/choose\s+from\s+gallery|gallery\s*\/\s*file|upload\s+from\s+gallery/i.test(t))el.remove();
+    });
+    A('input[type="file"]',page).forEach(inp=>{
+      const id=String(inp.id||'');
+      if(/attProof|attendance|clock/i.test(id+' '+String(inp.name||''))){
+        inp.style.display='none';
+        inp.setAttribute('aria-hidden','true');
+      }
+    });
+    A('.v60-mini-actions,.v50-file-actions,.v59-actions,.v55-actions',page).forEach(box=>{
+      if(/choose\s+from\s+gallery|gallery/i.test(box.textContent||'')){
+        A('button,label',box).forEach(el=>{/choose\s+from\s+gallery|gallery/i.test(el.textContent||'')&&el.remove()});
+        if(!(box.textContent||'').trim())box.remove();
+      }
+    });
+  }
+
+  const phDay144=(d=new Date())=>{
+    try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila',year:'numeric',month:'2-digit',day:'2-digit'}).format(d)}
+    catch(_){return d.toISOString().slice(0,10)}
+  };
+  function cutoff144(){
+    return phDay144(new Date(Date.now()-24*24*60*60*1000));
+  }
+  function rowDay144(r){
+    return String(r?.work_date||r?.created_at||r?.date||'').slice(0,10);
+  }
+  function keepAttendance144(r){
+    const d=rowDay144(r);
+    return !d||d>=cutoff144();
+  }
+  async function cleanupAttendance144(){
+    if(!window.S)return;
+    if(Array.isArray(S.attendanceLogs))S.attendanceLogs=S.attendanceLogs.filter(keepAttendance144);
+    if(!leader144()||!window.sb?.from)return;
+    const today=phDay144(),key='vpoints_attendance_25day_cleanup_'+today;
+    try{if(localStorage.getItem(key))return;localStorage.setItem(key,'1')}catch(_){}
+    const cutoff=cutoff144();
+    try{await sb.from('vscore_attendance_logs').delete().lt('work_date',cutoff)}catch(e){console.warn('25-day attendance cleanup by work_date skipped:',e.message||e)}
+    try{
+      const iso=new Date(Date.now()-25*24*60*60*1000).toISOString();
+      await sb.from('vscore_attendance_logs').delete().lt('created_at',iso);
+    }catch(e){console.warn('25-day attendance cleanup by created_at skipped:',e.message||e)}
+  }
+
+  function decorate144(root=document){
+    ensureMenu144();
+    shortenOldDashButtons144(root);
+    cleanClockGallery144(root);
+  }
+
+  const oldLoad144=window.loadData;
+  if(typeof oldLoad144==='function'&&!window.__v144LoadPatch){
+    window.__v144LoadPatch=true;
+    window.loadData=loadData=async function(){
+      const out=await oldLoad144.apply(this,arguments);
+      try{await cleanupAttendance144()}catch(e){console.warn('V144 attendance retention skipped:',e.message||e)}
+      return out;
+    };
+  }
+
+  const oldRender144=window.renderPage;
+  if(typeof oldRender144==='function'&&!window.__v144RenderPatch){
+    window.__v144RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      style144();
+      const out=oldRender144.apply(this,arguments);
+      setTimeout(()=>decorate144(Q('#page')||document),30);
+      setTimeout(()=>decorate144(document),260);
+      return out;
+    };
+  }
+
+  const oldBind144=window.bind;
+  if(typeof oldBind144==='function'&&!window.__v144BindPatch){
+    window.__v144BindPatch=true;
+    window.bind=bind=function(){const out=oldBind144.apply(this,arguments);setTimeout(()=>decorate144(document),40);return out};
+  }
+
+  window.v107ManualGallery=function(){try{toast('Gallery upload is disabled for Time Clock. Tap IN or OUT and use the camera.','error')}catch(_){}};
+  window.v60ManualGallery=function(){try{toast('Gallery upload is disabled for Time Clock. Tap IN or OUT and use the camera.','error')}catch(_){}};
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>decorate144(document),200));
+  setInterval(()=>{try{ensureMenu144()}catch(_){}},2200);
+  setTimeout(()=>decorate144(document),700);
+  console.log('V144 compact shortcuts, camera-only clock, 25-day attendance retention, and always-menu loaded');
+})();
+/* ================= END V144 ================= */
+/* ================= V145 REMOVE REDUNDANT LEADER SHORTCUT STRIPS ================= */
+(function(){
+  if(window.__VPOINTS_V145_REMOVE_BIG_SHORTCUTS__)return;
+  window.__VPOINTS_V145_REMOVE_BIG_SHORTCUTS__=true;
+  window.VSCORE_FINAL_BUILD='V145_REMOVE_REDUNDANT_SHORTCUT_STRIPS';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  function style145(){
+    if(Q('#v145Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v145Style">
+      .v83-manager-strip{display:none!important}
+      .v85-dash .v85-panel.v145-quick-controls{display:none!important}
+      .v85-dash .v85-panel .v85-actions.v145-branch-scope-actions{display:none!important}
+    </style>`);
+  }
+  function removeShortcuts145(root=document){
+    style145();
+    A('.v83-manager-strip',root).forEach(el=>el.remove());
+    A('.v85-dash .v85-panel',root).forEach(panel=>{
+      const title=(Q('h3',panel)?.textContent||'').trim();
+      const actions=Q('.v85-actions',panel);
+      if(/quick controls/i.test(title)){
+        panel.classList.add('v145-quick-controls');
+        panel.remove();
+        return;
+      }
+      if(actions&&/branch scope/i.test(title)){
+        actions.classList.add('v145-branch-scope-actions');
+        actions.remove();
+      }
+    });
+  }
+  const oldRender145=window.renderPage;
+  if(typeof oldRender145==='function'&&!window.__v145RenderPatch){
+    window.__v145RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      style145();
+      const out=oldRender145.apply(this,arguments);
+      setTimeout(()=>removeShortcuts145(Q('#page')||document),20);
+      setTimeout(()=>removeShortcuts145(document),180);
+      return out;
+    };
+  }
+  const oldBind145=window.bind;
+  if(typeof oldBind145==='function'&&!window.__v145BindPatch){
+    window.__v145BindPatch=true;
+    window.bind=bind=function(){const out=oldBind145.apply(this,arguments);setTimeout(()=>removeShortcuts145(document),30);return out};
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>removeShortcuts145(document),120));
+  setTimeout(()=>removeShortcuts145(document),600);
+  setInterval(()=>{try{removeShortcuts145(document)}catch(_){}},1200);
+  try{
+    new MutationObserver(()=>removeShortcuts145(document)).observe(document.documentElement,{childList:true,subtree:true});
+  }catch(_){}
+  console.log('V145 redundant leader shortcut strips removed');
+})();
+/* ================= END V145 ================= */
+/* ================= V146 HOME V-POINTS + MY STARS ================= */
+(function(){
+  if(window.__VPOINTS_V146_HOME_POINTS_STARS__)return;
+  window.__VPOINTS_V146_HOME_POINTS_STARS__=true;
+  window.VSCORE_FINAL_BUILD='V146_HOME_POINTS_AND_STARS';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const activeClaims=new Set(['pending','approved','released','claimed','completed','ready for release']);
+  const rejectedClaims=new Set(['rejected','cancelled','canceled','denied','void']);
+  function style146(){
+    if(Q('#v146Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v146Style">
+      .v146-score-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+      .v146-score{border:0;border-radius:16px;padding:12px 10px;text-align:left;min-height:94px;box-shadow:0 10px 22px rgba(15,23,42,.10);touch-action:manipulation}
+      .v146-score span{display:block;font-size:11px;font-weight:1000;text-transform:uppercase;color:rgba(255,255,255,.82)}
+      .v146-score b{display:block;font-size:38px;line-height:.98;color:#fff;margin:5px 0 3px}
+      .v146-score small{display:block;font-size:10px;font-weight:900;color:rgba(255,255,255,.86);line-height:1.2}
+      .v146-points-card{background:linear-gradient(135deg,#7f1d1d,#b91c1c)}
+      .v146-stars-card{background:linear-gradient(135deg,#92400e,#f59e0b)}
+      .v146-stars-card b:after{content:" star";font-size:13px;margin-left:3px;color:rgba(255,255,255,.86)}
+      @media(max-width:360px){.v146-score-row{grid-template-columns:1fr}.v146-score{min-height:78px}.v146-score b{font-size:34px}}
+    </style>`);
+  }
+  function num146(n){
+    n=Number(n||0);
+    if(!Number.isFinite(n))n=0;
+    return Math.round(n*10)/10;
+  }
+  function money146(n){
+    const x=num146(n);
+    return Number.isInteger(x)?String(x):x.toFixed(1);
+  }
+  function claimCost146(c){
+    const vals=[c?.stars_cost,c?.required_stars,c?.star_cost,c?.stars_spent,c?.points_cost,c?.required_points];
+    for(const v of vals){const n=Number(v);if(Number.isFinite(n)&&n>0)return Math.ceil(n)}
+    const r=(S?.rewards||[]).find(x=>String(x.id)===String(c?.reward_id));
+    const rv=[r?.required_stars,r?.star_cost,r?.stars_required,r?.stars_cost,r?.cost_stars,r?.required_points,r?.points_required,r?.points_cost];
+    for(const v of rv){const n=Number(v);if(Number.isFinite(n)&&n>0)return Math.ceil(n)}
+    return 0;
+  }
+  function claimActive146(c){
+    const st=String(c?.status||'pending').toLowerCase().trim();
+    if(rejectedClaims.has(st))return false;
+    return activeClaims.has(st)||!st;
+  }
+  function starStats146(){
+    const p=S?.profile||{}, id=String(p.id||'');
+    const rows=(S?.customerRatings||[]).filter(r=>String(r.employee_id)===id);
+    const fromRatings=rows.reduce((s,r)=>s+Number(r.stars||r.customer_service_points||r.points||0),0);
+    const stored=Math.max(Number(p.customer_service_points||0),Number(p.reward_stars_earned||0),Number(p.total_customer_stars||0),Number(p.available_stars_total||0));
+    const earned=Math.max(fromRatings,stored,0);
+    const spent=(S?.rewardClaims||[]).filter(c=>String(c.employee_id)===id&&claimActive146(c)).reduce((s,c)=>s+claimCost146(c),0);
+    const avg=rows.length?rows.reduce((s,r)=>s+Number(r.stars||0),0)/rows.length:0;
+    return {earned:num146(earned),spent:num146(spent),available:Math.max(0,num146(earned-spent)),avg:num146(avg),count:rows.length};
+  }
+  function openTab146(tab){
+    if(!window.S)return;
+    S.tab=tab;
+    try{localStorage.setItem('v92_last_tab',tab)}catch(_){}
+    try{renderPage()}catch(e){try{toast('Opening page.','ok')}catch(_){}}
+  }
+  window.v146OpenTab=openTab146;
+  function bindHomeSafety146(root=document){
+    A('[data-v143-tab],[data-v146-tab]',root).forEach(b=>{
+      if(b.__v146Safe)return;
+      b.__v146Safe=true;
+      b.addEventListener('click',ev=>{
+        ev.preventDefault();
+        const tab=b.dataset.v146Tab||b.dataset.v143Tab;
+        openTab146(tab);
+      });
+    });
+    const refresh=Q('#v143Refresh',root);
+    if(refresh&&!refresh.__v146Safe){
+      refresh.__v146Safe=true;
+      refresh.onclick=async ev=>{
+        ev.preventDefault();
+        try{await act(refresh,{busy:'Refreshing...',success:'Updated',reset:'Refresh'},loadData,renderPage)}
+        catch(_){try{await loadData();renderPage()}catch(e){try{toast('Refresh failed. Try again.','error')}catch(__){}}}
+      };
+    }
+    const logoutBtn=Q('#v143Logout',root);
+    if(logoutBtn&&!logoutBtn.__v146Safe){
+      logoutBtn.__v146Safe=true;
+      logoutBtn.onclick=ev=>{ev.preventDefault();try{window.logout?window.logout():logout()}catch(_){location.reload()}};
+    }
+    const push=Q('#v143PushBtn',root);
+    if(push&&!push.__v146Safe){
+      push.__v146Safe=true;
+      push.onclick=ev=>{
+        ev.preventDefault();
+        if(typeof Notification==='undefined')return tryToast146('Browser alerts are not available here.','error');
+        Notification.requestPermission().then(p=>{try{localStorage.setItem('vpoints_push_'+(S?.profile?.id||'anon'),p)}catch(_){};tryToast146(p==='granted'?'Activity alerts enabled.':'Alerts were not enabled.',p==='granted'?'ok':'error');renderPage();});
+      };
+    }
+  }
+  function tryToast146(msg,type){try{toast(msg,type)}catch(_){if(type==='error')alert(msg)}}
+  function scoreHtml146(pointsText,stars){
+    return `<div class="v146-score-row"><button type="button" class="v146-score v146-points-card" onclick="v146OpenTab('dashboard')"><span>V-Points</span><b>${E(pointsText)}</b><small>Work score and leaderboard</small></button>
+      <button type="button" class="v146-score v146-stars-card" onclick="v146OpenTab('rewards')"><span>My Stars</span><b>${E(money146(stars.available))}</b><small>${stars.count?`${E(money146(stars.avg))}/5 avg - `:''}${E(money146(stars.earned))} earned total</small></button></div>`;
+  }
+  function enhanceHome146(root=document){
+    style146();
+    if(String(S?.tab||'')!=='app_menu')return;
+    const host=(root&&typeof root.innerHTML==='string')?root:Q('#page');
+    if(host&&typeof host.innerHTML==='string'&&host.innerHTML.includes('v143-points')&&!host.innerHTML.includes('v146-score-row')){
+      const stars=starStats146();
+      const m=host.innerHTML.match(/<button class="v143-points"[\s\S]*?<b>([\s\S]*?)<\/b>[\s\S]*?<\/button>/);
+      const pointsText=m?m[1].replace(/<[^>]*>/g,'').trim():String(S?.profile?.current_points??100);
+      host.innerHTML=host.innerHTML.replace(/<button class="v143-points"[\s\S]*?<\/button>/,scoreHtml146(pointsText,stars));
+      bindHomeSafety146(host);
+    }
+    const old=Q('.v143-points',root);
+    if(!old||Q('.v146-score-row',root))return;
+    const pointsText=old.querySelector('b')?.textContent||String(S?.profile?.current_points??100);
+    const stars=starStats146();
+    const row=document.createElement('div');
+    row.className='v146-score-row';
+    row.innerHTML=scoreHtml146(pointsText,stars).replace(/^<div class="v146-score-row">|<\/div>$/g,'');
+    old.replaceWith(row);
+    A('[data-v146-tab]',row).forEach(b=>b.onclick=()=>openTab146(b.dataset.v146Tab));
+    bindHomeSafety146(root);
+  }
+  const oldRender146=window.renderPage;
+  if(typeof oldRender146==='function'&&!window.__v146RenderPatch){
+    window.__v146RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      style146();
+      const out=oldRender146.apply(this,arguments);
+      try{enhanceHome146(Q('#page')||document)}catch(_){}
+      setTimeout(()=>enhanceHome146(Q('#page')||document),30);
+      setTimeout(()=>enhanceHome146(document),220);
+      return out;
+    };
+  }
+  const oldBind146=window.bind;
+  if(typeof oldBind146==='function'&&!window.__v146BindPatch){
+    window.__v146BindPatch=true;
+    window.bind=bind=function(){const out=oldBind146.apply(this,arguments);setTimeout(()=>enhanceHome146(document),60);return out};
+  }
+  document.addEventListener('click',ev=>{
+    const b=ev.target?.closest?.('[data-v143-tab],[data-v146-tab]');
+    if(!b)return;
+    const tab=b.dataset.v146Tab||b.dataset.v143Tab;
+    if(!tab)return;
+    ev.preventDefault();
+    openTab146(tab);
+  },true);
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>enhanceHome146(document),180));
+  setTimeout(()=>enhanceHome146(document),700);
+  console.log('V146 home V-Points and My Stars cards loaded');
+})();
+/* ================= END V146 ================= */
+/* ================= V147 MY ACTIONS IGNORE / DETAILS STABILIZER ================= */
+(function(){
+  return; // Superseded by V149: no legacy My Actions button layer.
+  if(window.__VPOINTS_V147_MY_ACTIONS_STABLE__)return;
+  window.__VPOINTS_V147_MY_ACTIONS_STABLE__=true;
+  window.VSCORE_FINAL_BUILD='V147_MY_ACTIONS_IGNORE_DETAILS_STABLE';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=el=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+  const today147=()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date())}catch(_){return new Date().toISOString().slice(0,10)}};
+  const stores147=['vscore_attendance_hidden_v86','vscore_ignored_today_clean','v76_ignored_cases','v75_ignored_cases','v74_ignored_cases'];
+  function style147(){
+    if(Q('#v147Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v147Style">
+      .v147-ignore-today{background:#f8fafc!important;color:#334155!important;border:1px solid #cbd5e1!important}
+      .v147-cleaned-attendance [data-v147-remove="1"]{display:none!important}
+    </style>`);
+  }
+  function onMyActions147(){
+    return String(window.S?.tab||'')==='my_actions'||!!Q('#page .v62-hero h2')&&/my actions/i.test(TXT(Q('#page .v62-hero h2')));
+  }
+  function actionBox147(card){
+    return Q('.v62-case-actions,.v76-actions,.v74-actions,.v85-actions,.split',card)||card;
+  }
+  function dataKey147(card){
+    if(!card)return '';
+    let key=card.getAttribute('data-case')||card.dataset?.case||card.dataset?.id||card.getAttribute('data-id')||'';
+    if(key)return String(key);
+    const btn=A('button',card).find(b=>/attendance:|v74IgnoreCase|v75IgnoreCase|v76IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(b.getAttribute('onclick')||''));
+    const on=btn?.getAttribute('onclick')||'';
+    const m=on.match(/['"]([^'"]*attendance[^'"]*)['"]/i);
+    if(m)return m[1];
+    return 'attendance_text:'+today147()+':'+TXT(card).toLowerCase().replace(/ignore today|hide notice|details|open time clock|open attendance|refresh/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,150);
+  }
+  function cardKeys147(card,key=''){
+    const out=new Set();
+    const add=v=>{v=String(v||'').trim();if(v&&v!=='undefined'&&v!=='null')out.add(v)};
+    add(key);add(dataKey147(card));
+    const text='attendance_text:'+today147()+':'+TXT(card).toLowerCase().replace(/ignore today|hide notice|details|open time clock|open attendance|refresh/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,150);
+    add(text);
+    const dk=dataKey147(card);
+    if(/^attendance:/.test(dk)){
+      add(dk);
+      const bits=dk.slice('attendance:'.length).split('_');
+      if(bits.length>=2)add('attendance:'+bits[0]+'_'+today147());
+    }
+    return Array.from(out);
+  }
+  function readHidden147(){
+    const all={};
+    stores147.forEach(k=>{try{Object.assign(all,JSON.parse(localStorage.getItem(k)||'{}')||{})}catch(_){}});
+    return all;
+  }
+  function writeHidden147(m){
+    stores147.forEach(k=>{try{localStorage.setItem(k,JSON.stringify(m))}catch(_){}});
+  }
+  function attendanceCard147(card){
+    if(!card)return false;
+    const k=dataKey147(card);
+    return /^attendance:/.test(k)||/no time in|missing time out|missing time|attendance action|attendance notice/i.test(TXT(card));
+  }
+  function hidden147(card){
+    const m=readHidden147();
+    return cardKeys147(card).some(k=>m[k]);
+  }
+  function hideAttendance147(card,key=''){
+    const m=readHidden147();
+    cardKeys147(card,key).forEach(k=>m[k]={by:String(S?.profile?.id||''),at:new Date().toISOString(),kind:'attendance_notice'});
+    writeHidden147(m);
+    if(card?.remove)card.remove();
+    try{toast('Attendance notice hidden for today.','ok')}catch(_){}
+  }
+  function isIgnore147(btn){
+    const t=TXT(btn).toLowerCase(), on=btn.getAttribute('onclick')||'';
+    return t==='ignore today'||t==='hide notice'||t==='notice'||btn.classList.contains('vscore-ignore-one')||btn.classList.contains('vscore-hide-notice')||/IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(on);
+  }
+  function isDetails147(btn){
+    return /^details$/i.test(TXT(btn))||/v62ViewCase|v95CaseDetails|v128OpenCase|CaseDetails/i.test(btn.getAttribute('onclick')||'');
+  }
+  function stabilizeDetails147(card){
+    const details=A('button',card).filter(isDetails147);
+    details.slice(1).forEach(b=>b.remove());
+    details.forEach(btn=>{
+      if(btn.__v147Detail)return;
+      btn.__v147Detail=true;
+      btn.addEventListener('click',ev=>{
+        if(btn.dataset.v147Opening==='1'){
+          ev.preventDefault();
+          ev.stopImmediatePropagation?.();
+          ev.stopPropagation();
+          return false;
+        }
+        btn.dataset.v147Opening='1';
+        setTimeout(()=>{delete btn.dataset.v147Opening},900);
+      },true);
+    });
+  }
+  function normalizeCard147(card){
+    if(!card)return;
+    if(attendanceCard147(card)){
+      card.classList.add('v147-cleaned-attendance');
+      if(hidden147(card)){card.remove();return;}
+      A('button',card).filter(isDetails147).forEach(b=>{b.dataset.v147Remove='1';b.remove()});
+      const box=actionBox147(card);
+      const ignores=A('button',card).filter(isIgnore147);
+      let keep=ignores[0]||null;
+      ignores.slice(1).forEach(b=>b.remove());
+      if(!keep){
+        keep=document.createElement('button');
+        box.insertBefore(keep,box.firstChild);
+      }
+      keep.type='button';
+      keep.textContent='Ignore Today';
+      keep.className='btn sm ghost v147-ignore-today vscore-ignore-one vscore-hide-notice';
+      keep.removeAttribute('onclick');
+      keep.onclick=ev=>{
+        ev.preventDefault();
+        ev.stopImmediatePropagation?.();
+        ev.stopPropagation();
+        hideAttendance147(card,dataKey147(card));
+        return false;
+      };
+      if(keep.parentElement!==box)box.insertBefore(keep,box.firstChild);
+      if(box.firstElementChild!==keep)box.insertBefore(keep,box.firstChild);
+      return;
+    }
+    const box=actionBox147(card);
+    const seen=new Set();
+    A('button',box).forEach(btn=>{
+      const key=TXT(btn).toLowerCase()+'|'+String(btn.getAttribute('onclick')||'').replace(/\s+/g,' ');
+      if(seen.has(key))btn.remove();else seen.add(key);
+    });
+    stabilizeDetails147(card);
+  }
+  function clean147(root=document){
+    style147();
+    if(!onMyActions147())return;
+    const page=Q('#page')||root;
+    A('.v62-case,.v76-row,.v74-card,.card,[data-case]',page).forEach(normalizeCard147);
+  }
+  const oldRender147=window.renderPage;
+  if(typeof oldRender147==='function'&&!window.__v147RenderPatch){
+    window.__v147RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      const out=oldRender147.apply(this,arguments);
+      setTimeout(()=>clean147(Q('#page')||document),20);
+      setTimeout(()=>clean147(document),160);
+      setTimeout(()=>clean147(document),520);
+      return out;
+    };
+  }
+  const oldBind147=window.bind;
+  if(typeof oldBind147==='function'&&!window.__v147BindPatch){
+    window.__v147BindPatch=true;
+    window.bind=bind=function(){const out=oldBind147.apply(this,arguments);setTimeout(()=>clean147(document),40);return out};
+  }
+  document.addEventListener('click',ev=>{
+    if(!onMyActions147())return;
+    const btn=ev.target?.closest?.('button');
+    if(!btn)return;
+    const card=btn.closest('.v62-case,.v76-row,.v74-card,.card,[data-case]');
+    if(card&&attendanceCard147(card)&&isIgnore147(btn)){
+      ev.preventDefault();
+      ev.stopImmediatePropagation?.();
+      ev.stopPropagation();
+      hideAttendance147(card,dataKey147(card));
+      return false;
+    }
+  },true);
+  // Calm mode: clean after render only. Continuous watchers caused live card flicker on My Actions.
+  setTimeout(()=>clean147(document),700);
+  console.log('V147 My Actions Ignore Today and Details stabilizer loaded');
+})();
+/* ================= END V147 ================= */
+/* ================= V148 MY ACTIONS CALM MODE ================= */
+(function(){
+  return; // Superseded by V149: no legacy My Actions button layer.
+  if(window.__VPOINTS_V148_MY_ACTIONS_CALM__)return;
+  window.__VPOINTS_V148_MY_ACTIONS_CALM__=true;
+  window.VSCORE_FINAL_BUILD='V148_MY_ACTIONS_CALM_NO_LOOP';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=el=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+  const today148=()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date())}catch(_){return new Date().toISOString().slice(0,10)}};
+  const stores148=['vscore_attendance_hidden_v86','vscore_ignored_today_clean','v76_ignored_cases','v75_ignored_cases','v74_ignored_cases'];
+  function style148(){
+    if(Q('#v148Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v148Style">
+      #page.v148-my-actions-calm .v62-case[data-case^="attendance:"],
+      #page.v148-my-actions-calm .v147-cleaned-attendance{contain:layout paint;transform:none!important}
+      #page.v148-my-actions-calm .v62-case[data-case^="attendance:"] *,
+      #page.v148-my-actions-calm .v147-cleaned-attendance *{transition:none!important;animation:none!important}
+      #page.v148-my-actions-calm .v62-case[data-case^="attendance:"] button[onclick*="v62ViewCase"],
+      #page.v148-my-actions-calm .v62-case[data-case^="attendance:"] button[onclick*="v95CaseDetails"],
+      #page.v148-my-actions-calm .v62-case[data-case^="attendance:"] button[onclick*="v128OpenCase"]{display:none!important;pointer-events:none!important}
+      #page.v148-my-actions-calm .v62-case[data-case^="attendance:"] .v62-case-actions,
+      #page.v148-my-actions-calm .v147-cleaned-attendance .v62-case-actions{display:grid!important;grid-template-columns:1fr!important;gap:0!important;min-height:48px}
+      #page.v148-my-actions-calm .v148-ignore-today,
+      #page.v148-my-actions-calm .v147-ignore-today{width:100%!important;min-height:48px!important;margin:0!important;background:#f8fafc!important;color:#111827!important;border:1px solid #e5e7eb!important;border-radius:16px!important;font-weight:900!important}
+    </style>`);
+  }
+  function onMyActions148(){
+    return String(window.S?.tab||'')==='my_actions'||/my actions/i.test(TXT(Q('#page .v62-hero h2')||Q('#page h1')||Q('#page h2')));
+  }
+  function actionBox148(card){
+    return Q('.v62-case-actions,.v76-actions,.v74-actions,.v85-actions,.split',card)||card;
+  }
+  function dataKey148(card){
+    if(!card)return '';
+    const own=card.getAttribute('data-case')||card.dataset?.case||card.dataset?.id||card.getAttribute('data-id')||'';
+    if(own)return String(own);
+    const btn=A('button',card).find(b=>/attendance:|v74IgnoreCase|v75IgnoreCase|v76IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(b.getAttribute('onclick')||''));
+    const m=String(btn?.getAttribute('onclick')||'').match(/['"]([^'"]*attendance[^'"]*)['"]/i);
+    if(m)return m[1];
+    return 'attendance_text:'+today148()+':'+TXT(card).toLowerCase().replace(/ignore today|hide notice|details|open time clock|open attendance|refresh/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,150);
+  }
+  function cardKeys148(card,key=''){
+    const out=new Set();
+    const add=v=>{v=String(v||'').trim();if(v&&v!=='undefined'&&v!=='null')out.add(v)};
+    const dk=dataKey148(card);
+    add(key);add(dk);
+    add('attendance_text:'+today148()+':'+TXT(card).toLowerCase().replace(/ignore today|hide notice|details|open time clock|open attendance|refresh/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,150));
+    if(/^attendance:/.test(dk)){
+      const bits=dk.slice('attendance:'.length).split('_');
+      if(bits.length>=2)add('attendance:'+bits[0]+'_'+today148());
+    }
+    return Array.from(out);
+  }
+  function readHidden148(){
+    const all={};
+    stores148.forEach(k=>{try{Object.assign(all,JSON.parse(localStorage.getItem(k)||'{}')||{})}catch(_){}})
+    return all;
+  }
+  function writeHidden148(m){
+    stores148.forEach(k=>{try{localStorage.setItem(k,JSON.stringify(m))}catch(_){}})
+  }
+  function isAttendance148(card){
+    if(!card)return false;
+    const k=dataKey148(card);
+    return /^attendance:/.test(k)||/no time in|missing time out|missing time|attendance action|attendance notice/i.test(TXT(card));
+  }
+  function isHidden148(card){
+    const map=readHidden148();
+    return cardKeys148(card).some(k=>map[k]);
+  }
+  function isIgnore148(btn){
+    const t=TXT(btn).toLowerCase(), on=btn.getAttribute('onclick')||'';
+    return t==='ignore today'||t==='hide notice'||t==='notice'||btn.classList.contains('vscore-ignore-one')||btn.classList.contains('vscore-hide-notice')||/IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(on);
+  }
+  function isDetails148(btn){
+    return /^details$/i.test(TXT(btn))||/v62ViewCase|v95CaseDetails|v128OpenCase|CaseDetails/i.test(btn.getAttribute('onclick')||'');
+  }
+  function hide148(card,key=''){
+    const map=readHidden148();
+    cardKeys148(card,key).forEach(k=>map[k]={by:String(S?.profile?.id||''),at:new Date().toISOString(),kind:'attendance_notice'});
+    writeHidden148(map);
+    card?.remove?.();
+    try{toast('Attendance notice hidden for today.','ok')}catch(_){}
+  }
+  window.vscoreHideAttendanceNotice=function(key){
+    const card=A('.v62-case,.v76-row,.v74-card,.card,[data-case]',Q('#page')||document).find(c=>dataKey148(c)===key||cardKeys148(c,key).includes(key));
+    hide148(card||null,key);
+  };
+  function calmCard148(card){
+    if(!isAttendance148(card))return;
+    card.classList.add('v147-cleaned-attendance');
+    card.dataset.v148Stable='1';
+    if(isHidden148(card)){card.remove();return;}
+    A('button',card).filter(isDetails148).forEach(b=>b.remove());
+    const box=actionBox148(card);
+    let keeps=A('button',card).filter(isIgnore148);
+    let keep=keeps[0]||null;
+    keeps.slice(1).forEach(b=>b.remove());
+    if(!keep){
+      keep=document.createElement('button');
+      box.insertBefore(keep,box.firstChild);
+    }
+    if(keep.parentElement!==box)box.insertBefore(keep,box.firstChild);
+    if(box.firstElementChild!==keep)box.insertBefore(keep,box.firstChild);
+    keep.type='button';
+    if(TXT(keep)!=='Ignore Today')keep.textContent='Ignore Today';
+    const cls='btn sm ghost v148-ignore-today v147-ignore-today vscore-ignore-one vscore-hide-notice';
+    if(keep.className!==cls)keep.className=cls;
+    keep.removeAttribute('onclick');
+    if(!keep.__v148Ignore){
+      keep.__v148Ignore=true;
+      keep.addEventListener('click',ev=>{
+        ev.preventDefault();
+        ev.stopImmediatePropagation?.();
+        ev.stopPropagation();
+        hide148(card,dataKey148(card));
+        return false;
+      },true);
+    }
+  }
+  function calm148(root=document){
+    style148();
+    const page=Q('#page')||root;
+    if(!page)return;
+    if(!onMyActions148()){page.classList?.remove?.('v148-my-actions-calm');return;}
+    page.classList?.add?.('v148-my-actions-calm');
+    A('.v62-case,.v76-row,.v74-card,.card,[data-case]',page).forEach(calmCard148);
+  }
+  const oldRender148=window.renderPage;
+  if(typeof oldRender148==='function'&&!window.__v148RenderPatch){
+    window.__v148RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      const out=oldRender148.apply(this,arguments);
+      setTimeout(()=>calm148(Q('#page')||document),30);
+      setTimeout(()=>calm148(document),220);
+      return out;
+    };
+  }
+  const oldBind148=window.bind;
+  if(typeof oldBind148==='function'&&!window.__v148BindPatch){
+    window.__v148BindPatch=true;
+    window.bind=bind=function(){const out=oldBind148.apply(this,arguments);setTimeout(()=>calm148(document),80);return out};
+  }
+  document.addEventListener('click',ev=>{
+    if(!onMyActions148())return;
+    const btn=ev.target?.closest?.('button');
+    if(!btn||!isIgnore148(btn))return;
+    const card=btn.closest('.v62-case,.v76-row,.v74-card,.card,[data-case]');
+    if(!card||!isAttendance148(card))return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation?.();
+    ev.stopPropagation();
+    hide148(card,dataKey148(card));
+    return false;
+  },true);
+  setTimeout(()=>calm148(document),500);
+  console.log('V148 My Actions calm mode loaded');
+})();
+/* ================= END V148 ================= */
+/* ================= V149 SINGLE ATTENDANCE ACTION OWNER ================= */
+(function(){
+  if(window.__VPOINTS_V149_SINGLE_ATTENDANCE_ACTION__)return;
+  window.__VPOINTS_V149_SINGLE_ATTENDANCE_ACTION__=true;
+  window.VSCORE_FINAL_BUILD='V149_SINGLE_ATTENDANCE_ACTION_NO_LAYERING';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const TXT=el=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
+  const stores=['vscore_attendance_hidden_v86','vscore_ignored_today_clean','v76_ignored_cases','v75_ignored_cases','v74_ignored_cases','v149_attendance_hidden'];
+  function style(){
+    if(Q('#v149Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v149Style">
+      #page .v62-case[data-case^="attendance:"]{contain:layout paint;transform:none!important}
+      #page .v62-case[data-case^="attendance:"] *{transition:none!important;animation:none!important}
+      #page .v62-case[data-case^="attendance:"] .v62-case-actions{display:grid!important;grid-template-columns:1fr!important;gap:0!important;min-height:48px}
+      #page .v62-case[data-case^="attendance:"] .v62-case-actions .btn{width:100%!important;min-height:48px!important;margin:0!important;border-radius:16px!important}
+      #page .v149-attendance-ignore{background:#f8fafc!important;color:#111827!important;border:1px solid #e5e7eb!important;font-weight:1000!important}
+    </style>`);
+  }
+  function isAttendanceCard(card){
+    if(!card)return false;
+    return /^attendance:/.test(card.getAttribute('data-case')||'')||/no time in|missing time out|attendance action/i.test(TXT(card));
+  }
+  function keyFor(card,key=''){
+    key=String(key||card?.getAttribute?.('data-case')||card?.dataset?.case||'').trim();
+    return key||('attendance_text:'+new Date().toISOString().slice(0,10)+':'+TXT(card).toLowerCase().replace(/ignore today|details|open time clock|notice/gi,'').replace(/[^a-z0-9]+/g,'_').slice(0,140));
+  }
+  function saveHidden(key){
+    const row={by:String(S?.profile?.id||''),at:new Date().toISOString(),kind:'attendance_notice'};
+    stores.forEach(store=>{try{const m=JSON.parse(localStorage.getItem(store)||'{}')||{};m[key]=row;localStorage.setItem(store,JSON.stringify(m))}catch(_){}});
+  }
+  function hideNotice(key,card){
+    const k=keyFor(card,key);
+    saveHidden(k);
+    if(card?.remove)card.remove();
+    try{toast('Attendance notice hidden for today.','ok')}catch(_){}
+  }
+  window.v62IgnoreAttendance=function(key,btn){
+    const card=btn?.closest?.('.v62-case,.card,[data-case]')||A('.v62-case,.card,[data-case]',Q('#page')||document).find(c=>keyFor(c)===String(key));
+    hideNotice(key,card||null);
+  };
+  window.vscoreHideAttendanceNotice=function(key,card){hideNotice(key,card||null)};
+  window.vscoreCleanIgnoreToday=window.v74IgnoreCase=window.v75IgnoreCase=window.v76IgnoreCase=function(key,card){hideNotice(key,card||null)};
+  function cleanOnce(root=document){
+    style();
+    A('.v62-case,.card,[data-case]',root).forEach(card=>{
+      if(!isAttendanceCard(card))return;
+      const btns=A('button',card).filter(b=>/ignore today|hide notice|notice/i.test(TXT(b))||/v74IgnoreCase|v75IgnoreCase|v76IgnoreCase|vscoreCleanIgnoreToday|vscoreHideAttendanceNotice/i.test(b.getAttribute('onclick')||''));
+      btns.slice(1).forEach(b=>b.remove());
+      A('button',card).forEach(b=>{if(/^details$/i.test(TXT(b)))b.remove()});
+    });
+  }
+  const oldRender=window.renderPage;
+  if(typeof oldRender==='function'&&!window.__v149RenderPatch){
+    window.__v149RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      const out=oldRender.apply(this,arguments);
+      setTimeout(()=>cleanOnce(Q('#page')||document),40);
+      return out;
+    };
+  }
+  document.addEventListener('click',ev=>{
+    const btn=ev.target?.closest?.('button');
+    if(!btn||!/ignore today|hide notice|notice/i.test(TXT(btn)))return;
+    const card=btn.closest('.v62-case,.card,[data-case]');
+    if(!isAttendanceCard(card))return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation?.();
+    ev.stopPropagation();
+    hideNotice(keyFor(card),card);
+    return false;
+  },true);
+  setTimeout(()=>cleanOnce(document),500);
+  console.log('V149 single attendance action owner loaded');
+})();
+/* ================= END V149 ================= */
+/* ================= V150 PROFILE PHOTO SINGLE FILE ================= */
+(function(){
+  if(window.__VPOINTS_V150_PROFILE_SINGLE_PHOTO__)return;
+  window.__VPOINTS_V150_PROFILE_SINGLE_PHOTO__=true;
+  window.VSCORE_FINAL_BUILD='V150_PROFILE_PHOTO_SINGLE_FILE';
+  const Q=(s,r=document)=>r.querySelector(s);
+  function cleanProfilePhoto(root=document){
+    const input=Q('#profPic',root)||Q('input[name="profPic"]',root);
+    if(!input)return;
+    if(typeof input.removeAttribute==='function'){
+      input.removeAttribute('multiple');
+      input.removeAttribute('data-max-files');
+    }
+    input.accept='image/*';
+    const field=input.closest('.field');
+    field?.querySelectorAll('.v118-upload-note,.v118-preview').forEach(x=>x.remove());
+    if(typeof input.insertAdjacentHTML==='function'&&!field?.querySelector?.('.v150-profile-note'))input.insertAdjacentHTML('afterend','<div class="small muted v150-profile-note">One profile picture only.</div>');
+    if(typeof input.addEventListener==='function'&&!input.__v150Single){
+      input.__v150Single=true;
+      input.addEventListener('change',()=>{
+        if(input.files&&input.files.length>1){
+          try{toast('Profile picture allows one photo only. The first selected photo will be used.','error')}catch(_){}
+        }
+      });
+    }
+  }
+  const oldRender=window.renderPage;
+  if(typeof oldRender==='function'&&!window.__v150RenderPatch){
+    window.__v150RenderPatch=true;
+    window.renderPage=renderPage=function(){
+      const out=oldRender.apply(this,arguments);
+      setTimeout(()=>cleanProfilePhoto(Q('#page')||document),30);
+      return out;
+    };
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v150BindPatch){
+    window.__v150BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);setTimeout(()=>cleanProfilePhoto(document),40);return out};
+  }
+  setTimeout(()=>cleanProfilePhoto(document),500);
+  console.log('V150 profile picture single-file guard loaded');
+})();
+/* ================= END V150 ================= */
+/* ================= V151 TOP PROFILE ACCESS ================= */
+(function(){
+  if(window.__VPOINTS_V151_TOP_PROFILE_ACCESS__)return;
+  window.__VPOINTS_V151_TOP_PROFILE_ACCESS__=true;
+  window.VSCORE_FINAL_BUILD='V151_TOP_PROFILE_ACCESS';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function style151(){
+    if(Q('#v151Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v151Style">
+      .v151-profile-btn{background:#eff6ff!important;color:#1e40af!important;border:1px solid #bfdbfe!important;gap:7px!important}
+      .v151-profile-btn img{width:22px;height:22px;border-radius:999px;object-fit:cover;background:#fff;border:1px solid #dbeafe}
+      .v151-profile-initial{width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;background:#dbeafe;color:#1e3a8a;font-size:11px;font-weight:1000}
+      .v143-hero-top .v151-profile-btn{padding:8px 10px!important;min-height:36px!important}
+      @media(max-width:520px){.topbar .split .v151-profile-btn{order:-1}.v151-profile-btn{flex:1 1 auto}}
+    </style>`);
+  }
+  function avatar151(){
+    const p=S?.profile||{}, url=p.profile_picture_url||'', initial=String(p.full_name||p.real_name||'V').trim().charAt(0)||'V';
+    return url?`<img src="${E(url)}" alt="">`:`<span class="v151-profile-initial">${E(initial)}</span>`;
+  }
+  function openProfile151(){
+    if(!window.S)return;
+    S.tab='profile';
+    try{localStorage.setItem('v92_last_tab','profile')}catch(_){}
+    try{renderPage()}catch(_){}
+    try{window.scrollTo({top:0,behavior:'smooth'})}catch(_){try{window.scrollTo(0,0)}catch(__){}}
+  }
+  window.v151OpenProfile=openProfile151;
+  function makeButton151(id){
+    return `<button type="button" id="${id}" class="btn sm v151-profile-btn">${avatar151()}<span>Profile</span></button>`;
+  }
+  function bindButton151(btn){
+    if(!btn||btn.__v151)return;
+    btn.__v151=true;
+    btn.onclick=e=>{e.preventDefault();openProfile151()};
+  }
+  function place151(root=document){
+    style151();
+    const topSplit=Q('.topbar .split',root)||Q('.topbar .split');
+    if(topSplit&&!Q('#v151TopProfile',topSplit)){
+      topSplit.insertAdjacentHTML('afterbegin',makeButton151('v151TopProfile'));
+    }
+    const homeActions=Q('.v143-hero-top .v101-actions',root)||Q('.v143-hero-top .v101-actions');
+    if(homeActions&&!Q('#v151HomeProfile',homeActions)){
+      homeActions.insertAdjacentHTML('afterbegin',makeButton151('v151HomeProfile'));
+    }
+    A('#v151TopProfile,#v151HomeProfile',document).forEach(bindButton151);
+  }
+  const oldRenderApp=window.renderApp;
+  if(typeof oldRenderApp==='function'&&!window.__v151RenderAppPatch){
+    window.__v151RenderAppPatch=true;
+    window.renderApp=renderApp=function(){
+      const out=oldRenderApp.apply(this,arguments);
+      setTimeout(()=>place151(document),40);
+      return out;
+    };
+  }
+  const oldRenderPage=window.renderPage;
+  if(typeof oldRenderPage==='function'&&!window.__v151RenderPagePatch){
+    window.__v151RenderPagePatch=true;
+    window.renderPage=renderPage=function(){
+      const out=oldRenderPage.apply(this,arguments);
+      setTimeout(()=>place151(Q('#root')||document),40);
+      return out;
+    };
+  }
+  const oldBind=window.bind;
+  if(typeof oldBind==='function'&&!window.__v151BindPatch){
+    window.__v151BindPatch=true;
+    window.bind=bind=function(){const out=oldBind.apply(this,arguments);setTimeout(()=>place151(document),50);return out};
+  }
+  setTimeout(()=>place151(document),500);
+  console.log('V151 top profile access loaded');
+})();
+/* ================= END V151 ================= */
 </script></body></html>
