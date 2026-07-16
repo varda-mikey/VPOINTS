@@ -22344,4 +22344,169 @@ init();
   console.log('V152 customer rating QR show/download hub loaded');
 })();
 /* ================= END V152 ================= */
+/* ================= V153 CUSTOMER IDENTITY CONSENT RATING ================= */
+(function(){
+  if(window.__VPOINTS_V153_CUSTOMER_IDENTITY_RATING__)return;
+  window.__VPOINTS_V153_CUSTOMER_IDENTITY_RATING__=true;
+  window.VSCORE_FINAL_BUILD='V153_CUSTOMER_IDENTITY_OR_ANONYMOUS_RATING';
+  const Q=(s,r=document)=>r.querySelector(s);
+  const A=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const now153=()=>new Date().toISOString();
+  const date153=()=>new Date().toISOString().slice(0,10);
+  function style153(){
+    if(Q('#v153Style'))return;
+    document.head.insertAdjacentHTML('beforeend',`<style id="v153Style">
+      .v153-rate-page{min-height:100vh;background:linear-gradient(135deg,#fff7ed,#fff,#eef2ff);display:flex;align-items:center;justify-content:center;padding:18px}
+      .v153-card{max-width:660px;width:100%;background:#fff;border:1px solid #fde68a;border-radius:26px;padding:22px;box-shadow:0 20px 55px rgba(15,23,42,.14)}
+      .v153-card h1{margin:0 0 6px;color:#7f1d1d;line-height:1.08}.v153-target{border-left:5px solid #facc15;background:#fffbeb;border-radius:14px;padding:12px;margin:12px 0;color:#78350f}
+      .v153-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.v153-choice button{border:1px solid #e5e7eb;background:#f8fafc;color:#111827;border-radius:14px;padding:12px;font-weight:1000;text-align:left}.v153-choice button.active{background:#111827;color:#fff;border-color:#111827}
+      .v153-stars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0}.v153-star{border:1px solid #fde68a;background:#fff7ed;color:#7f1d1d;border-radius:14px;padding:11px 7px;font-weight:1000;text-align:center}.v153-star.active{background:#facc15;box-shadow:0 8px 18px rgba(250,204,21,.25)}
+      .v153-consent{display:flex;gap:9px;align-items:flex-start;border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;padding:10px;font-size:13px;font-weight:850;color:#1e3a8a;line-height:1.35}.v153-consent input{width:20px;height:20px;flex:0 0 auto;margin-top:1px}
+      .v153-photo-preview{display:none;margin-top:8px}.v153-photo-preview img{width:86px;height:72px;object-fit:cover;border-radius:12px;border:1px solid #e5e7eb;background:#fff}
+      .v153-mini{font-size:12px;color:#64748b;font-weight:800;line-height:1.35}.v153-thank{font-size:28px;text-align:center;color:#166534;font-weight:1000}
+      .v153-card textarea{min-height:115px}.v153-card .btn{min-height:54px;font-size:18px}
+      @media(max-width:620px){.v153-card{border-radius:20px;padding:16px}.v153-choice,.v153-stars{grid-template-columns:1fr}.v153-star{text-align:left}.grid.two{grid-template-columns:1fr!important}}
+    </style>`);
+  }
+  async function resolveEmployee153(raw){
+    const clean=decodeURIComponent(String(raw||'')).trim().replace(/[^a-zA-Z0-9_@.\-]/g,'');
+    if(!clean)return null;
+    let r=await sb.from('employees').select('*').eq('id',clean).maybeSingle();
+    if(!r.error&&r.data)return r.data;
+    if(clean.includes('@')){
+      r=await sb.from('employees').select('*').or(`email.eq.${clean},account_email.eq.${clean}`).maybeSingle();
+      if(!r.error&&r.data)return r.data;
+    }
+    return null;
+  }
+  function stars153(n){return Array(Math.max(1,Math.min(5,Number(n||0)))).fill('&#9733;').join('')}
+  function setMode153(mode){
+    const named=mode==='named';
+    Q('#custMode153').value=mode;
+    A('.v153-mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+    Q('#v153NamedBox')?.classList.toggle('hidden',!named);
+    Q('#v153AnonBox')?.classList.toggle('hidden',named);
+  }
+  async function notifyRating153(em,stars,comment,sourceId){
+    try{
+      if(typeof window.v112Notify==='function')await window.v112Notify(em.id,stars>=4?'Customer recognition received':'Customer feedback received',`${stars} reward star(s): ${comment||'No remarks'}`,'customer_rating','customer_rating',sourceId||'',0);
+    }catch(_){}
+  }
+  async function photoData153(file){
+    if(!file)return '';
+    try{if(typeof imageData==='function')return await imageData(file,900)}catch(_){}
+    return await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(file)});
+  }
+  async function insertRating153(row,photo,fileName){
+    const media=photo?[{url:photo,name:fileName||'customer-rating-photo',kind:'customer_rating'}]:[];
+    const tries=photo?[
+      {...row,photo_url:photo,photos_json:JSON.stringify(media)},
+      {...row,photo_url:photo},
+      {...row,image_url:photo},
+      {...row,attachment_url:photo},
+      {...row,evidence_url:photo},
+      row
+    ]:[row];
+    let last=null;
+    for(const payload of tries){
+      const r=await sb.from('vscore_customer_ratings').insert(payload).select().single();
+      if(!r.error)return r;
+      last=r;
+    }
+    return last;
+  }
+  async function customerRating153(rateId){
+    style153();
+    try{if(typeof loadPublicSettings==='function')await loadPublicSettings()}catch(_){}
+    const root=Q('#root');
+    if(!root)return;
+    root.innerHTML='<div class="v153-rate-page"><div class="v153-card"><h1>Loading rating page...</h1></div></div>';
+    const em=await resolveEmployee153(rateId);
+    if(!em){root.innerHTML='<div class="v153-rate-page"><div class="v153-card"><h1>Rating link not found</h1><p class="muted">This QR is not connected to an active employee.</p></div></div>';return}
+    const deviceKey='vpoints_rate_'+em.id+'_'+date153();
+    if(localStorage.getItem(deviceKey)){
+      root.innerHTML='<div class="v153-rate-page"><div class="v153-card"><div class="v153-thank">Thank you!</div><p style="text-align:center">You already submitted feedback for this employee today.</p></div></div>';
+      return;
+    }
+    root.innerHTML=`<div class="v153-rate-page"><div class="v153-card"><h1>Rate My Service</h1><p class="muted">Your rating helps recognize good service and improve coaching.</p>
+      <div class="v153-target"><b>You are rating:</b><br><span style="font-size:24px;font-weight:1000;color:#7f1d1d">${E(em.full_name)}</span><br>${E(em.position||'Varda Group Staff')} - ${E(em.branch||'')}</div>
+      <form id="custRateForm153"><input type="hidden" id="custStars153" value="5"><input type="hidden" id="custMode153" value="named">
+        <label class="field"><span>How do you want to submit?</span></label><div class="v153-choice"><button type="button" class="v153-mode active" data-mode="named">Use my name<br><span class="v153-mini">For verified service record</span></button><button type="button" class="v153-mode" data-mode="anonymous">Use codename<br><span class="v153-mini">Anonymous feedback</span></button></div>
+        <div id="v153NamedBox"><div class="grid two"><div class="field"><label>Your name</label><input id="custName153" class="input" placeholder="Example: Juan Dela Cruz"></div><div class="field"><label>Student / Employee No.</label><input id="custId153" class="input" placeholder="Example: 2026-00123"></div></div><label class="v153-consent"><input id="custConsent153" type="checkbox"> <span>I agree to share my name and student/employee number for this service feedback record.</span></label></div>
+        <div id="v153AnonBox" class="hidden"><div class="field"><label>Codename</label><input id="custCode153" class="input" placeholder="Example: Blue Customer, Guest 01"></div><div class="v153-mini">Anonymous ratings still count as reward stars. Please do not put private details in remarks.</div></div>
+        <div class="field"><label>Stars</label><div class="v153-stars">${[1,2,3,4,5].map(i=>`<button type="button" class="v153-star ${i<=5?'active':''}" data-star="${i}">${stars153(i)}<br><small>${i} star${i===1?'':'s'}</small></button>`).join('')}</div></div>
+        <div class="field"><label>Remarks / Comment</label><textarea id="custRemarks153" required placeholder="Example: Fast service, friendly staff, clean counter, or what we can improve."></textarea></div>
+        <div class="field"><label>Optional photo</label><input id="custPhoto153" type="file" accept="image/*" class="input"><div class="v153-mini">Optional only. Attach one photo if it helps explain the rating.</div><div id="custPhotoPreview153" class="v153-photo-preview"></div></div>
+        <button class="btn green full">Submit Rating</button>
+      </form><p class="v153-mini" style="text-align:center;margin-top:10px">1 customer star = 1 reward star. Ratings 1-3 stay private for coaching. Ratings 4-5 can recognize the staff on News Feed.</p></div></div>`;
+    A('.v153-mode').forEach(b=>b.onclick=()=>setMode153(b.dataset.mode));
+    A('.v153-star').forEach(b=>b.onclick=()=>{const val=Number(b.dataset.star||5);Q('#custStars153').value=val;A('.v153-star').forEach(x=>x.classList.toggle('active',Number(x.dataset.star)<=val))});
+    Q('#custPhoto153').onchange=()=>{
+      const f=Q('#custPhoto153').files?.[0], box=Q('#custPhotoPreview153');
+      if(!box)return;
+      if(!f){box.style.display='none';box.innerHTML='';return}
+      box.style.display='block';
+      box.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="rating photo preview">`;
+    };
+    Q('#custRateForm153').onsubmit=async ev=>{
+      ev.preventDefault();
+      const btn=ev.submitter;
+      btn.disabled=true;btn.textContent='Submitting rating...';
+      try{
+        const mode=Q('#custMode153').value||'named';
+        const stars=Number(Q('#custStars153').value||5);
+        const comment=String(Q('#custRemarks153').value||'').trim().slice(0,600);
+        let customerName='', studentNo='', customerIdentifier='';
+        if(!comment)throw new Error('Please add a short remark.');
+        if(mode==='named'){
+          customerName=String(Q('#custName153').value||'').trim().slice(0,120);
+          studentNo=String(Q('#custId153').value||'').trim().slice(0,80);
+          if(!customerName||!studentNo)throw new Error('Please enter your name and student/employee number, or choose codename.');
+          if(!Q('#custConsent153').checked)throw new Error('Please check the consent box, or choose codename.');
+          customerIdentifier=studentNo;
+        }else{
+          const code=String(Q('#custCode153').value||'').trim().slice(0,80)||'Anonymous Customer';
+          customerName='Anonymous - '+code;
+          customerIdentifier='anonymous:'+code;
+        }
+        const photoFile=Q('#custPhoto153')?.files?.[0]||null;
+        const photo=photoFile?await photoData153(photoFile):'';
+        const payload={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment,customer_name:customerName,student_number:studentNo,customer_identifier:customerIdentifier,customer_service_points:stars,source:'qr_public',rating_date:date153(),device_token:(navigator.userAgent||'web').slice(0,120),is_public:stars>=4,created_at:now153()};
+        let r=await insertRating153(payload,photo,photoFile?.name||'');
+        if(r.error){
+          const backupComment=[comment,mode==='named'?`Customer: ${customerName}`:`Codename: ${customerName}`,studentNo?`ID: ${studentNo}`:'',photo?'Photo was attached but the rating table has no photo column yet.':''].filter(Boolean).join('\n');
+          const fallback={employee_id:em.id,employee_name:em.full_name,branch:em.branch,stars,comment:backupComment,customer_service_points:stars,source:'qr_public',rating_date:payload.rating_date,is_public:stars>=4,created_at:payload.created_at};
+          r=await sb.from('vscore_customer_ratings').insert(fallback).select().single();
+        }
+        if(r.error)throw r.error;
+        try{await sb.from('employees').update({customer_service_points:Number(em.customer_service_points||0)+stars}).eq('id',em.id)}catch(_){}
+        if(stars>=4){
+          try{await sb.from('vscore_social_posts').insert({post_type:'news',caption:`Customer Service Recognition\n\nCongratulations ${em.full_name}! A customer gave you ${stars} out of 5 stars.\n\nRemarks:\n"${comment}"\n\nThis added +${stars} reward stars.`,photos_json:'[]',created_by:em.id,branch:em.branch,share_scope:'all',comments_enabled:true,source_type:'customer_rating',source_id:r.data?.id||'',expires_at:new Date(Date.now()+7*86400000).toISOString(),is_active:true,created_at:now153()})}catch(_){}
+        }
+        await notifyRating153(em,stars,comment,r.data?.id||'');
+        localStorage.setItem(deviceKey,'1');
+        Q('.v153-card').innerHTML=`<div class="v153-thank">Thank you for your rating!</div><p style="text-align:center">Your feedback added +${stars} reward star(s).${stars>=4?' A recognition post may appear on the News Feed.':' This feedback stays private for coaching.'}</p><div style="text-align:center"><button class="btn dark" onclick="window.close()">Close</button></div>`;
+      }catch(err){
+        btn.disabled=false;btn.textContent='Submit Rating';
+        alert(err.message||err);
+      }
+    };
+  }
+  window.v153CustomerRating=customerRating153;
+  window.v112CustomerRating=customerRating153;
+  const oldInit153=window.init;
+  if(typeof oldInit153==='function'&&!window.__v153InitPatch){
+    window.__v153InitPatch=true;
+    window.init=init=async function(){
+      const p=new URLSearchParams(location.search);
+      const rate=p.get('rate')||p.get('employee')||p.get('emp');
+      if(rate)return customerRating153(rate);
+      return oldInit153.apply(this,arguments);
+    };
+  }
+  [320,900,1600].forEach(t=>setTimeout(()=>{const p=new URLSearchParams(location.search);const rate=p.get('rate')||p.get('employee')||p.get('emp');if(rate)customerRating153(rate)},t));
+  console.log('V153 customer identity consent rating loaded');
+})();
+/* ================= END V153 ================= */
 </script></body></html>
