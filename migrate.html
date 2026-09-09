@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>V-Points Firebase Migration</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: #08111f; color: #e8eef8; }
+    main { max-width: 720px; margin: 48px auto; padding: 28px; background: #111d2e; border: 1px solid #28384f; border-radius: 18px; }
+    h1 { margin-top: 0; }
+    label { display: block; margin: 14px 0 6px; }
+    input, button { box-sizing: border-box; width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3a4d69; font: inherit; }
+    input { background: #0b1524; color: white; }
+    button { margin-top: 14px; background: #ffb000; color: #111; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    #status { white-space: pre-wrap; min-height: 120px; margin-top: 18px; padding: 14px; background: #07101c; border-radius: 10px; overflow: auto; }
+    .warning { color: #ffd37a; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>V-Points migration</h1>
+  <p class="warning">Owner-only tool. Do not share this page. Old plaintext PIN fields are intentionally excluded.</p>
+  <form id="loginForm">
+    <label for="email">Firebase owner email</label>
+    <input id="email" name="email" type="email" autocomplete="username" required>
+    <label for="password">Firebase migration password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button id="loginButton" type="submit">Sign in</button>
+  </form>
+  <button id="migrateButton" type="button" hidden>Start secure migration</button>
+  <div id="status" role="status">Waiting for owner sign-in.</div>
+</main>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js';
+  import { getFirestore, doc, writeBatch } from 'https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: 'AIzaSyCkzrKkAnSTP8gqlY1ymGoWViQx68rs5Iw',
+    authDomain: 'varda-points.firebaseapp.com',
+    projectId: 'varda-points',
+    storageBucket: 'varda-points.firebasestorage.app',
+    messagingSenderId: '118398484154',
+    appId: '1:118398484154:web:274ac57c72b3eb82d70c83'
+  };
+  const supabaseUrl = 'https://qddolmytekocsitsrvaj.supabase.co';
+  const supabaseKey = 'sb_publishable_Z6Zi050aQqnnUP-h3lS4Yg_Uh5RnQZI';
+  const ownerEmail = 'vardapoints@gmail.com';
+  const tables = [
+    'achievements','app_settings','audit_trail','branch_options','employees','fsqa_audits',
+    'investigation_reports','ledger','memo_acknowledgments','memos','violations',
+    'vscore_academy_attempts','vscore_academy_completions','vscore_academy_modules',
+    'vscore_academy_questions','vscore_academy_slides','vscore_attendance_logs',
+    'vscore_case_actions','vscore_chat_members','vscore_chat_messages','vscore_chat_rooms',
+    'vscore_cleanup_log','vscore_customer_ratings','vscore_forms','vscore_notifications',
+    'vscore_policy_rules','vscore_reward_claims','vscore_rewards','vscore_social_comments',
+    'vscore_social_posts','vscore_social_reactions','vscore_standing_rules',
+    'vscore_task_acknowledgments','vscore_task_comments','vscore_task_reactions','vscore_tasks',
+    'vscore_terms_acceptance','vscore_training_completions','vscore_training_modules',
+    'vscore_training_questions','vscore_training_quiz_attempts','vscore_training_slides'
+  ];
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const secondaryApp = initializeApp(firebaseConfig, 'account-provisioner');
+  const secondaryAuth = getAuth(secondaryApp);
+  const loginForm = document.querySelector('#loginForm');
+  const migrateButton = document.querySelector('#migrateButton');
+  const status = document.querySelector('#status');
+
+  function log(message) {
+    status.textContent += `\n${message}`;
+    status.scrollTop = status.scrollHeight;
+  }
+
+  function randomPassword() {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    return Array.from(bytes, b => (b % 36).toString(36)).join('') + '!A7';
+  }
+
+  async function fetchTable(table) {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${table}?select=*`, {
+      headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
+    });
+    if (!response.ok) throw new Error(`${table}: ${response.status} ${await response.text()}`);
+    return response.json();
+  }
+
+  async function writeRows(collectionName, rows) {
+    for (let start = 0; start < rows.length; start += 400) {
+      const batch = writeBatch(db);
+      for (const raw of rows.slice(start, start + 400)) {
+        const row = { ...raw };
+        delete row.temp_password;
+        delete row.login_password_backup;
+        const id = String(row.id || crypto.randomUUID());
+        batch.set(doc(db, collectionName, id), row);
+      }
+      await batch.commit();
+    }
+  }
+
+  loginForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const email = document.querySelector('#email').value.trim().toLowerCase();
+    if (email !== ownerEmail) return log('Blocked: this migration is restricted to the Firebase owner.');
+    try {
+      await signInWithEmailAndPassword(auth, email, document.querySelector('#password').value);
+      document.querySelector('#password').value = '';
+      loginForm.hidden = true;
+      migrateButton.hidden = false;
+      status.textContent = 'Owner authenticated. Ready to migrate.';
+    } catch (error) { log(`Sign-in failed: ${error.code || error.message}`); }
+  });
+
+  migrateButton.addEventListener('click', async () => {
+    migrateButton.disabled = true;
+    status.textContent = 'Starting migration…';
+    try {
+      const exported = {};
+      for (const table of tables) {
+        exported[table] = await fetchTable(table);
+        log(`Read ${table}: ${exported[table].length}`);
+      }
+
+      for (const employee of exported.employees) {
+        const email = String(employee.email || '').trim().toLowerCase();
+        if (!email) continue;
+        let uid = null;
+        if (email === ownerEmail) {
+          uid = auth.currentUser.uid;
+        } else {
+          try {
+            const result = await createUserWithEmailAndPassword(secondaryAuth, email, randomPassword());
+            uid = result.user.uid;
+            await updateProfile(result.user, { displayName: employee.full_name || email });
+            await signOut(secondaryAuth);
+          } catch (error) {
+            if (error.code !== 'auth/email-already-in-use') throw error;
+            log(`Account already exists: ${email}`);
+          }
+        }
+        if (uid) {
+          employee.auth_uid = uid;
+          const safeProfile = {
+            employee_id: String(employee.id), email, full_name: employee.full_name || '',
+            role: employee.role || 'employee', branch: employee.branch || '', is_active: employee.is_active !== false
+          };
+          const profileBatch = writeBatch(db);
+          profileBatch.set(doc(db, 'user_profiles', uid), safeProfile);
+          await profileBatch.commit();
+        }
+      }
+
+      for (const table of tables) {
+        await writeRows(table, exported[table]);
+        log(`Wrote ${table}: ${exported[table].length}`);
+      }
+      log('Migration complete. Password/PIN backup fields were not copied.');
+      migrateButton.hidden = true;
+    } catch (error) {
+      log(`STOPPED: ${error.message}`);
+      migrateButton.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
